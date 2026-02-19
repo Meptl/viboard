@@ -5,9 +5,10 @@ import {
   useMemo,
   useRef,
 } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@tanstack/react-router';
 import type { Workspace, Session } from 'shared/types';
 import { createWorkspaceWithSession } from '@/types/attempt';
+import { toWorkspacesCreate } from '@/lib/routes/navigation';
 import {
   WorkspacesMain,
   type ConversationListHandle,
@@ -57,7 +58,7 @@ export const WorkspacesMainContainer = forwardRef<
   }, [selectedWorkspace, selectedSession]);
 
   const handleCreateWorkspace = useCallback(() => {
-    navigate('/workspaces/create');
+    navigate(toWorkspacesCreate());
   }, [navigate]);
 
   const handleScrollToPreviousMessage = useCallback(() => {

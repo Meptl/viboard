@@ -1,6 +1,6 @@
-# Telemetry Removal Plan — vibe-kanban v0.0.136
+# Telemetry Removal Plan — vibe-kanban
 
-This document outlines every step required to fully remove **PostHog analytics** and **Sentry error tracking** from the vibe-kanban codebase at tag `v0.0.136-20251215225138` (commit `c04bf30c`).
+This document outlines every step required to fully remove **PostHog analytics** and **Sentry error tracking** from the vibe-kanban codebase.
 
 ---
 

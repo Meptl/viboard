@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useCurrentUser } from '@/hooks/auth/useCurrentUser';
+import { useAuth } from '@/hooks/auth/useAuth';
 import { useTaskMutations } from '@/hooks/useTaskMutations';
 import type { SharedTaskRecord } from './useProjectTasks';
 import type { SharedTaskDetails, TaskWithAttemptStatus } from 'shared/types';
@@ -25,19 +25,18 @@ export function useAutoLinkSharedTasks({
   remoteProjectId,
   projectId,
 }: UseAutoLinkSharedTasksProps): void {
-  const { data: currentUser } = useCurrentUser();
+  const { userId } = useAuth();
   const { linkSharedTaskToLocal } = useTaskMutations(projectId);
   const linkingInProgress = useRef<Set<string>>(new Set());
   const failedTasks = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    if (!currentUser?.user_id || isLoading || !remoteProjectId || !projectId) {
+    if (!userId || isLoading || !remoteProjectId || !projectId) {
       return;
     }
 
     const tasksToLink = Object.values(sharedTasksById).filter((task) => {
-      const isAssignedToCurrentUser =
-        task.assignee_user_id === currentUser.user_id;
+      const isAssignedToCurrentUser = task.assignee_user_id === userId;
       const hasLocalTask = Boolean(localTasksById[task.id]);
       const isAlreadyLinked = referencedSharedIds.has(task.id);
       const isBeingLinked = linkingInProgress.current.has(task.id);
@@ -73,7 +72,7 @@ export function useAutoLinkSharedTasks({
       );
     });
   }, [
-    currentUser?.user_id,
+    userId,
     sharedTasksById,
     localTasksById,
     referencedSharedIds,

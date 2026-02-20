@@ -170,8 +170,6 @@ export type LinkToExistingRequest = { remote_project_id: string, };
 
 export type TagSearchParams = { search: string | null, };
 
-export type TokenResponse = { access_token: string, expires_at: string | null, };
-
 export type UserSystemInfo = { config: Config, environment: Environment, 
 /**
  * Capabilities supported per executor (e.g., { "CLAUDE_CODE": ["SESSION_FORK"] })
@@ -191,8 +189,6 @@ export type CheckEditorAvailabilityQuery = { editor_type: EditorType, };
 export type CheckEditorAvailabilityResponse = { available: boolean, };
 
 export type CheckAgentAvailabilityQuery = { executor: BaseCodingAgent, };
-
-export type CurrentUserResponse = { user_id: string, };
 
 export type CreateFollowUpAttempt = { prompt: string, variant: string | null, retry_process_id: string | null, force_when_dirty: boolean | null, perform_git_reset: boolean | null, };
 

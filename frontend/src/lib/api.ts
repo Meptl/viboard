@@ -47,7 +47,6 @@ import {
   RunAgentSetupResponse,
   GhCliSetupError,
   RunScriptError,
-  StatusResponse,
   ListOrganizationsResponse,
   OrganizationMemberWithProfile,
   ListMembersResponse,
@@ -73,8 +72,6 @@ import {
   CreateScratch,
   UpdateScratch,
   PushError,
-  TokenResponse,
-  CurrentUserResponse,
   SharedTaskResponse,
   SharedTaskDetails,
   QueueStatus,
@@ -924,55 +921,6 @@ export const approvalsApi = {
     });
 
     return handleApiResponse<ApprovalStatus>(res);
-  },
-};
-
-// OAuth API
-export const oauthApi = {
-  handoffInit: async (
-    provider: string,
-    returnTo: string
-  ): Promise<{ handoff_id: string; authorize_url: string }> => {
-    const response = await makeRequest('/api/auth/handoff/init', {
-      method: 'POST',
-      body: JSON.stringify({ provider, return_to: returnTo }),
-    });
-    return handleApiResponse<{ handoff_id: string; authorize_url: string }>(
-      response
-    );
-  },
-
-  status: async (): Promise<StatusResponse> => {
-    const response = await makeRequest('/api/auth/status', {
-      cache: 'no-store',
-    });
-    return handleApiResponse<StatusResponse>(response);
-  },
-
-  logout: async (): Promise<void> => {
-    const response = await makeRequest('/api/auth/logout', {
-      method: 'POST',
-    });
-    if (!response.ok) {
-      throw new ApiError(
-        `Logout failed with status ${response.status}`,
-        response.status,
-        response
-      );
-    }
-  },
-
-  /** Returns the current access token for the remote server (auto-refreshes if needed) */
-  getToken: async (): Promise<TokenResponse | null> => {
-    const response = await makeRequest('/api/auth/token');
-    if (!response.ok) return null;
-    return handleApiResponse<TokenResponse>(response);
-  },
-
-  /** Returns the user ID of the currently authenticated user */
-  getCurrentUser: async (): Promise<CurrentUserResponse> => {
-    const response = await makeRequest('/api/auth/user');
-    return handleApiResponse<CurrentUserResponse>(response);
   },
 };
 

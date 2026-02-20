@@ -14,7 +14,6 @@ use services::services::{
     filesystem::FilesystemService,
     git::GitService,
     image::ImageService,
-    oauth_credentials::OAuthCredentials,
     queued_message::QueuedMessageService,
     remote_client::{RemoteClient, RemoteClientError},
     share::{ShareConfig, SharePublisher},
@@ -22,7 +21,7 @@ use services::services::{
 use tokio::sync::RwLock;
 use utils::{
     api::oauth::LoginStatus,
-    assets::{config_path, credentials_path},
+    assets::config_path,
     msg_store::MsgStore,
 };
 use uuid::Uuid;
@@ -121,13 +120,8 @@ impl Deployment for LocalDeployment {
 
         let share_config = ShareConfig::from_env();
 
-        let oauth_credentials = Arc::new(OAuthCredentials::new(credentials_path()));
-        if let Err(e) = oauth_credentials.load().await {
-            tracing::warn!(?e, "failed to load OAuth credentials");
-        }
-
-        let profile_cache = Arc::new(RwLock::new(None));
-        let auth_context = AuthContext::new(oauth_credentials.clone(), profile_cache.clone());
+        // OAuth has been removed from local deployment
+        let auth_context = AuthContext::new();
 
         let api_base = std::env::var("VK_SHARED_API_BASE")
             .ok()

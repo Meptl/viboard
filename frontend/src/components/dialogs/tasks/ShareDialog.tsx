@@ -11,14 +11,11 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
-import { OAuthDialog } from '@/components/dialogs/global/OAuthDialog';
 import { LinkProjectDialog } from '@/components/dialogs/projects/LinkProjectDialog';
 import { useTranslation } from 'react-i18next';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { Link as LinkIcon, Loader2 } from 'lucide-react';
 import type { TaskWithAttemptStatus } from 'shared/types';
-import { LoginRequiredPrompt } from '@/components/dialogs/shared/LoginRequiredPrompt';
-import { useAuth } from '@/hooks';
 import { useProject } from '@/contexts/ProjectContext';
 import { useTaskMutations } from '@/hooks/useTaskMutations';
 
@@ -30,7 +27,6 @@ const ShareDialogImpl = NiceModal.create<ShareDialogProps>(({ task }) => {
   const modal = useModal();
   const { t } = useTranslation('tasks');
   const { loading: systemLoading } = useUserSystem();
-  const { isSignedIn } = useAuth();
   const { project } = useProject();
   const { shareTask } = useTaskMutations(task.project_id);
   const { reset: resetShareTask } = shareTask;
@@ -68,16 +64,6 @@ const ShareDialogImpl = NiceModal.create<ShareDialogProps>(({ task }) => {
       await shareTask.mutateAsync(task.id);
       modal.hide();
     } catch (err) {
-      if (getStatus(err) === 401) {
-        // Hide this dialog first so OAuthDialog appears on top
-        modal.hide();
-        const result = await OAuthDialog.show();
-        // If user successfully authenticated, re-show this dialog
-        if (result) {
-          void ShareDialog.show({ task });
-        }
-        return;
-      }
       setShareError(getReadableError(err));
     }
   };
@@ -114,13 +100,7 @@ const ShareDialogImpl = NiceModal.create<ShareDialogProps>(({ task }) => {
           </DialogDescription>
         </DialogHeader>
 
-        {!isSignedIn ? (
-          <LoginRequiredPrompt
-            buttonVariant="outline"
-            buttonSize="sm"
-            buttonClassName="mt-1"
-          />
-        ) : !isProjectLinked ? (
+        {!isProjectLinked ? (
           <Alert className="mt-1">
             <LinkIcon className="h-4 w-4" />
             <AlertDescription className="flex items-center justify-between">
@@ -155,7 +135,7 @@ const ShareDialogImpl = NiceModal.create<ShareDialogProps>(({ task }) => {
               ? t('shareDialog.closeButton')
               : t('shareDialog.cancel')}
           </Button>
-          {isSignedIn && isProjectLinked && !shareTask.isSuccess && (
+          {isProjectLinked && !shareTask.isSuccess && (
             <Button
               onClick={handleShare}
               disabled={isShareDisabled}

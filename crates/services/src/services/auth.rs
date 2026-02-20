@@ -1,54 +1,44 @@
 use std::sync::Arc;
 
-use tokio::sync::{Mutex as TokioMutex, OwnedMutexGuard, RwLock};
+use tokio::sync::{Mutex as TokioMutex, OwnedMutexGuard};
 use utils::api::oauth::ProfileResponse;
 
-use super::oauth_credentials::{Credentials, OAuthCredentials};
+use super::oauth_credentials::Credentials;
 
+/// Stub auth context - OAuth has been removed from local deployment
 #[derive(Clone)]
-pub struct AuthContext {
-    oauth: Arc<OAuthCredentials>,
-    profile: Arc<RwLock<Option<ProfileResponse>>>,
-    refresh_lock: Arc<TokioMutex<()>>,
-}
+pub struct AuthContext;
 
 impl AuthContext {
-    pub fn new(
-        oauth: Arc<OAuthCredentials>,
-        profile: Arc<RwLock<Option<ProfileResponse>>>,
-    ) -> Self {
-        Self {
-            oauth,
-            profile,
-            refresh_lock: Arc::new(TokioMutex::new(())),
-        }
+    pub fn new() -> Self {
+        Self
     }
 
     pub async fn get_credentials(&self) -> Option<Credentials> {
-        self.oauth.get().await
+        None
     }
 
-    pub async fn save_credentials(&self, creds: &Credentials) -> std::io::Result<()> {
-        self.oauth.save(creds).await
+    pub async fn save_credentials(&self, _creds: &Credentials) -> std::io::Result<()> {
+        Ok(())
     }
 
     pub async fn clear_credentials(&self) -> std::io::Result<()> {
-        self.oauth.clear().await
+        Ok(())
     }
 
     pub async fn cached_profile(&self) -> Option<ProfileResponse> {
-        self.profile.read().await.clone()
+        None
     }
 
-    pub async fn set_profile(&self, profile: ProfileResponse) {
-        *self.profile.write().await = Some(profile)
+    pub async fn set_profile(&self, _profile: ProfileResponse) {
+        // no-op
     }
 
     pub async fn clear_profile(&self) {
-        *self.profile.write().await = None
+        // no-op
     }
 
     pub async fn refresh_guard(&self) -> OwnedMutexGuard<()> {
-        self.refresh_lock.clone().lock_owned().await
+        Arc::new(TokioMutex::new(())).lock_owned().await
     }
 }

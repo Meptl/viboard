@@ -272,16 +272,6 @@ pub async fn create_github_pr(
             if let Err(e) = utils::browser::open_browser(&pr_info.url).await {
                 tracing::warn!("Failed to open PR in browser: {}", e);
             }
-            deployment
-                .track_if_analytics_allowed(
-                    "github_pr_created",
-                    serde_json::json!({
-                        "task_id": task.id.to_string(),
-                        "project_id": project.id.to_string(),
-                        "attempt_id": task_attempt.id.to_string(),
-                    }),
-                )
-                .await;
 
             // Trigger auto-description follow-up if enabled
             if request.auto_generate_description

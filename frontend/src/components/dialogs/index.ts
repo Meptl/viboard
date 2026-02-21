@@ -6,12 +6,6 @@ export {
 } from './global/OnboardingDialog';
 export { ReleaseNotesDialog } from './global/ReleaseNotesDialog';
 
-// Project-related dialogs
-export {
-  ProjectFormDialog,
-  type ProjectFormDialogProps,
-  type ProjectFormDialogResult,
-} from './projects/ProjectFormDialog';
 export {
   ProjectEditorSelectionDialog,
   type ProjectEditorSelectionDialogProps,

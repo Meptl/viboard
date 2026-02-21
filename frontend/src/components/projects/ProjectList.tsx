@@ -5,12 +5,13 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Project } from 'shared/types';
-import { ProjectFormDialog } from '@/components/dialogs/projects/ProjectFormDialog';
+import { CreateProject, Project } from 'shared/types';
+import { FolderPickerDialog } from '@/components/dialogs/shared/FolderPickerDialog';
 import { projectsApi } from '@/lib/api';
 import { AlertCircle, Loader2, Plus } from 'lucide-react';
 import ProjectCard from '@/components/projects/ProjectCard.tsx';
 import { useKeyCreate, Scope } from '@/keyboard';
+import { generateProjectNameFromPath } from '@/utils/string';
 
 export function ProjectList() {
   const navigate = useNavigate();
@@ -38,12 +39,32 @@ export function ProjectList() {
 
   const handleCreateProject = async () => {
     try {
-      const result = await ProjectFormDialog.show({});
-      if (result === 'saved') {
-        fetchProjects();
+      setError('');
+      const selectedPath = await FolderPickerDialog.show({
+        title: 'Select Git Repository',
+        description: 'Choose an existing git repository',
+      });
+
+      if (!selectedPath) {
+        return;
       }
+
+      const createData: CreateProject = {
+        name: generateProjectNameFromPath(selectedPath),
+        git_repo_path: selectedPath,
+        use_existing_repo: true,
+        setup_script: null,
+        dev_script: null,
+        cleanup_script: null,
+        copy_files: null,
+        parallel_setup_script: null,
+      };
+
+      await projectsApi.create(createData);
+      await fetchProjects();
     } catch (error) {
-      // User cancelled - do nothing
+      console.error('Failed to create project:', error);
+      setError(t('errors.fetchFailed'));
     }
   };
 

@@ -1,7 +1,6 @@
 use std::{collections::HashMap, env, fs, path::Path};
 
 use schemars::{JsonSchema, Schema, SchemaGenerator, generate::SchemaSettings};
-use server::routes::task_attempts::pr::DEFAULT_PR_DESCRIPTION_PROMPT;
 use ts_rs::TS;
 
 fn generate_types_content() -> String {
@@ -66,23 +65,16 @@ fn generate_types_content() -> String {
         server::routes::task_attempts::OpenEditorRequest::decl(),
         server::routes::task_attempts::OpenEditorResponse::decl(),
         server::routes::tasks::CreateAndStartTaskRequest::decl(),
-        server::routes::task_attempts::pr::CreateGitHubPrRequest::decl(),
         server::routes::images::ImageResponse::decl(),
         server::routes::images::ImageMetadata::decl(),
         server::routes::task_attempts::CreateTaskAttemptBody::decl(),
         server::routes::task_attempts::RunAgentSetupRequest::decl(),
         server::routes::task_attempts::RunAgentSetupResponse::decl(),
-        server::routes::task_attempts::gh_cli_setup::GhCliSetupError::decl(),
         server::routes::task_attempts::RebaseTaskAttemptRequest::decl(),
         server::routes::task_attempts::GitOperationError::decl(),
         server::routes::task_attempts::PushError::decl(),
-        server::routes::task_attempts::pr::CreatePrError::decl(),
         server::routes::task_attempts::BranchStatus::decl(),
         server::routes::task_attempts::RunScriptError::decl(),
-        server::routes::task_attempts::pr::AttachPrResponse::decl(),
-        server::routes::task_attempts::pr::PrCommentsResponse::decl(),
-        server::routes::task_attempts::pr::GetPrCommentsError::decl(),
-        services::services::github::UnifiedPrComment::decl(),
         services::services::filesystem::DirectoryEntry::decl(),
         services::services::filesystem::DirectoryListResponse::decl(),
         services::services::config::Config::decl(),
@@ -91,7 +83,6 @@ fn generate_types_content() -> String {
         services::services::config::EditorConfig::decl(),
         services::services::config::EditorType::decl(),
         services::services::config::EditorOpenError::decl(),
-        services::services::config::GitHubConfig::decl(),
         services::services::config::SoundFile::decl(),
         services::services::config::UiLanguage::decl(),
         services::services::config::ShowcaseState::decl(),
@@ -160,16 +151,7 @@ fn generate_types_content() -> String {
         .collect::<Vec<_>>()
         .join("\n\n");
 
-    // Append exported constants
-    let prompt_escaped = DEFAULT_PR_DESCRIPTION_PROMPT
-        .replace('\\', "\\\\")
-        .replace('`', "\\`");
-    let constants = format!(
-        "export const DEFAULT_PR_DESCRIPTION_PROMPT = `{}`;",
-        prompt_escaped
-    );
-
-    format!("{HEADER}\n\n{body}\n\n{constants}")
+    format!("{HEADER}\n\n{body}")
 }
 
 fn generate_json_schema<T: JsonSchema>() -> Result<String, serde_json::Error> {

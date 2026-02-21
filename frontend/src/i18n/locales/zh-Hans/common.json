@@ -52,37 +52,7 @@
   "breadcrumb": {
     "more": "更多"
   },
-  "orgMembers": {
-    "moreCount": "还有 {{count}} 位"
-  },
-  "orgSwitcher": {
-    "title": "切换组织",
-    "description": "选择要切换到的组织。",
-    "loadError": "加载组织失败。请重试。",
-    "noOrganizations": "您不是任何组织的成员。",
-    "menuItem": "组织",
-    "loadingPlaceholder": "加载组织中...",
-    "selectPlaceholder": "选择组织",
-    "currentBadge": "（当前）"
-  },
-  "signOut": "退出登录",
   "devMode": {
     "banner": "开发模式 - 这是开发版本"
-  },
-  "oauth": {
-    "title": "登录 Vibe Kanban",
-    "description": "登录以加入组织并与团队共享任务",
-    "continueWithGitHub": "使用 GitHub 继续",
-    "continueWithGoogle": "使用 Google 继续",
-    "waitingTitle": "完成身份验证",
-    "waitingDescription": "已打开弹出窗口进行身份验证",
-    "waitingForAuth": "等待身份验证...",
-    "popupInstructions": "如果弹出窗口未打开，请检查您的弹窗拦截器设置。",
-    "back": "返回",
-    "successTitle": "身份验证成功！",
-    "welcomeBack": "欢迎回来，{{name}}",
-    "errorTitle": "身份验证失败",
-    "errorDescription": "验证您的账户时出现问题",
-    "tryAgain": "重试"
   }
 }

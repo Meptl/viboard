@@ -75,7 +75,6 @@
       {
         "group": "Integrations",
         "pages": [
-          "integrations/github-integration",
           "integrations/vscode-extension",
           "integrations/mcp-server-configuration",
           "integrations/vibe-kanban-mcp-server"

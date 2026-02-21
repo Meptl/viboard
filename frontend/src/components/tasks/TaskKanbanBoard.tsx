@@ -9,19 +9,11 @@ import {
 import { TaskCard } from './TaskCard';
 import type { TaskStatus, TaskWithAttemptStatus } from 'shared/types';
 import { statusBoardColors, statusLabels } from '@/utils/statusLabels';
-import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
-import { SharedTaskCard } from './SharedTaskCard';
 
-export type KanbanColumnItem =
-  | {
-      type: 'task';
-      task: TaskWithAttemptStatus;
-      sharedTask?: SharedTaskRecord;
-    }
-  | {
-      type: 'shared';
-      task: SharedTaskRecord;
-    };
+export type KanbanColumnItem = {
+  type: 'task';
+  task: TaskWithAttemptStatus;
+};
 
 export type KanbanColumns = Record<TaskStatus, KanbanColumnItem[]>;
 
@@ -29,9 +21,7 @@ interface TaskKanbanBoardProps {
   columns: KanbanColumns;
   onDragEnd: (event: DragEndEvent) => void;
   onViewTaskDetails: (task: TaskWithAttemptStatus) => void;
-  onViewSharedTask?: (task: SharedTaskRecord) => void;
   selectedTaskId?: string;
-  selectedSharedTaskId?: string | null;
   onCreateTask?: () => void;
   projectId: string;
 }
@@ -40,9 +30,7 @@ function TaskKanbanBoard({
   columns,
   onDragEnd,
   onViewTaskDetails,
-  onViewSharedTask,
   selectedTaskId,
-  selectedSharedTaskId,
   onCreateTask,
   projectId,
 }: TaskKanbanBoardProps) {
@@ -59,31 +47,15 @@ function TaskKanbanBoard({
             />
             <KanbanCards>
               {items.map((item, index) => {
-                if (item.type === 'task') {
-                  return (
-                    <TaskCard
-                      key={item.task.id}
-                      task={item.task}
-                      index={index}
-                      status={statusKey}
-                      onViewDetails={onViewTaskDetails}
-                      isOpen={selectedTaskId === item.task.id}
-                      projectId={projectId}
-                      sharedTask={item.sharedTask}
-                    />
-                  );
-                }
-
-                const sharedTask = item.task;
-
                 return (
-                  <SharedTaskCard
-                    key={`shared-${item.task.id}`}
-                    task={sharedTask}
+                  <TaskCard
+                    key={item.task.id}
+                    task={item.task}
                     index={index}
                     status={statusKey}
-                    isSelected={selectedSharedTaskId === item.task.id}
-                    onViewDetails={onViewSharedTask}
+                    onViewDetails={onViewTaskDetails}
+                    isOpen={selectedTaskId === item.task.id}
+                    projectId={projectId}
                   />
                 );
               })}

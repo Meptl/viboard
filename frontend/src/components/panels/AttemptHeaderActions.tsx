@@ -12,7 +12,6 @@ import type { LayoutMode } from '../layout/TasksLayout';
 import type { TaskAttempt, TaskWithAttemptStatus } from 'shared/types';
 import { ActionsDropdown } from '../ui/actions-dropdown';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
-import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
 
 interface AttemptHeaderActionsProps {
   onClose: () => void;
@@ -20,7 +19,6 @@ interface AttemptHeaderActionsProps {
   onModeChange?: (mode: LayoutMode) => void;
   task: TaskWithAttemptStatus;
   attempt?: TaskAttempt | null;
-  sharedTask?: SharedTaskRecord;
 }
 
 export const AttemptHeaderActions = ({
@@ -29,7 +27,6 @@ export const AttemptHeaderActions = ({
   onModeChange,
   task,
   attempt,
-  sharedTask,
 }: AttemptHeaderActionsProps) => {
   const { t } = useTranslation('tasks');
   const isXL = useMediaQuery('(min-width: 1280px)');
@@ -83,7 +80,7 @@ export const AttemptHeaderActions = ({
       {typeof mode !== 'undefined' && onModeChange && isXL && (
         <div className="h-4 w-px bg-border" />
       )}
-      <ActionsDropdown task={task} attempt={attempt} sharedTask={sharedTask} />
+      <ActionsDropdown task={task} attempt={attempt} />
       <Button variant="icon" aria-label="Close" onClick={onClose}>
         <X size={16} />
       </Button>

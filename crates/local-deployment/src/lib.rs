@@ -24,7 +24,6 @@ use services::services::{
     git::{GitService, GitServiceError},
     image::{ImageError, ImageService},
     queued_message::QueuedMessageService,
-    share::{ShareConfig, SharePublisher},
     worktree_manager::WorktreeError,
 };
 use sqlx::{Error as SqlxError, types::Uuid};
@@ -36,10 +35,6 @@ use crate::container::LocalContainerService;
 mod command;
 pub mod container;
 mod copy;
-
-#[derive(Debug, Clone, Copy, Error)]
-#[error("Remote client not configured")]
-pub struct RemoteClientNotConfigured;
 
 #[derive(Debug, Error)]
 pub enum DeploymentError {
@@ -69,8 +64,6 @@ pub enum DeploymentError {
     Event(#[from] EventError),
     #[error(transparent)]
     Config(#[from] ConfigError),
-    #[error("Remote client not configured")]
-    RemoteClientNotConfigured,
     #[error(transparent)]
     Other(#[from] AnyhowError),
 }
@@ -100,8 +93,6 @@ pub trait Deployment: Clone + Send + Sync + 'static {
     fn approvals(&self) -> &Approvals;
 
     fn queued_message_service(&self) -> &QueuedMessageService;
-
-    fn share_publisher(&self) -> Result<SharePublisher, RemoteClientNotConfigured>;
 
     async fn trigger_auto_project_setup(&self) {
         let soft_timeout_ms = 2_000;
@@ -176,8 +167,6 @@ pub struct LocalDeployment {
     file_search_cache: Arc<FileSearchCache>,
     approvals: Approvals,
     queued_message_service: QueuedMessageService,
-    share_publisher: Result<SharePublisher, RemoteClientNotConfigured>,
-    share_config: Option<ShareConfig>,
 }
 
 #[async_trait]
@@ -241,9 +230,6 @@ impl Deployment for LocalDeployment {
         let approvals = Approvals::new(msg_stores.clone());
         let queued_message_service = QueuedMessageService::new();
 
-        let share_config = ShareConfig::from_env();
-        let share_publisher = Err(RemoteClientNotConfigured);
-
         let container = LocalContainerService::new(
             db.clone(),
             msg_stores.clone(),
@@ -252,7 +238,6 @@ impl Deployment for LocalDeployment {
             image.clone(),
             approvals.clone(),
             queued_message_service.clone(),
-            share_publisher.clone(),
         )
         .await;
 
@@ -272,8 +257,6 @@ impl Deployment for LocalDeployment {
             file_search_cache,
             approvals,
             queued_message_service,
-            share_publisher,
-            share_config: share_config.clone(),
         };
 
         Ok(deployment)
@@ -321,15 +304,5 @@ impl Deployment for LocalDeployment {
 
     fn queued_message_service(&self) -> &QueuedMessageService {
         &self.queued_message_service
-    }
-
-    fn share_publisher(&self) -> Result<SharePublisher, RemoteClientNotConfigured> {
-        self.share_publisher.clone()
-    }
-}
-
-impl LocalDeployment {
-    pub fn share_config(&self) -> Option<&ShareConfig> {
-        self.share_config.as_ref()
     }
 }

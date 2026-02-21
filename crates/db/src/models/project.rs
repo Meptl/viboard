@@ -31,7 +31,6 @@ pub struct Project {
     pub cleanup_script: Option<String>,
     pub copy_files: Option<String>,
     pub parallel_setup_script: bool,
-    pub remote_project_id: Option<Uuid>,
     #[ts(type = "Date")]
     pub created_at: DateTime<Utc>,
     #[ts(type = "Date")]
@@ -100,7 +99,6 @@ impl From<ProjectRow> for Project {
             cleanup_script: row.cleanup_script,
             copy_files: row.copy_files,
             parallel_setup_script: row.parallel_setup_script,
-            remote_project_id: None,
             created_at: row.created_at,
             updated_at: row.updated_at,
         }

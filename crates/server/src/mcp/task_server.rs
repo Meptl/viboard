@@ -481,7 +481,6 @@ impl TaskServer {
             status: Some(TaskStatus::Todo),
             parent_task_attempt,
             image_ids: None,
-            shared_task_id: None,
         };
 
         let task: Task = match self

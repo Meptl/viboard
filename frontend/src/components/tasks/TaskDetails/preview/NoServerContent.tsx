@@ -132,7 +132,6 @@ export function NoServerContent({
         status: null,
         parent_task_attempt: null,
         image_ids: null,
-        shared_task_id: null,
       },
       executor_profile_id: config.executor_profile,
       base_branch: 'main',

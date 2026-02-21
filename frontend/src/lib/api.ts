@@ -7,7 +7,6 @@ import {
   Config,
   CreateFollowUpAttempt,
   EditorType,
-  CreateGitHubPrRequest,
   CreateTask,
   CreateAndStartTaskRequest,
   CreateTaskAttemptBody,
@@ -45,19 +44,16 @@ import {
   BaseCodingAgent,
   RunAgentSetupRequest,
   RunAgentSetupResponse,
-  GhCliSetupError,
   RunScriptError,
   CommitCompareResult,
   OpenEditorResponse,
   OpenEditorRequest,
-  CreatePrError,
   Scratch,
   ScratchType,
   CreateScratch,
   UpdateScratch,
   PushError,
   QueueStatus,
-  PrCommentsResponse,
 } from 'shared/types';
 
 export class ApiError<E = unknown> extends Error {
@@ -474,17 +470,6 @@ export const attemptsApi = {
     return handleApiResponse<void>(response);
   },
 
-  createPR: async (
-    attemptId: string,
-    data: CreateGitHubPrRequest
-  ): Promise<Result<string, CreatePrError>> => {
-    const response = await makeRequest(`/api/task-attempts/${attemptId}/pr`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-    return handleApiResponseAsResult<string, CreatePrError>(response);
-  },
-
   startDevServer: async (attemptId: string): Promise<void> => {
     const response = await makeRequest(
       `/api/task-attempts/${attemptId}/start-dev-server`,
@@ -493,16 +478,6 @@ export const attemptsApi = {
       }
     );
     return handleApiResponse<void>(response);
-  },
-
-  setupGhCli: async (attemptId: string): Promise<ExecutionProcess> => {
-    const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/gh-cli-setup`,
-      {
-        method: 'POST',
-      }
-    );
-    return handleApiResponse<ExecutionProcess, GhCliSetupError>(response);
   },
 
   runSetupScript: async (
@@ -533,12 +508,6 @@ export const attemptsApi = {
     );
   },
 
-  getPrComments: async (attemptId: string): Promise<PrCommentsResponse> => {
-    const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/pr/comments`
-    );
-    return handleApiResponse<PrCommentsResponse>(response);
-  },
 };
 
 // Extra helpers

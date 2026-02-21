@@ -3,18 +3,14 @@ use executors::{executors::BaseCodingAgent, profile::ExecutorProfileId};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 pub use v7::{
-    EditorConfig, EditorType, GitHubConfig, NotificationConfig, ShowcaseState, SoundFile,
-    ThemeMode, UiLanguage,
+    EditorConfig, EditorType, NotificationConfig, ShowcaseState, SoundFile, ThemeMode,
+    UiLanguage,
 };
 
 use crate::services::config::versions::v7;
 
 fn default_git_branch_prefix() -> String {
     "vk".to_string()
-}
-
-fn default_pr_auto_description_enabled() -> bool {
-    true
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, TS)]
@@ -26,7 +22,6 @@ pub struct Config {
     pub onboarding_acknowledged: bool,
     pub notifications: NotificationConfig,
     pub editor: EditorConfig,
-    pub github: GitHubConfig,
     pub workspace_dir: Option<String>,
     pub last_app_version: Option<String>,
     pub show_release_notes: bool,
@@ -36,10 +31,6 @@ pub struct Config {
     pub git_branch_prefix: String,
     #[serde(default)]
     pub showcases: ShowcaseState,
-    #[serde(default = "default_pr_auto_description_enabled")]
-    pub pr_auto_description_enabled: bool,
-    #[serde(default)]
-    pub pr_auto_description_prompt: Option<String>,
 }
 
 impl Config {
@@ -52,15 +43,12 @@ impl Config {
             onboarding_acknowledged: old_config.onboarding_acknowledged,
             notifications: old_config.notifications,
             editor: old_config.editor,
-            github: old_config.github,
             workspace_dir: old_config.workspace_dir,
             last_app_version: old_config.last_app_version,
             show_release_notes: old_config.show_release_notes,
             language: old_config.language,
             git_branch_prefix: old_config.git_branch_prefix,
             showcases: old_config.showcases,
-            pr_auto_description_enabled: true,
-            pr_auto_description_prompt: None,
         }
     }
 
@@ -101,15 +89,12 @@ impl Default for Config {
             onboarding_acknowledged: false,
             notifications: NotificationConfig::default(),
             editor: EditorConfig::default(),
-            github: GitHubConfig::default(),
             workspace_dir: None,
             last_app_version: None,
             show_release_notes: false,
             language: UiLanguage::default(),
             git_branch_prefix: default_git_branch_prefix(),
             showcases: ShowcaseState::default(),
-            pr_auto_description_enabled: true,
-            pr_auto_description_prompt: None,
         }
     }
 }

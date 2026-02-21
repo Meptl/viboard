@@ -30,8 +30,6 @@ pub struct Task {
     pub description: Option<String>,
     pub status: TaskStatus,
     pub parent_task_attempt: Option<Uuid>, // Foreign key to parent TaskAttempt
-    #[sqlx(default)]
-    pub shared_task_id: Option<Uuid>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -75,7 +73,6 @@ pub struct CreateTask {
     pub status: Option<TaskStatus>,
     pub parent_task_attempt: Option<Uuid>,
     pub image_ids: Option<Vec<Uuid>>,
-    pub shared_task_id: Option<Uuid>,
 }
 
 impl CreateTask {
@@ -197,7 +194,6 @@ ORDER BY t.created_at DESC"#,
                     description: rec.description,
                     status: rec.status,
                     parent_task_attempt: rec.parent_task_attempt,
-                    shared_task_id: None,
                     created_at: rec.created_at,
                     updated_at: rec.updated_at,
                 },

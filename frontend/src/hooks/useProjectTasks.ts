@@ -2,20 +2,6 @@ import { useCallback, useMemo } from 'react';
 import { useJsonPatchWsStream } from './useJsonPatchWsStream';
 import type { TaskStatus, TaskWithAttemptStatus } from 'shared/types';
 
-export interface SharedTaskRecord {
-  id: string;
-  title: string;
-  description?: string | null;
-  status: TaskStatus;
-  created_at: string;
-  updated_at?: string;
-  remote_project_id: string;
-  assignee_user_id?: string | null;
-  assignee_first_name?: string | null;
-  assignee_last_name?: string | null;
-  assignee_username?: string | null;
-}
-
 type TasksState = {
   tasks: Record<string, TaskWithAttemptStatus>;
 };
@@ -24,8 +10,6 @@ export interface UseProjectTasksResult {
   tasks: TaskWithAttemptStatus[];
   tasksById: Record<string, TaskWithAttemptStatus>;
   tasksByStatus: Record<TaskStatus, TaskWithAttemptStatus[]>;
-  sharedTasksById: Record<string, SharedTaskRecord>;
-  sharedOnlyByStatus: Record<TaskStatus, SharedTaskRecord[]>;
   isLoading: boolean;
   isConnected: boolean;
   error: string | null;
@@ -81,14 +65,6 @@ export const useProjectTasks = (projectId: string): UseProjectTasksResult => {
     tasks,
     tasksById,
     tasksByStatus,
-    sharedTasksById: {},
-    sharedOnlyByStatus: {
-      todo: [],
-      inprogress: [],
-      inreview: [],
-      done: [],
-      cancelled: [],
-    },
     isLoading,
     isConnected,
     error,

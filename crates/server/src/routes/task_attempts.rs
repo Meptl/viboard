@@ -1,8 +1,6 @@
 pub mod codex_setup;
 pub mod cursor_setup;
-pub mod gh_cli_setup;
 pub mod images;
-pub mod pr;
 pub mod queue;
 pub mod util;
 
@@ -40,7 +38,6 @@ use serde::{Deserialize, Serialize};
 use services::services::{
     container::ContainerService,
     git::{ConflictOp, GitCliError, GitServiceError, WorktreeResetOptions},
-    github::GitHubService,
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
@@ -51,7 +48,7 @@ use crate::{
     DeploymentImpl,
     error::ApiError,
     middleware::load_task_attempt_middleware,
-    routes::task_attempts::{gh_cli_setup::GhCliSetupError, util::ensure_worktree_path},
+    routes::task_attempts::util::ensure_worktree_path,
 };
 
 #[derive(Debug, Deserialize, Serialize, TS)]
@@ -521,22 +518,6 @@ pub async fn merge_task_attempt(
         }
     }
 
-    // Try broadcast update to other users in organization
-    if let Ok(publisher) = deployment.share_publisher() {
-        if let Err(err) = publisher.update_shared_task_by_id(ctx.task.id).await {
-            tracing::warn!(
-                ?err,
-                "Failed to propagate shared task update for {}",
-                ctx.task.id
-            );
-        }
-    } else {
-        tracing::debug!(
-            "Share publisher unavailable; skipping remote update for {}",
-            ctx.task.id
-        );
-    }
-
     Ok(ResponseJson(ApiResponse::success(())))
 }
 
@@ -544,9 +525,6 @@ pub async fn push_task_attempt_branch(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<(), PushError>>, ApiError> {
-    let github_service = GitHubService::new()?;
-    github_service.check_token().await?;
-
     let ws_path = ensure_worktree_path(&deployment, &task_attempt).await?;
 
     match deployment
@@ -565,9 +543,6 @@ pub async fn force_push_task_attempt_branch(
     Extension(task_attempt): Extension<TaskAttempt>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<(), PushError>>, ApiError> {
-    let github_service = GitHubService::new()?;
-    github_service.check_token().await?;
-
     let ws_path = ensure_worktree_path(&deployment, &task_attempt).await?;
 
     deployment
@@ -1273,38 +1248,11 @@ pub async fn run_cleanup_script(
     Ok(ResponseJson(ApiResponse::success(execution_process)))
 }
 
-#[axum::debug_handler]
-pub async fn gh_cli_setup_handler(
-    Extension(task_attempt): Extension<TaskAttempt>,
-    State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<ExecutionProcess, GhCliSetupError>>, ApiError> {
-    match gh_cli_setup::run_gh_cli_setup(&deployment, &task_attempt).await {
-        Ok(execution_process) => Ok(ResponseJson(ApiResponse::success(execution_process))),
-        Err(ApiError::Executor(ExecutorError::ExecutableNotFound { program }))
-            if program == "brew" =>
-        {
-            Ok(ResponseJson(ApiResponse::error_with_data(
-                GhCliSetupError::BrewMissing,
-            )))
-        }
-        Err(ApiError::Executor(ExecutorError::SetupHelperNotSupported)) => Ok(ResponseJson(
-            ApiResponse::error_with_data(GhCliSetupError::SetupHelperNotSupported),
-        )),
-        Err(ApiError::Executor(err)) => Ok(ResponseJson(ApiResponse::error_with_data(
-            GhCliSetupError::Other {
-                message: err.to_string(),
-            },
-        ))),
-        Err(err) => Err(err),
-    }
-}
-
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let task_attempt_id_router = Router::new()
         .route("/", get(get_task_attempt))
         .route("/follow-up", post(follow_up))
         .route("/run-agent-setup", post(run_agent_setup))
-        .route("/gh-cli-setup", post(gh_cli_setup_handler))
         .route("/commit-compare", get(compare_commit_to_head))
         .route("/start-dev-server", post(start_dev_server))
         .route("/run-setup-script", post(run_setup_script))
@@ -1316,9 +1264,6 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/push/force", post(force_push_task_attempt_branch))
         .route("/rebase", post(rebase_task_attempt))
         .route("/conflicts/abort", post(abort_conflicts_task_attempt))
-        .route("/pr", post(pr::create_github_pr))
-        .route("/pr/attach", post(pr::attach_existing_pr))
-        .route("/pr/comments", get(pr::get_pr_comments))
         .route("/open-editor", post(open_task_attempt_in_editor))
         .route("/children", get(get_task_attempt_children))
         .route("/stop", post(stop_task_attempt_execution))

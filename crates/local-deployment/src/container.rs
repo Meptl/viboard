@@ -51,7 +51,6 @@ use services::services::{
     image::ImageService,
     notification::NotificationService,
     queued_message::QueuedMessageService,
-    share::SharePublisher,
     worktree_manager::{WorktreeCleanup, WorktreeManager},
 };
 use tokio::{sync::RwLock, task::JoinHandle};
@@ -63,7 +62,7 @@ use utils::{
 };
 use uuid::Uuid;
 
-use crate::{DeploymentError, RemoteClientNotConfigured, command, copy};
+use crate::{DeploymentError, command, copy};
 
 #[derive(Clone)]
 pub struct LocalContainerService {
@@ -76,7 +75,6 @@ pub struct LocalContainerService {
     image_service: ImageService,
     approvals: Approvals,
     queued_message_service: QueuedMessageService,
-    publisher: Result<SharePublisher, RemoteClientNotConfigured>,
     notification_service: NotificationService,
 }
 
@@ -90,7 +88,6 @@ impl LocalContainerService {
         image_service: ImageService,
         approvals: Approvals,
         queued_message_service: QueuedMessageService,
-        publisher: Result<SharePublisher, RemoteClientNotConfigured>,
     ) -> Self {
         let child_store = Arc::new(RwLock::new(HashMap::new()));
         let interrupt_senders = Arc::new(RwLock::new(HashMap::new()));
@@ -106,7 +103,6 @@ impl LocalContainerService {
             image_service,
             approvals,
             queued_message_service,
-            publisher,
             notification_service,
         };
 
@@ -311,7 +307,6 @@ impl LocalContainerService {
         let msg_stores = self.msg_stores.clone();
         let db = self.db.clone();
         let container = self.clone();
-        let publisher = self.publisher.clone();
 
         let mut process_exit_rx = self.spawn_os_exit_watcher(exec_id);
 
@@ -420,7 +415,7 @@ impl LocalContainerService {
                         );
 
                         // Manually finalize task since we're bypassing normal execution flow
-                        container.finalize_task(publisher.as_ref().ok(), &ctx).await;
+                        container.finalize_task(&ctx).await;
                     }
                 }
 
@@ -463,7 +458,7 @@ impl LocalContainerService {
                             {
                                 tracing::error!("Failed to start queued follow-up: {}", e);
                                 // Fall back to finalization if follow-up fails
-                                container.finalize_task(publisher.as_ref().ok(), &ctx).await;
+                                container.finalize_task(&ctx).await;
                             }
                         } else {
                             // Execution failed or was killed - discard the queued message and finalize
@@ -472,10 +467,10 @@ impl LocalContainerService {
                                 ctx.task_attempt.id,
                                 ctx.execution_process.status
                             );
-                            container.finalize_task(publisher.as_ref().ok(), &ctx).await;
+                            container.finalize_task(&ctx).await;
                         }
                     } else {
-                        container.finalize_task(publisher.as_ref().ok(), &ctx).await;
+                        container.finalize_task(&ctx).await;
                     }
                 }
             }
@@ -786,10 +781,6 @@ impl ContainerService for LocalContainerService {
         &self.git
     }
 
-    fn share_publisher(&self) -> Option<&SharePublisher> {
-        self.publisher.as_ref().ok()
-    }
-
     fn notification_service(&self) -> &NotificationService {
         &self.notification_service
     }
@@ -1090,17 +1081,7 @@ impl ContainerService for LocalContainerService {
             )
         {
             match Task::update_status(&self.db.pool, ctx.task.id, TaskStatus::InReview).await {
-                Ok(_) => {
-                    if let Some(publisher) = self.share_publisher()
-                        && let Err(err) = publisher.update_shared_task_by_id(ctx.task.id).await
-                    {
-                        tracing::warn!(
-                            ?err,
-                            "Failed to propagate shared task update for {}",
-                            ctx.task.id
-                        );
-                    }
-                }
+                Ok(_) => {}
                 Err(e) => {
                     tracing::error!("Failed to update task status to InReview: {e}");
                 }

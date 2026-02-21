@@ -19,26 +19,18 @@ import { EditBranchNameDialog } from '@/components/dialogs/tasks/EditBranchNameD
 import { useProject } from '@/contexts/ProjectContext';
 import { openTaskForm } from '@/lib/openTaskForm';
 
-import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
-
 interface ActionsDropdownProps {
   task?: TaskWithAttemptStatus | null;
   attempt?: TaskAttempt | null;
-  sharedTask?: SharedTaskRecord;
 }
 
-export function ActionsDropdown({
-  task,
-  attempt,
-  sharedTask,
-}: ActionsDropdownProps) {
+export function ActionsDropdown({ task, attempt }: ActionsDropdownProps) {
   const { t } = useTranslation('tasks');
   const { projectId } = useProject();
   const openInEditor = useOpenInEditor(attempt?.id);
 
   const hasAttemptActions = Boolean(attempt);
   const hasTaskActions = Boolean(task);
-  const isShared = Boolean(sharedTask);
 
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -173,17 +165,14 @@ export function ActionsDropdown({
           {hasTaskActions && (
             <>
               <DropdownMenuLabel>{t('actionsMenu.task')}</DropdownMenuLabel>
-              <DropdownMenuItem
-                disabled={!projectId || isShared || !!task?.shared_task_id}
-                onClick={handleEdit}
-              >
+              <DropdownMenuItem disabled={!projectId} onClick={handleEdit}>
                 {t('common:buttons.edit')}
               </DropdownMenuItem>
               <DropdownMenuItem disabled={!projectId} onClick={handleDuplicate}>
                 {t('actionsMenu.duplicate')}
               </DropdownMenuItem>
               <DropdownMenuItem
-                disabled={!projectId || isShared || !!task?.shared_task_id}
+                disabled={!projectId}
                 onClick={handleDelete}
                 className="text-destructive"
               >

@@ -1,3 +1,1 @@
-pub mod oauth;
-pub mod organizations;
-pub mod projects;
+// API type modules intentionally empty in local-only mode.

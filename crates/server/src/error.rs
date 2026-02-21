@@ -10,14 +10,12 @@ use db::models::{
 };
 use executors::executors::ExecutorError;
 use git2::Error as Git2Error;
-use local_deployment::{DeploymentError, RemoteClientNotConfigured};
+use local_deployment::DeploymentError;
 use services::services::{
     config::{ConfigError, EditorOpenError},
     container::ContainerError,
     git::GitServiceError,
-    github::GitHubServiceError,
     image::ImageError,
-    share::ShareError,
     worktree_manager::WorktreeError,
 };
 use thiserror::Error;
@@ -36,8 +34,6 @@ pub enum ApiError {
     ExecutionProcess(#[from] ExecutionProcessError),
     #[error(transparent)]
     GitService(#[from] GitServiceError),
-    #[error(transparent)]
-    GitHubService(#[from] GitHubServiceError),
     #[error(transparent)]
     Deployment(#[from] DeploymentError),
     #[error(transparent)]
@@ -80,12 +76,6 @@ impl From<Git2Error> for ApiError {
     }
 }
 
-impl From<RemoteClientNotConfigured> for ApiError {
-    fn from(_: RemoteClientNotConfigured) -> Self {
-        ApiError::BadRequest("Remote client not configured".to_string())
-    }
-}
-
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let (status_code, error_type) = match &self {
@@ -108,7 +98,6 @@ impl IntoResponse for ApiError {
                 }
                 _ => (StatusCode::INTERNAL_SERVER_ERROR, "GitServiceError"),
             },
-            ApiError::GitHubService(_) => (StatusCode::INTERNAL_SERVER_ERROR, "GitHubServiceError"),
             ApiError::Deployment(_) => (StatusCode::INTERNAL_SERVER_ERROR, "DeploymentError"),
             ApiError::Container(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ContainerError"),
             ApiError::Executor(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ExecutorError"),
@@ -164,57 +153,5 @@ impl IntoResponse for ApiError {
         };
         let response = ApiResponse::<()>::error(&error_message);
         (status_code, Json(response)).into_response()
-    }
-}
-
-impl From<ShareError> for ApiError {
-    fn from(err: ShareError) -> Self {
-        match err {
-            ShareError::Database(db_err) => ApiError::Database(db_err),
-            ShareError::AlreadyShared(_) => ApiError::Conflict("Task already shared".to_string()),
-            ShareError::TaskNotFound(_) => {
-                ApiError::Conflict("Task not found for sharing".to_string())
-            }
-            ShareError::ProjectNotFound(_) => {
-                ApiError::Conflict("Project not found for sharing".to_string())
-            }
-            ShareError::ProjectNotLinked(project_id) => {
-                tracing::warn!(
-                    %project_id,
-                    "project must be linked to a remote project before sharing tasks"
-                );
-                ApiError::Conflict(
-                    "Link this project to a remote project before sharing tasks.".to_string(),
-                )
-            }
-            ShareError::MissingConfig(reason) => {
-                ApiError::Conflict(format!("Share service not configured: {reason}"))
-            }
-            ShareError::Transport(err) => {
-                tracing::error!(?err, "share task transport error");
-                ApiError::Conflict("Failed to share task with remote service".to_string())
-            }
-            ShareError::Serialization(err) => {
-                tracing::error!(?err, "share task serialization error");
-                ApiError::Conflict("Failed to parse remote share response".to_string())
-            }
-            ShareError::Url(err) => {
-                tracing::error!(?err, "share task URL error");
-                ApiError::Conflict("Share service URL is invalid".to_string())
-            }
-            ShareError::InvalidResponse => ApiError::Conflict(
-                "Remote share service returned an unexpected response".to_string(),
-            ),
-            ShareError::MissingGitHubToken => ApiError::Conflict(
-                "GitHub token is required to fetch repository metadata for sharing".to_string(),
-            ),
-            ShareError::Git(err) => ApiError::GitService(err),
-            ShareError::GitHub(err) => ApiError::GitHubService(err),
-            ShareError::MissingAuth => ApiError::Unauthorized,
-            ShareError::InvalidUserId => ApiError::Conflict("Invalid user ID format".to_string()),
-            ShareError::InvalidOrganizationId => {
-                ApiError::Conflict("Invalid organization ID format".to_string())
-            }
-        }
     }
 }

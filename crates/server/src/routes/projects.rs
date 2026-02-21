@@ -2,7 +2,7 @@ use std::path::Path as StdPath;
 
 use axum::{
     Extension, Json, Router,
-    extract::{Path, Query, State},
+    extract::{Query, State},
     http::StatusCode,
     middleware::from_fn_with_state,
     response::Json as ResponseJson,
@@ -13,32 +13,18 @@ use db::models::project::{
 };
 use ignore::WalkBuilder;
 use local_deployment::Deployment;
-use serde::Deserialize;
 use services::services::{
     file_ranker::FileRanker,
     file_search_cache::{CacheError, SearchMode, SearchQuery},
     git::GitBranch,
 };
-use ts_rs::TS;
 use utils::{
-    api::projects::{RemoteProject, RemoteProjectMembersResponse},
     path::expand_tilde,
     response::ApiResponse,
 };
 use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError, middleware::load_project_middleware};
-
-#[derive(Deserialize, TS)]
-pub struct LinkToExistingRequest {
-    pub remote_project_id: Uuid,
-}
-
-#[derive(Deserialize, TS)]
-pub struct CreateRemoteProjectRequest {
-    pub organization_id: Uuid,
-    pub name: String,
-}
 
 pub async fn get_projects(
     State(deployment): State<DeploymentImpl>,
@@ -59,62 +45,6 @@ pub async fn get_project_branches(
 ) -> Result<ResponseJson<ApiResponse<Vec<GitBranch>>>, ApiError> {
     let branches = deployment.git().get_all_branches(&project.git_repo_path)?;
     Ok(ResponseJson(ApiResponse::success(branches)))
-}
-
-pub async fn link_project_to_existing_remote(
-    Extension(_project): Extension<Project>,
-    State(_deployment): State<DeploymentImpl>,
-    Json(_payload): Json<LinkToExistingRequest>,
-) -> Result<ResponseJson<ApiResponse<Project>>, ApiError> {
-    Err(ApiError::Conflict(
-        "Remote project linking is not available in local mode.".to_string(),
-    ))
-}
-
-pub async fn create_and_link_remote_project(
-    Extension(_project): Extension<Project>,
-    State(_deployment): State<DeploymentImpl>,
-    Json(payload): Json<CreateRemoteProjectRequest>,
-) -> Result<ResponseJson<ApiResponse<Project>>, ApiError> {
-    let repo_name = payload.name.trim().to_string();
-    if repo_name.trim().is_empty() {
-        return Err(ApiError::Conflict(
-            "Remote project name cannot be empty.".to_string(),
-        ));
-    }
-
-    Err(ApiError::Conflict(
-        "Remote project linking is not available in local mode.".to_string(),
-    ))
-}
-
-pub async fn unlink_project(
-    Extension(project): Extension<Project>,
-    State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<Project>>, ApiError> {
-    let updated_project = Project::find_by_id(&deployment.db().pool, project.id)
-        .await?
-        .ok_or(ProjectError::ProjectNotFound)?;
-
-    Ok(ResponseJson(ApiResponse::success(updated_project)))
-}
-
-pub async fn get_remote_project_by_id(
-    State(_deployment): State<DeploymentImpl>,
-    Path(_remote_project_id): Path<Uuid>,
-) -> Result<ResponseJson<ApiResponse<RemoteProject>>, ApiError> {
-    Err(ApiError::Conflict(
-        "Remote project lookup is not available in local mode.".to_string(),
-    ))
-}
-
-pub async fn get_project_remote_members(
-    State(_deployment): State<DeploymentImpl>,
-    Extension(_project): Extension<Project>,
-) -> Result<ResponseJson<ApiResponse<RemoteProjectMembersResponse>>, ApiError> {
-    Err(ApiError::Conflict(
-        "Remote project members are not available in local mode.".to_string(),
-    ))
 }
 
 pub async fn create_project(
@@ -555,15 +485,9 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
             "/",
             get(get_project).put(update_project).delete(delete_project),
         )
-        .route("/remote/members", get(get_project_remote_members))
         .route("/branches", get(get_project_branches))
         .route("/search", get(search_project_files))
         .route("/open-editor", post(open_project_in_editor))
-        .route(
-            "/link",
-            post(link_project_to_existing_remote).delete(unlink_project),
-        )
-        .route("/link/create", post(create_and_link_remote_project))
         .layer(from_fn_with_state(
             deployment.clone(),
             load_project_middleware,
@@ -573,8 +497,5 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/", get(get_projects).post(create_project))
         .nest("/{id}", project_id_router);
 
-    Router::new().nest("/projects", projects_router).route(
-        "/remote-projects/{remote_project_id}",
-        get(get_remote_project_by_id),
-    )
+    Router::new().nest("/projects", projects_router)
 }

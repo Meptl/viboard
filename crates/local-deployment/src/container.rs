@@ -106,7 +106,7 @@ impl LocalContainerService {
             notification_service,
         };
 
-        container.spawn_worktree_cleanup().await;
+        container.spawn_worktree_cleanup();
 
         container
     }
@@ -273,11 +273,14 @@ impl LocalContainerService {
         Ok(())
     }
 
-    pub async fn spawn_worktree_cleanup(&self) {
+    pub fn spawn_worktree_cleanup(&self) {
         let db = self.db.clone();
-        let mut cleanup_interval = tokio::time::interval(tokio::time::Duration::from_secs(1800)); // 30 minutes
-        self.cleanup_orphaned_worktrees().await;
+        let container = self.clone();
         tokio::spawn(async move {
+            container.cleanup_orphaned_worktrees().await;
+
+            let mut cleanup_interval =
+                tokio::time::interval(tokio::time::Duration::from_secs(1800)); // 30 minutes
             loop {
                 cleanup_interval.tick().await;
                 tracing::info!("Starting periodic worktree cleanup...");

@@ -13,14 +13,12 @@ import type { TaskWithAttemptStatus, TaskAttempt } from 'shared/types';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
 import { DeleteTaskConfirmationDialog } from '@/components/dialogs/tasks/DeleteTaskConfirmationDialog';
 import { ViewProcessesDialog } from '@/components/dialogs/tasks/ViewProcessesDialog';
-import { ViewRelatedTasksDialog } from '@/components/dialogs/tasks/ViewRelatedTasksDialog';
 import { CreateAttemptDialog } from '@/components/dialogs/tasks/CreateAttemptDialog';
 import { GitActionsDialog } from '@/components/dialogs/tasks/GitActionsDialog';
 import { EditBranchNameDialog } from '@/components/dialogs/tasks/EditBranchNameDialog';
 import { useProject } from '@/contexts/ProjectContext';
 import { openTaskForm } from '@/lib/openTaskForm';
 
-import { useNavigate } from 'react-router-dom';
 import type { SharedTaskRecord } from '@/hooks/useProjectTasks';
 
 interface ActionsDropdownProps {
@@ -37,7 +35,6 @@ export function ActionsDropdown({
   const { t } = useTranslation('tasks');
   const { projectId } = useProject();
   const openInEditor = useOpenInEditor(attempt?.id);
-  const navigate = useNavigate();
 
   const hasAttemptActions = Boolean(attempt);
   const hasTaskActions = Boolean(task);
@@ -78,21 +75,6 @@ export function ActionsDropdown({
     e.stopPropagation();
     if (!attempt?.id) return;
     ViewProcessesDialog.show({ attemptId: attempt.id });
-  };
-
-  const handleViewRelatedTasks = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!attempt?.id || !projectId) return;
-    ViewRelatedTasksDialog.show({
-      attemptId: attempt.id,
-      projectId,
-      attempt,
-      onNavigateToTask: (taskId: string) => {
-        if (projectId) {
-          navigate(`/projects/${projectId}/tasks/${taskId}/attempts/latest`);
-        }
-      },
-    });
   };
 
   const handleCreateNewAttempt = (e: React.MouseEvent) => {
@@ -163,12 +145,6 @@ export function ActionsDropdown({
                 onClick={handleViewProcesses}
               >
                 {t('actionsMenu.viewProcesses')}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                disabled={!attempt?.id}
-                onClick={handleViewRelatedTasks}
-              >
-                {t('actionsMenu.viewRelatedTasks')}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleCreateNewAttempt}>
                 {t('actionsMenu.createNewAttempt')}

@@ -1,7 +1,6 @@
 use db::{
     DBService,
     models::{
-        project::Project,
         task::{Task, TaskStatus},
     },
 };
@@ -30,32 +29,16 @@ impl SharePublisher {
     }
 
     pub async fn share_task(&self, task_id: Uuid, _user_id: Uuid) -> Result<Uuid, ShareError> {
-        let task = Task::find_by_id(&self.db.pool, task_id)
+        Task::find_by_id(&self.db.pool, task_id)
             .await?
             .ok_or(ShareError::TaskNotFound(task_id))?;
-
-        if task.shared_task_id.is_some() {
-            return Err(ShareError::AlreadyShared(task.id));
-        }
-
-        let project = Project::find_by_id(&self.db.pool, task.project_id)
-            .await?
-            .ok_or(ShareError::ProjectNotFound(task.project_id))?;
-        if project.remote_project_id.is_none() {
-            return Err(ShareError::ProjectNotLinked(project.id));
-        }
 
         Err(ShareError::MissingConfig(
             "remote sharing is disabled in local mode",
         ))
     }
 
-    pub async fn update_shared_task(&self, task: &Task) -> Result<(), ShareError> {
-        // early exit if task has not been shared
-        let Some(_shared_task_id) = task.shared_task_id else {
-            return Ok(());
-        };
-
+    pub async fn update_shared_task(&self, _task: &Task) -> Result<(), ShareError> {
         Ok(())
     }
 
@@ -77,13 +60,7 @@ impl SharePublisher {
         ))
     }
 
-    pub async fn delete_shared_task(&self, shared_task_id: Uuid) -> Result<(), ShareError> {
-        if let Some(local_task) =
-            Task::find_by_shared_task_id(&self.db.pool, shared_task_id).await?
-        {
-            Task::set_shared_task_id(&self.db.pool, local_task.id, None).await?;
-        }
-
+    pub async fn delete_shared_task(&self, _shared_task_id: Uuid) -> Result<(), ShareError> {
         Ok(())
     }
 

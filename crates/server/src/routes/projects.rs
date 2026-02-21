@@ -10,7 +10,6 @@ use axum::{
 };
 use db::models::{
     project::{CreateProject, Project, ProjectError, SearchMatchType, SearchResult, UpdateProject},
-    task::Task,
 };
 use deployment::Deployment;
 use ignore::WalkBuilder;
@@ -93,19 +92,7 @@ pub async fn unlink_project(
     Extension(project): Extension<Project>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<Project>>, ApiError> {
-    let pool = &deployment.db().pool;
-
-    if let Some(remote_project_id) = project.remote_project_id {
-        let mut tx = pool.begin().await?;
-
-        Task::clear_shared_task_ids_for_remote_project(&mut *tx, remote_project_id).await?;
-
-        Project::set_remote_project_id_tx(&mut *tx, project.id, None).await?;
-
-        tx.commit().await?;
-    }
-
-    let updated_project = Project::find_by_id(pool, project.id)
+    let updated_project = Project::find_by_id(&deployment.db().pool, project.id)
         .await?
         .ok_or(ProjectError::ProjectNotFound)?;
 

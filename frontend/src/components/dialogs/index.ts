@@ -22,8 +22,6 @@ export {
   TaskFormDialog,
   type TaskFormDialogProps,
 } from './tasks/TaskFormDialog';
-
-export { CreatePRDialog } from './tasks/CreatePRDialog';
 export {
   EditorSelectionDialog,
   type EditorSelectionDialogProps,
@@ -65,9 +63,6 @@ export {
   type EditBranchNameDialogResult,
 } from './tasks/EditBranchNameDialog';
 export { CreateAttemptDialog } from './tasks/CreateAttemptDialog';
-
-// Auth dialogs
-export { GhCliSetupDialog } from './auth/GhCliSetupDialog';
 
 // Settings dialogs
 export {

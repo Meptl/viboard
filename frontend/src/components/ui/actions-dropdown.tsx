@@ -100,10 +100,9 @@ export function ActionsDropdown({
 
   const handleGitActions = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!attempt?.id || !task) return;
+    if (!attempt?.id) return;
     GitActionsDialog.show({
       attemptId: attempt.id,
-      task,
       projectId,
     });
   };
@@ -156,7 +155,7 @@ export function ActionsDropdown({
                 {t('actionsMenu.createSubtask')}
               </DropdownMenuItem>
               <DropdownMenuItem
-                disabled={!attempt?.id || !task}
+                disabled={!attempt?.id}
                 onClick={handleGitActions}
               >
                 {t('actionsMenu.gitActions')}

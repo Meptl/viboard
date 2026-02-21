@@ -27,7 +27,6 @@ import { attemptsApi } from '@/lib/api';
 import {
   BaseAgentCapability,
   type BaseCodingAgent,
-  type TaskWithAttemptStatus,
 } from 'shared/types';
 import {
   Tooltip,
@@ -41,7 +40,6 @@ type NextActionCardProps = {
   containerRef?: string | null;
   failed: boolean;
   execution_processes: number;
-  task?: TaskWithAttemptStatus;
   needsSetup?: boolean;
 };
 
@@ -50,7 +48,6 @@ export function NextActionCard({
   containerRef,
   failed,
   execution_processes,
-  task,
   needsSetup,
 }: NextActionCardProps) {
   const { t } = useTranslation('tasks');
@@ -121,10 +118,9 @@ export function NextActionCard({
     if (!attemptId) return;
     GitActionsDialog.show({
       attemptId,
-      task,
       projectId: project?.id,
     });
-  }, [attemptId, task, project?.id]);
+  }, [attemptId, project?.id]);
 
   const handleRunSetup = useCallback(async () => {
     if (!attemptId || !attempt) return;

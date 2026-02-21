@@ -6,7 +6,6 @@ import {
   TaskAttempt,
   ToolStatus,
   type NormalizedEntryType,
-  type TaskWithAttemptStatus,
   type JsonValue,
 } from 'shared/types.ts';
 import type { ProcessStartPayload } from '@/types/logs';
@@ -41,7 +40,6 @@ type Props = {
   diffDeletable?: boolean;
   executionProcessId?: string;
   taskAttempt?: TaskAttempt;
-  task?: TaskWithAttemptStatus;
 };
 
 type FileEditAction = Extract<ActionType, { action: 'file_edit' }>;
@@ -621,7 +619,6 @@ function DisplayConversationEntry({
   expansionKey,
   executionProcessId,
   taskAttempt,
-  task,
 }: Props) {
   const { t } = useTranslation('common');
   const isNormalizedEntry = (
@@ -807,7 +804,6 @@ function DisplayConversationEntry({
           containerRef={taskAttempt?.container_ref}
           failed={entry.entry_type.failed}
           execution_processes={entry.entry_type.execution_processes}
-          task={task}
           needsSetup={entry.entry_type.needs_setup}
         />
       </div>

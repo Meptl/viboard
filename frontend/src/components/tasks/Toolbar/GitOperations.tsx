@@ -1,12 +1,11 @@
 import {
   ArrowRight,
   GitBranch as GitBranchIcon,
-  GitPullRequest,
+  Upload,
   RefreshCw,
   Settings,
   AlertTriangle,
   CheckCircle,
-  ExternalLink,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button.tsx';
 import {
@@ -21,17 +20,14 @@ import type {
   Merge,
   GitBranch,
   TaskAttempt,
-  TaskWithAttemptStatus,
 } from 'shared/types';
 import { ChangeTargetBranchDialog } from '@/components/dialogs/tasks/ChangeTargetBranchDialog';
 import { RebaseDialog } from '@/components/dialogs/tasks/RebaseDialog';
-import { CreatePRDialog } from '@/components/dialogs/tasks/CreatePRDialog';
 import { useTranslation } from 'react-i18next';
 import { useGitOperations } from '@/hooks/useGitOperations';
 
 interface GitOperationsProps {
   selectedAttempt: TaskAttempt;
-  task: TaskWithAttemptStatus;
   projectId: string;
   branchStatus: BranchStatus | null;
   branches: GitBranch[];
@@ -44,7 +40,6 @@ export type GitOperationsInputs = Omit<GitOperationsProps, 'selectedAttempt'>;
 
 function GitOperations({
   selectedAttempt,
-  task,
   projectId,
   branchStatus,
   branches,
@@ -94,21 +89,8 @@ function GitOperations({
   const mergeInfo = useMemo(() => {
     if (!branchStatus?.merges)
       return {
-        hasOpenPR: false,
-        openPR: null,
-        hasMergedPR: false,
-        mergedPR: null,
         hasMerged: false,
-        latestMerge: null,
       };
-
-    const openPR = branchStatus.merges.find(
-      (m) => m.type === 'pr' && m.pr_info.status === 'open'
-    );
-
-    const mergedPR = branchStatus.merges.find(
-      (m) => m.type === 'pr' && m.pr_info.status === 'merged'
-    );
 
     const merges = branchStatus.merges.filter(
       (m: Merge) =>
@@ -117,12 +99,7 @@ function GitOperations({
     );
 
     return {
-      hasOpenPR: !!openPR,
-      openPR,
-      hasMergedPR: !!mergedPR,
-      mergedPR,
       hasMerged: merges.length > 0,
-      latestMerge: branchStatus.merges[0] || null, // Most recent merge
     };
   }, [branchStatus?.merges]);
 
@@ -137,16 +114,11 @@ function GitOperations({
     return t('git.states.rebase');
   }, [rebasing, t]);
 
-  const prButtonLabel = useMemo(() => {
-    if (mergeInfo.hasOpenPR) {
-      return pushSuccess
-        ? t('git.states.pushed')
-        : pushing
-          ? t('git.states.pushing')
-          : t('git.states.push');
-    }
-    return t('git.states.createPr');
-  }, [mergeInfo.hasOpenPR, pushSuccess, pushing, t]);
+  const pushButtonLabel = useMemo(() => {
+    if (pushSuccess) return t('git.states.pushed');
+    if (pushing) return t('git.states.pushing');
+    return t('git.states.push');
+  }, [pushSuccess, pushing, t]);
 
   const handleMergeClick = async () => {
     // Directly perform merge without checking branch status
@@ -212,20 +184,6 @@ function GitOperations({
     } catch (error) {
       // User cancelled - do nothing
     }
-  };
-
-  const handlePRButtonClick = async () => {
-    // If PR already exists, push to it
-    if (mergeInfo.hasOpenPR) {
-      await handlePushClick();
-      return;
-    }
-
-    CreatePRDialog.show({
-      attempt: selectedAttempt,
-      task,
-      projectId,
-    });
   };
 
   const isVertical = layout === 'vertical';
@@ -331,31 +289,12 @@ function GitOperations({
               );
             }
 
-            if (mergeInfo.hasMergedPR) {
+            if (mergeInfo.hasMerged) {
               return (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100/70 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300">
                   <CheckCircle className="h-3.5 w-3.5" />
                   {t('git.states.merged')}
                 </span>
-              );
-            }
-
-            if (mergeInfo.hasOpenPR && mergeInfo.openPR?.type === 'pr') {
-              const prMerge = mergeInfo.openPR;
-              return (
-                <button
-                  onClick={() => window.open(prMerge.pr_info.url, '_blank')}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sky-100/60 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 hover:underline truncate max-w-[180px] sm:max-w-none"
-                  aria-label={t('git.pr.open', {
-                    number: Number(prMerge.pr_info.number),
-                  })}
-                >
-                  <GitPullRequest className="h-3.5 w-3.5" />
-                  {t('git.pr.number', {
-                    number: Number(prMerge.pr_info.number),
-                  })}
-                  <ExternalLink className="h-3.5 w-3.5" />
-                </button>
               );
             }
 
@@ -401,8 +340,7 @@ function GitOperations({
             <Button
               onClick={handleMergeClick}
               disabled={
-                mergeInfo.hasMergedPR ||
-                mergeInfo.hasOpenPR ||
+                mergeInfo.hasMerged ||
                 merging ||
                 hasConflictsCalculated ||
                 isAttemptRunning ||
@@ -420,14 +358,12 @@ function GitOperations({
             </Button>
 
             <Button
-              onClick={handlePRButtonClick}
+              onClick={handlePushClick}
               disabled={
-                mergeInfo.hasMergedPR ||
+                mergeInfo.hasMerged ||
                 pushing ||
                 isAttemptRunning ||
                 hasConflictsCalculated ||
-                (mergeInfo.hasOpenPR &&
-                  branchStatus.remote_commits_ahead === 0) ||
                 ((branchStatus.commits_ahead ?? 0) === 0 &&
                   (branchStatus.remote_commits_ahead ?? 0) === 0 &&
                   !pushSuccess &&
@@ -436,16 +372,16 @@ function GitOperations({
               variant="outline"
               size="xs"
               className="border-info text-info hover:bg-info gap-1 shrink-0"
-              aria-label={prButtonLabel}
+              aria-label={pushButtonLabel}
             >
-              <GitPullRequest className="h-3.5 w-3.5" />
-              <span className="truncate max-w-[10ch]">{prButtonLabel}</span>
+              <Upload className="h-3.5 w-3.5" />
+              <span className="truncate max-w-[10ch]">{pushButtonLabel}</span>
             </Button>
 
             <Button
               onClick={handleRebaseDialogOpen}
               disabled={
-                mergeInfo.hasMergedPR ||
+                mergeInfo.hasMerged ||
                 rebasing ||
                 isAttemptRunning ||
                 hasConflictsCalculated

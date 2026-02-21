@@ -47,22 +47,6 @@ import {
   RunAgentSetupResponse,
   GhCliSetupError,
   RunScriptError,
-  ListOrganizationsResponse,
-  OrganizationMemberWithProfile,
-  ListMembersResponse,
-  RemoteProjectMembersResponse,
-  CreateOrganizationRequest,
-  CreateOrganizationResponse,
-  CreateInvitationRequest,
-  CreateInvitationResponse,
-  RevokeInvitationRequest,
-  UpdateMemberRoleRequest,
-  CreateRemoteProjectRequest,
-  LinkToExistingRequest,
-  UpdateMemberRoleResponse,
-  Invitation,
-  RemoteProject,
-  ListInvitationsResponse,
   CommitCompareResult,
   OpenEditorResponse,
   OpenEditorRequest,
@@ -72,13 +56,9 @@ import {
   CreateScratch,
   UpdateScratch,
   PushError,
-  SharedTaskResponse,
-  SharedTaskDetails,
   QueueStatus,
   PrCommentsResponse,
 } from 'shared/types';
-
-type ShareTaskResponse = { shared_task_id: string };
 
 export class ApiError<E = unknown> extends Error {
   public status?: number;
@@ -249,15 +229,6 @@ export const projectsApi = {
     return handleApiResponse<Project>(response);
   },
 
-  getRemoteMembers: async (
-    projectId: string
-  ): Promise<RemoteProjectMembersResponse> => {
-    const response = await makeRequest(
-      `/api/projects/${projectId}/remote/members`
-    );
-    return handleApiResponse<RemoteProjectMembersResponse>(response);
-  },
-
   delete: async (id: string): Promise<void> => {
     const response = await makeRequest(`/api/projects/${id}`, {
       method: 'DELETE',
@@ -293,38 +264,6 @@ export const projectsApi = {
       options
     );
     return handleApiResponse<SearchResult[]>(response);
-  },
-
-  linkToExisting: async (
-    localProjectId: string,
-    data: LinkToExistingRequest
-  ): Promise<Project> => {
-    const response = await makeRequest(`/api/projects/${localProjectId}/link`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-    return handleApiResponse<Project>(response);
-  },
-
-  createAndLink: async (
-    localProjectId: string,
-    data: CreateRemoteProjectRequest
-  ): Promise<Project> => {
-    const response = await makeRequest(
-      `/api/projects/${localProjectId}/link/create`,
-      {
-        method: 'POST',
-        body: JSON.stringify(data),
-      }
-    );
-    return handleApiResponse<Project>(response);
-  },
-
-  unlink: async (projectId: string): Promise<Project> => {
-    const response = await makeRequest(`/api/projects/${projectId}/link`, {
-      method: 'DELETE',
-    });
-    return handleApiResponse<Project>(response);
   },
 };
 
@@ -368,46 +307,6 @@ export const tasksApi = {
     return handleApiResponse<void>(response);
   },
 
-  share: async (taskId: string): Promise<ShareTaskResponse> => {
-    const response = await makeRequest(`/api/tasks/${taskId}/share`, {
-      method: 'POST',
-    });
-    return handleApiResponse<ShareTaskResponse>(response);
-  },
-
-  reassign: async (
-    sharedTaskId: string,
-    data: { new_assignee_user_id: string | null }
-  ): Promise<SharedTaskResponse> => {
-    const payload = {
-      new_assignee_user_id: data.new_assignee_user_id,
-    };
-
-    const response = await makeRequest(
-      `/api/shared-tasks/${sharedTaskId}/assign`,
-      {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      }
-    );
-
-    return handleApiResponse<SharedTaskResponse>(response);
-  },
-
-  unshare: async (sharedTaskId: string): Promise<void> => {
-    const response = await makeRequest(`/api/shared-tasks/${sharedTaskId}`, {
-      method: 'DELETE',
-    });
-    return handleApiResponse<void>(response);
-  },
-
-  linkToLocal: async (data: SharedTaskDetails): Promise<Task | null> => {
-    const response = await makeRequest(`/api/shared-tasks/link-to-local`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-    return handleApiResponse<Task | null>(response);
-  },
 };
 
 // Task Attempts APIs
@@ -921,110 +820,6 @@ export const approvalsApi = {
     });
 
     return handleApiResponse<ApprovalStatus>(res);
-  },
-};
-
-// Organizations API
-export const organizationsApi = {
-  getMembers: async (
-    orgId: string
-  ): Promise<OrganizationMemberWithProfile[]> => {
-    const response = await makeRequest(`/api/organizations/${orgId}/members`);
-    const result = await handleApiResponse<ListMembersResponse>(response);
-    return result.members;
-  },
-
-  getUserOrganizations: async (): Promise<ListOrganizationsResponse> => {
-    const response = await makeRequest('/api/organizations');
-    return handleApiResponse<ListOrganizationsResponse>(response);
-  },
-
-  getProjects: async (orgId: string): Promise<RemoteProject[]> => {
-    const response = await makeRequest(`/api/organizations/${orgId}/projects`);
-    return handleApiResponse<RemoteProject[]>(response);
-  },
-
-  createOrganization: async (
-    data: CreateOrganizationRequest
-  ): Promise<CreateOrganizationResponse> => {
-    const response = await makeRequest('/api/organizations', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    return handleApiResponse<CreateOrganizationResponse>(response);
-  },
-
-  createInvitation: async (
-    orgId: string,
-    data: CreateInvitationRequest
-  ): Promise<CreateInvitationResponse> => {
-    const response = await makeRequest(
-      `/api/organizations/${orgId}/invitations`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      }
-    );
-    return handleApiResponse<CreateInvitationResponse>(response);
-  },
-
-  removeMember: async (orgId: string, userId: string): Promise<void> => {
-    const response = await makeRequest(
-      `/api/organizations/${orgId}/members/${userId}`,
-      {
-        method: 'DELETE',
-      }
-    );
-    return handleApiResponse<void>(response);
-  },
-
-  updateMemberRole: async (
-    orgId: string,
-    userId: string,
-    data: UpdateMemberRoleRequest
-  ): Promise<UpdateMemberRoleResponse> => {
-    const response = await makeRequest(
-      `/api/organizations/${orgId}/members/${userId}/role`,
-      {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      }
-    );
-    return handleApiResponse<UpdateMemberRoleResponse>(response);
-  },
-
-  listInvitations: async (orgId: string): Promise<Invitation[]> => {
-    const response = await makeRequest(
-      `/api/organizations/${orgId}/invitations`
-    );
-    const result = await handleApiResponse<ListInvitationsResponse>(response);
-    return result.invitations;
-  },
-
-  revokeInvitation: async (
-    orgId: string,
-    invitationId: string
-  ): Promise<void> => {
-    const body: RevokeInvitationRequest = { invitation_id: invitationId };
-    const response = await makeRequest(
-      `/api/organizations/${orgId}/invitations/revoke`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      }
-    );
-    return handleApiResponse<void>(response);
-  },
-
-  deleteOrganization: async (orgId: string): Promise<void> => {
-    const response = await makeRequest(`/api/organizations/${orgId}`, {
-      method: 'DELETE',
-    });
-    return handleApiResponse<void>(response);
   },
 };
 

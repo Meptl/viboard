@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Settings, Plus } from 'lucide-react';
@@ -21,6 +21,7 @@ function NavDivider() {
 }
 
 export function Navbar() {
+  const location = useLocation();
   const { projectId, project } = useProject();
   const { query, setQuery, active, clear, registerInputRef } = useSearch();
   const handleOpenInEditor = useOpenProjectInEditor(project || null);
@@ -98,8 +99,11 @@ export function Navbar() {
                   to={
                     projectId
                       ? `/settings/projects?projectId=${projectId}`
-                      : '/settings'
+                      : '/settings/general'
                   }
+                  state={{
+                    settingsFrom: `${location.pathname}${location.search}${location.hash}`,
+                  }}
                 >
                   <Settings className="h-4 w-4" />
                 </Link>

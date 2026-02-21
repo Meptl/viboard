@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import { useKeyCreate, Scope } from '@/keyboard';
 
 export function ProjectList() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useTranslation('projects');
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(false);
@@ -50,7 +51,11 @@ export function ProjectList() {
   useKeyCreate(handleCreateProject, { scope: Scope.PROJECTS });
 
   const handleEditProject = (project: Project) => {
-    navigate(`/settings/projects?projectId=${project.id}`);
+    navigate(`/settings/projects?projectId=${project.id}`, {
+      state: {
+        settingsFrom: `${location.pathname}${location.search}${location.hash}`,
+      },
+    });
   };
 
   // Set initial focus when projects are loaded

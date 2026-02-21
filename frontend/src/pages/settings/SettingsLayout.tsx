@@ -1,9 +1,15 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import {
+  NavLink,
+  Outlet,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Settings, Cpu, Server, X, FolderOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useHotkeysContext } from 'react-hotkeys-hook';
 import { useKeyExit } from '@/keyboard/hooks';
 import { Scope } from '@/keyboard/registry';
@@ -30,6 +36,9 @@ const settingsNavigation = [
 export function SettingsLayout() {
   const { t } = useTranslation('settings');
   const { enableScope, disableScope } = useHotkeysContext();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const returnToRef = useRef<string | null>(null);
 
   // Enable SETTINGS scope when component mounts
   useEffect(() => {
@@ -41,8 +50,29 @@ export function SettingsLayout() {
 
   const navigate = useNavigate();
 
+  useEffect(() => {
+    const locationState = location.state as { settingsFrom?: string } | null;
+    const fromState = locationState?.settingsFrom;
+
+    if (fromState && !fromState.startsWith('/settings')) {
+      returnToRef.current = fromState;
+    }
+  }, [location.state]);
+
   const handleBack = () => {
-    navigate(-1);
+    const returnTo = returnToRef.current;
+    if (returnTo && !returnTo.startsWith('/settings')) {
+      navigate(returnTo, { replace: true });
+      return;
+    }
+
+    const projectId = searchParams.get('projectId');
+    if (projectId) {
+      navigate(`/projects/${projectId}/tasks`, { replace: true });
+      return;
+    }
+
+    navigate('/projects', { replace: true });
   };
   // Register ESC keyboard shortcut
   useKeyExit(handleBack, { scope: Scope.SETTINGS });
@@ -75,6 +105,7 @@ export function SettingsLayout() {
                     <NavLink
                       key={item.path}
                       to={item.path}
+                      replace
                       end
                       className={({ isActive }) =>
                         cn(

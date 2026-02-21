@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useNavigateWithSearch } from '@/hooks';
+import { useLocation } from 'react-router-dom';
 import {
   Card,
   CardContent,
@@ -30,6 +31,7 @@ interface ProjectDetailProps {
 
 export function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
   const navigate = useNavigateWithSearch();
+  const location = useLocation();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -70,7 +72,11 @@ export function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
   };
 
   const handleEditClick = () => {
-    navigate(`/settings/projects?projectId=${projectId}`);
+    navigate(`/settings/projects?projectId=${projectId}`, {
+      state: {
+        settingsFrom: `${location.pathname}${location.search}${location.hash}`,
+      },
+    });
   };
 
   useEffect(() => {

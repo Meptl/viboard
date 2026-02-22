@@ -5,10 +5,7 @@ use async_trait::async_trait;
 use axum::response::sse::Event;
 use db::{
     DBService,
-    models::{
-        project::{CreateProject, Project},
-        task_attempt::TaskAttemptError,
-    },
+    models::task_attempt::TaskAttemptError,
 };
 use executors::{executors::ExecutorError, profile::ExecutorConfigs};
 use futures::{StreamExt, TryStreamExt};
@@ -93,55 +90,6 @@ pub trait Deployment: Clone + Send + Sync + 'static {
     fn approvals(&self) -> &Approvals;
 
     fn queued_message_service(&self) -> &QueuedMessageService;
-
-    async fn trigger_auto_project_setup(&self) {
-        let soft_timeout_ms = 2_000;
-        let hard_timeout_ms = 2_300;
-        let project_count = Project::count(&self.db().pool).await.unwrap_or(0);
-
-        if project_count == 0
-            && let Ok(repos) = self
-                .filesystem()
-                .list_common_git_repos(soft_timeout_ms, hard_timeout_ms, Some(4))
-                .await
-        {
-            for repo in repos.into_iter().take(3) {
-                let create_data = CreateProject {
-                    name: repo.name,
-                    git_repo_path: repo.path.to_string_lossy().to_string(),
-                    use_existing_repo: true,
-                    setup_script: None,
-                    dev_script: None,
-                    cleanup_script: None,
-                    copy_files: None,
-                    parallel_setup_script: None,
-                };
-
-                if let Err(e) = self.git().ensure_main_branch_exists(&repo.path) {
-                    tracing::error!("Failed to ensure main branch exists: {}", e);
-                    continue;
-                }
-
-                let project_id = Uuid::new_v4();
-                match Project::create(&self.db().pool, &create_data, project_id).await {
-                    Ok(_) => {
-                        tracing::info!(
-                            "Auto-created project '{}' from {}",
-                            create_data.name,
-                            create_data.git_repo_path
-                        );
-                    }
-                    Err(e) => {
-                        tracing::warn!(
-                            "Failed to auto-create project '{}': {}",
-                            create_data.name,
-                            e
-                        );
-                    }
-                }
-            }
-        }
-    }
 
     async fn stream_events(
         &self,

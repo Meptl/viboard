@@ -118,31 +118,15 @@ async fn update_config(
         ));
     }
 
-    // Get old config state before updating
-    let old_config = deployment.config().read().await.clone();
-
     match save_config_to_file(&new_config, &config_path).await {
         Ok(_) => {
             let mut config = deployment.config().write().await;
             *config = new_config.clone();
             drop(config);
 
-            // Run side effects when fields transition from false -> true.
-            handle_config_events(&deployment, &old_config, &new_config).await;
-
             ResponseJson(ApiResponse::success(new_config))
         }
         Err(e) => ResponseJson(ApiResponse::error(&format!("Failed to save config: {}", e))),
-    }
-}
-
-async fn handle_config_events(deployment: &DeploymentImpl, old: &Config, new: &Config) {
-    if !old.disclaimer_acknowledged && new.disclaimer_acknowledged {
-        // Spawn auto project setup as background task to avoid blocking config response
-        let deployment_clone = deployment.clone();
-        tokio::spawn(async move {
-            deployment_clone.trigger_auto_project_setup().await;
-        });
     }
 }
 

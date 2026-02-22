@@ -26,10 +26,17 @@ use executors::{
         script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
     },
     executors::{ExecutorError, StandardCodingAgentExecutor},
-    logs::{NormalizedEntry, NormalizedEntryError, NormalizedEntryType, utils::ConversationPatch},
+    logs::{
+        NormalizedEntry, NormalizedEntryError, NormalizedEntryType,
+        utils::{
+            ConversationPatch,
+            patch::{convert_replace_to_add, is_add_or_replace, patch_entry_path},
+        },
+    },
     profile::{ExecutorConfigs, ExecutorProfileId},
 };
 use futures::{StreamExt, future};
+use json_patch::Patch;
 use sqlx::Error as SqlxError;
 use thiserror::Error;
 use tokio::{sync::RwLock, task::JoinHandle};
@@ -539,17 +546,17 @@ pub trait ContainerService {
                 return None;
             };
 
-            // Spawn normalizer on populated store
-            match executor_action.typ() {
+            // Spawn normalizer on populated store and collect JoinHandles
+            let handles = match executor_action.typ() {
                 ExecutorActionType::CodingAgentInitialRequest(request) => {
                     let executor = ExecutorConfigs::get_cached()
                         .get_coding_agent_or_default(&request.executor_profile_id);
-                    executor.normalize_logs(temp_store.clone(), &current_dir);
+                    executor.normalize_logs(temp_store.clone(), &current_dir)
                 }
                 ExecutorActionType::CodingAgentFollowUpRequest(request) => {
                     let executor = ExecutorConfigs::get_cached()
                         .get_coding_agent_or_default(&request.executor_profile_id);
-                    executor.normalize_logs(temp_store.clone(), &current_dir);
+                    executor.normalize_logs(temp_store.clone(), &current_dir)
                 }
                 _ => {
                     tracing::debug!(
@@ -558,16 +565,72 @@ pub trait ContainerService {
                     );
                     return None;
                 }
-            }
-            Some(
-                temp_store
-                    .history_plus_stream()
-                    .filter(|msg| future::ready(matches!(msg, Ok(LogMsg::JsonPatch(..)))))
-                    .chain(futures::stream::once(async {
-                        Ok::<_, std::io::Error>(LogMsg::Finished)
-                    }))
-                    .boxed(),
+            };
+            // Await all normalizer tasks, then signal completion so the dedup
+            // stream can flush its final buffered patch and terminate.
+            let (done_tx, done_rx) = tokio::sync::oneshot::channel::<()>();
+            tokio::spawn(async move {
+                for handle in handles {
+                    let _ = handle.await;
+                }
+                let _ = done_tx.send(());
+            });
+
+            // Stream normalized patches, deduplicating consecutive patches
+            // that target the same path (only the final state matters for
+            // historical replay).
+            let stream = temp_store
+                .history_plus_stream()
+                .filter_map(|msg| async move {
+                    match msg {
+                        Ok(LogMsg::JsonPatch(patch)) => Some(patch),
+                        _ => None,
+                    }
+                });
+
+            let deduped = futures::stream::unfold(
+                (stream.boxed(), done_rx, None::<Patch>, false),
+                |(mut stream, mut done_rx, buffered, done)| async move {
+                    if done {
+                        return None;
+                    }
+
+                    tokio::select! {
+                        _ = &mut done_rx => {
+                            buffered.map(|prev| (Some(prev), (stream, done_rx, None, true)))
+                        }
+                        maybe_patch = stream.next() => {
+                            match maybe_patch {
+                                Some(patch) => {
+                            let Some(prev) = buffered else {
+                                // First patch — just buffer it
+                                        return Some((None, (stream, done_rx, Some(patch), false)));
+                            };
+                            if patch_entry_path(&patch) == patch_entry_path(&prev)
+                                && is_add_or_replace(&patch)
+                                && is_add_or_replace(&prev)
+                            {
+                                // Same path, both add/replace — replace buffer
+                                        Some((None, (stream, done_rx, Some(patch), false)))
+                            } else {
+                                // Different — emit prev, buffer new
+                                        Some((Some(prev), (stream, done_rx, Some(patch), false)))
+                            }
+                        }
+                                None => buffered
+                                    .map(|prev| (Some(prev), (stream, done_rx, None, true))),
+                            }
+                        }
+                    }
+                },
             )
+            .filter_map(|opt| async move { opt })
+            .map(|p| Ok::<_, std::io::Error>(LogMsg::JsonPatch(convert_replace_to_add(p))))
+            .chain(futures::stream::once(async {
+                Ok::<_, std::io::Error>(LogMsg::Finished)
+            }));
+
+            Some(deduped.boxed())
         }
     }
 
@@ -897,7 +960,10 @@ pub trait ContainerService {
             if let Some(executor) =
                 ExecutorConfigs::get_cached().get_coding_agent(executor_profile_id)
             {
-                executor.normalize_logs(msg_store, &self.task_attempt_to_current_dir(task_attempt));
+                let _ = executor.normalize_logs(
+                    msg_store,
+                    &self.task_attempt_to_current_dir(task_attempt),
+                );
             } else {
                 tracing::error!(
                     "Failed to resolve profile '{:?}' for normalization",

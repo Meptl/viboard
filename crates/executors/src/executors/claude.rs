@@ -46,7 +46,6 @@ fn base_command(claude_code_router: bool) -> &'static str {
         "npx -y @anthropic-ai/claude-code@2.0.54"
     }
 }
-
 use derivative::Derivative;
 
 #[derive(Derivative, Clone, Serialize, Deserialize, TS, JsonSchema)]
@@ -191,11 +190,15 @@ impl StandardCodingAgentExecutor for ClaudeCode {
             .await
     }
 
-    fn normalize_logs(&self, msg_store: Arc<MsgStore>, current_dir: &Path) {
+    fn normalize_logs(
+        &self,
+        msg_store: Arc<MsgStore>,
+        current_dir: &Path,
+    ) -> Vec<tokio::task::JoinHandle<()>> {
         let entry_index_provider = EntryIndexProvider::start_from(&msg_store);
 
         // Process stdout logs (Claude's JSON output)
-        ClaudeLogProcessor::process_logs(
+        let h1 = ClaudeLogProcessor::process_logs(
             msg_store.clone(),
             current_dir,
             entry_index_provider.clone(),
@@ -203,7 +206,9 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         );
 
         // Process stderr logs using the standard stderr processor
-        normalize_stderr_logs(msg_store, entry_index_provider);
+        let h2 = normalize_stderr_logs(msg_store, entry_index_provider);
+
+        vec![h1, h2]
     }
 
     // MCP configuration methods
@@ -355,7 +360,7 @@ impl ClaudeLogProcessor {
         current_dir: &Path,
         entry_index_provider: EntryIndexProvider,
         strategy: HistoryStrategy,
-    ) {
+    ) -> tokio::task::JoinHandle<()> {
         let current_dir_clone = current_dir.to_owned();
         tokio::spawn(async move {
             let mut stream = msg_store.history_plus_stream();
@@ -448,7 +453,7 @@ impl ClaudeLogProcessor {
                 let patch = ConversationPatch::add_normalized_entry(patch_id, entry);
                 msg_store.push_patch(patch);
             }
-        });
+        })
     }
 
     /// Extract session ID from Claude JSON

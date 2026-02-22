@@ -123,8 +123,12 @@ impl StandardCodingAgentExecutor for Opencode {
             .await
     }
 
-    fn normalize_logs(&self, msg_store: Arc<MsgStore>, worktree_path: &Path) {
-        crate::executors::acp::normalize_logs(msg_store, worktree_path);
+    fn normalize_logs(
+        &self,
+        msg_store: Arc<MsgStore>,
+        worktree_path: &Path,
+    ) -> Vec<tokio::task::JoinHandle<()>> {
+        crate::executors::acp::normalize_logs(msg_store, worktree_path)
     }
 
     fn default_mcp_config_path(&self) -> Option<std::path::PathBuf> {

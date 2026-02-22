@@ -66,7 +66,7 @@ export function CodeBlockShortcutPlugin() {
 
         // Collect content from paragraphs between opening and closing
         const codeLines = contentParagraphs.map((p) => p.getTextContent());
-        const code = codeLines.join('\n');
+        const code = codeLines.join('\n').trim();
 
         // Create code node
         const codeNode = $createCodeNode(language);

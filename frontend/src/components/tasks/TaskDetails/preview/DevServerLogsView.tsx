@@ -62,7 +62,7 @@ export function DevServerLogsView({
       </summary>
 
       {showLogs && (
-        <div className={height}>
+        <div className={`${height} flex flex-col`}>
           {logs ? (
             <ProcessLogsViewerContent logs={logs} error={error ?? null} />
           ) : (

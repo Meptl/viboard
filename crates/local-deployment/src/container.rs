@@ -915,7 +915,12 @@ impl ContainerService for LocalContainerService {
             // If container_ref is set, check if the worktree exists
             let path = PathBuf::from(container_ref);
             if path.exists() {
-                self.git().is_worktree_clean(&path).map_err(|e| e.into())
+                self.git()
+                    .get_worktree_change_counts(&path)
+                    .map(|(uncommitted_tracked, untracked)| {
+                        uncommitted_tracked == 0 && untracked == 0
+                    })
+                    .map_err(|e| e.into())
             } else {
                 return Ok(true); // No worktree means it's clean
             }

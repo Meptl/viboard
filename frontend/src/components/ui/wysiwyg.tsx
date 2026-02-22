@@ -7,7 +7,6 @@ import { ContentEditable } from '@lexical/react/LexicalContentEditable';
 import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPlugin';
 import { TRANSFORMERS, type Transformer } from '@lexical/markdown';
 import { ImageNode, IMAGE_TRANSFORMER } from './wysiwyg/nodes/image-node';
-import { CODE_BLOCK_TRANSFORMER } from './wysiwyg/transformers/code-block-transformer';
 import {
   TaskAttemptContext,
   TaskContext,
@@ -20,6 +19,7 @@ import { ImageKeyboardPlugin } from './wysiwyg/plugins/image-keyboard-plugin';
 import { ReadOnlyLinkPlugin } from './wysiwyg/plugins/read-only-link-plugin';
 import { ToolbarPlugin } from './wysiwyg/plugins/toolbar-plugin';
 import { CodeBlockShortcutPlugin } from './wysiwyg/plugins/code-block-shortcut-plugin';
+import { PasteMarkdownPlugin } from './wysiwyg/plugins/paste-markdown-plugin';
 import { MarkdownSyncPlugin } from './wysiwyg/plugins/markdown-sync-plugin';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { HeadingNode, QuoteNode } from '@lexical/rich-text';
@@ -144,13 +144,9 @@ function WYSIWYGEditor({
     []
   );
 
-  // Extended transformers with image and code block support (memoized to prevent unnecessary re-renders)
+  // Extended transformers with image support (memoized to prevent unnecessary re-renders)
   const extendedTransformers: Transformer[] = useMemo(
-    () => [
-      IMAGE_TRANSFORMER,
-      CODE_BLOCK_TRANSFORMER,
-      ...TRANSFORMERS,
-    ],
+    () => [IMAGE_TRANSFORMER, ...TRANSFORMERS],
     []
   );
 
@@ -226,6 +222,7 @@ function WYSIWYGEditor({
                   {autoFocus && <AutoFocusPlugin />}
                   <HistoryPlugin />
                   <MarkdownShortcutPlugin transformers={extendedTransformers} />
+                  <PasteMarkdownPlugin transformers={extendedTransformers} />
                   <FileTagTypeaheadPlugin projectId={projectId} />
                   <KeyboardCommandsPlugin
                     onCmdEnter={onCmdEnter}

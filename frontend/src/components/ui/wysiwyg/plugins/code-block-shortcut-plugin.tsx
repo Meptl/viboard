@@ -17,7 +17,7 @@ const CODE_END_REGEX = /^```$/;
  * Plugin that detects when user types closing ``` and converts the
  * paragraphs between opening and closing backticks into a code block.
  *
- * This handles the typing case - paste/import is handled by CODE_BLOCK_TRANSFORMER.
+ * This handles the typing case. Paste/import is handled by Lexical's markdown transformers.
  */
 export function CodeBlockShortcutPlugin() {
   const [editor] = useLexicalComposerContext();

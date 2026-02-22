@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import {
@@ -32,12 +32,17 @@ const MAX_HEIGHT_STABILITY_THRESHOLD = 10;
 
 type MenuPlacement = ReturnType<typeof getMenuPosition>;
 
-function getMenuPosition(anchorEl: HTMLElement) {
+function getMenuPosition(
+  anchorEl: HTMLElement,
+  editorEl: HTMLElement | null
+) {
   const rect = anchorEl.getBoundingClientRect();
+  const editorRect = editorEl?.getBoundingClientRect();
   const viewportHeight = window.innerHeight;
   const viewportWidth = window.innerWidth;
 
-  const spaceAbove = rect.top;
+  const topEdge = editorRect?.top ?? rect.top;
+  const spaceAbove = topEdge;
   const spaceBelow = viewportHeight - rect.bottom;
 
   const showBelow = spaceBelow >= spaceAbove;
@@ -55,7 +60,7 @@ function getMenuPosition(anchorEl: HTMLElement) {
   if (showBelow) {
     top = rect.bottom + VERTICAL_GAP;
   } else {
-    bottom = viewportHeight - rect.top + VERTICAL_GAP_ABOVE;
+    bottom = viewportHeight - topEdge + VERTICAL_GAP_ABOVE;
   }
 
   let left = rect.left;
@@ -137,7 +142,8 @@ export function FileTagTypeaheadPlugin({ projectId }: { projectId?: string }) {
         if (!anchorRef.current) return null;
 
         const nextPlacement = getMenuPosition(
-          anchorRef.current
+          anchorRef.current,
+          editor.getRootElement()
         );
         const previousPlacement = lastPlacementRef.current;
         const maxHeightStable =
@@ -166,24 +172,30 @@ export function FileTagTypeaheadPlugin({ projectId }: { projectId?: string }) {
         const tagResults = options.filter((r) => r.item.type === 'tag');
         const fileResults = options.filter((r) => r.item.type === 'file');
 
+        const menuStyle = {
+          top: placement.top,
+          bottom: placement.bottom,
+          left: placement.left,
+          minWidth: MIN_WIDTH,
+          zIndex: 10000,
+          '--typeahead-menu-max-height': `${placement.maxHeight}px`,
+        } as CSSProperties;
+
         return createPortal(
           <div
-            className="fixed bg-background border border-border rounded-md shadow-lg overflow-y-auto"
-            style={{
-              top: placement.top,
-              bottom: placement.bottom,
-              left: placement.left,
-              maxHeight: placement.maxHeight,
-              minWidth: MIN_WIDTH,
-              zIndex: 10000,
-            }}
+            className="fixed bg-background border border-border rounded-md shadow-lg overflow-hidden"
+            style={menuStyle}
           >
-            {options.length === 0 ? (
-              <div className="p-2 text-sm text-muted-foreground">
-                No tags or files found
-              </div>
-            ) : (
-              <div className="py-1">
+            <div
+              className="overflow-y-auto py-1"
+              style={{ maxHeight: 'var(--typeahead-menu-max-height)' }}
+            >
+              {options.length === 0 ? (
+                <div className="p-2 text-sm text-muted-foreground">
+                  No tags or files found
+                </div>
+              ) : (
+                <>
                 {/* Tags Section */}
                 {tagResults.length > 0 && (
                   <>
@@ -261,8 +273,9 @@ export function FileTagTypeaheadPlugin({ projectId }: { projectId?: string }) {
                     })}
                   </>
                 )}
-              </div>
-            )}
+                </>
+              )}
+            </div>
           </div>,
           document.body
         );

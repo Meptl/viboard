@@ -18,6 +18,7 @@ import {
 import { Loader2 } from 'lucide-react';
 import { TaskAttempt } from 'shared/types';
 import { ApprovalFormProvider } from '@/contexts/ApprovalFormContext';
+import { Button } from '@/components/ui/button';
 
 interface VirtualizedListProps {
   attempt: TaskAttempt;
@@ -71,10 +72,17 @@ const computeItemKey: VirtuosoMessageListProps<
   MessageListContext
 >['computeItemKey'] = ({ data }) => `l-${data.patchKey}`;
 
+const isUserMessageEntry = (entry: PatchTypeWithKey) => {
+  if (entry.type !== 'NORMALIZED_ENTRY') return false;
+  const entryType = entry.content.entry_type.type;
+  return entryType === 'user_message' || entryType === 'user_feedback';
+};
+
 const VirtualizedList = ({ attempt }: VirtualizedListProps) => {
   const [channelData, setChannelData] =
     useState<DataWithScrollModifier<PatchTypeWithKey> | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showOnlyUserMessages, setShowOnlyUserMessages] = useState(false);
   const { setEntries, reset } = useEntries();
 
   useEffect(() => {
@@ -106,30 +114,49 @@ const VirtualizedList = ({ attempt }: VirtualizedListProps) => {
 
   const messageListRef = useRef<VirtuosoMessageListMethods | null>(null);
   const messageListContext = useMemo(() => ({ attempt }), [attempt]);
+  const visibleChannelData = useMemo(() => {
+    if (!channelData || !showOnlyUserMessages) return channelData;
+    return {
+      ...channelData,
+      data: (channelData.data ?? []).filter(isUserMessageEntry),
+    };
+  }, [channelData, showOnlyUserMessages]);
 
   return (
     <ApprovalFormProvider>
-      <VirtuosoMessageListLicense
-        licenseKey={import.meta.env.VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY}
-      >
-        <VirtuosoMessageList<PatchTypeWithKey, MessageListContext>
-          ref={messageListRef}
-          className="flex-1"
-          data={channelData}
-          initialLocation={INITIAL_TOP_ITEM}
-          context={messageListContext}
-          computeItemKey={computeItemKey}
-          ItemContent={ItemContent}
-          Header={() => <div className="h-2"></div>}
-          Footer={() => <div className="h-2"></div>}
-        />
-      </VirtuosoMessageListLicense>
-      {loading && (
-        <div className="float-left top-0 left-0 w-full h-full bg-primary flex flex-col gap-2 justify-center items-center">
-          <Loader2 className="h-8 w-8 animate-spin" />
-          <p>Loading History</p>
+      <div className="relative h-full min-h-0">
+        <div className="absolute right-3 top-3 z-10">
+          <Button
+            size="sm"
+            variant={showOnlyUserMessages ? 'default' : 'outline'}
+            onClick={() => setShowOnlyUserMessages((prev) => !prev)}
+            aria-pressed={showOnlyUserMessages}
+          >
+            {showOnlyUserMessages ? 'Show all' : 'User only'}
+          </Button>
         </div>
-      )}
+        <VirtuosoMessageListLicense
+          licenseKey={import.meta.env.VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY}
+        >
+          <VirtuosoMessageList<PatchTypeWithKey, MessageListContext>
+            ref={messageListRef}
+            className="flex-1 h-full"
+            data={visibleChannelData}
+            initialLocation={INITIAL_TOP_ITEM}
+            context={messageListContext}
+            computeItemKey={computeItemKey}
+            ItemContent={ItemContent}
+            Header={() => <div className="h-12"></div>}
+            Footer={() => <div className="h-2"></div>}
+          />
+        </VirtuosoMessageListLicense>
+        {loading && (
+          <div className="absolute inset-0 bg-primary flex flex-col gap-2 justify-center items-center">
+            <Loader2 className="h-8 w-8 animate-spin" />
+            <p>Loading History</p>
+          </div>
+        )}
+      </div>
     </ApprovalFormProvider>
   );
 };

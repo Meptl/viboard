@@ -5,10 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { AlertTriangle, Plus } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
-import { tasksApi } from '@/lib/api';
+import { attemptsApi, projectsApi, tasksApi } from '@/lib/api';
 import type { GitBranch, TaskAttempt, BranchStatus } from 'shared/types';
 import { openTaskForm } from '@/lib/openTaskForm';
 import { FeatureShowcaseDialog } from '@/components/dialogs/global/FeatureShowcaseDialog';
+import { ConfirmDialog } from '@/components/dialogs/shared/ConfirmDialog';
 import { showcases } from '@/config/showcases';
 import { useUserSystem } from '@/components/ConfigProvider';
 
@@ -18,7 +19,6 @@ import { useTaskAttempts } from '@/hooks/useTaskAttempts';
 import { useTaskAttempt } from '@/hooks/useTaskAttempt';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useBranchStatus, useAttemptExecution } from '@/hooks';
-import { projectsApi } from '@/lib/api';
 import { paths } from '@/lib/paths';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
 import { ClickedElementsProvider } from '@/contexts/ClickedElementsProvider';
@@ -635,11 +635,78 @@ export function ProjectTasks() {
           parent_task_attempt: task.parent_task_attempt,
           image_ids: null,
         });
+
+        if (newStatus !== 'inprogress' || !projectId || !config?.executor_profile) {
+          return;
+        }
+
+        const existingAttempts = await attemptsApi.getAll(task.id);
+        if (existingAttempts.length > 0) {
+          const confirmResult = await ConfirmDialog.show({
+            title: 'Start a new attempt?',
+            message:
+              'This task already has an attempt. Starting a new attempt will switch to a new conversation and you may lose your current conversation history.',
+            confirmText: 'Start New Attempt',
+            cancelText: 'Cancel',
+            variant: 'destructive',
+          }).finally(() => {
+            ConfirmDialog.hide();
+          });
+
+          if (confirmResult !== 'confirmed') {
+            return;
+          }
+        }
+
+        const latestAttempt =
+          existingAttempts.length === 0
+            ? null
+            : [...existingAttempts].sort((a, b) => {
+                const diff =
+                  new Date(b.created_at).getTime() -
+                  new Date(a.created_at).getTime();
+                if (diff !== 0) return diff;
+                return a.id.localeCompare(b.id);
+              })[0];
+
+        let parentBranch: string | null = null;
+        if (task.parent_task_attempt) {
+          try {
+            const parentAttempt = await attemptsApi.get(task.parent_task_attempt);
+            parentBranch = parentAttempt.branch ?? null;
+          } catch (err) {
+            console.warn('Failed to load parent attempt branch:', err);
+          }
+        }
+
+        const currentBranchName =
+          branches.find((branch) => branch.is_current)?.name ?? null;
+        const baseBranch =
+          parentBranch ??
+          currentBranchName ??
+          latestAttempt?.target_branch ??
+          latestAttempt?.branch ??
+          null;
+
+        if (!baseBranch) {
+          console.warn(
+            'Skipping auto-start attempt because no default base branch could be determined'
+          );
+          return;
+        }
+
+        const newAttempt = await attemptsApi.create({
+          task_id: task.id,
+          executor_profile_id: config.executor_profile,
+          base_branch: baseBranch,
+        });
+
+        navigateWithSearch(paths.attempt(projectId, task.id, newAttempt.id));
       } catch (err) {
-        console.error('Failed to update task status:', err);
+        console.error('Failed to update task status / auto-start attempt:', err);
       }
     },
-    [tasksById]
+    [branches, config?.executor_profile, navigateWithSearch, projectId, tasksById]
   );
 
   const isInitialTasksLoad = isLoading && tasks.length === 0;

@@ -69,6 +69,7 @@ import {
 } from '@/components/ui/breadcrumb';
 import { AttemptHeaderActions } from '@/components/panels/AttemptHeaderActions';
 import { TaskPanelHeaderActions } from '@/components/panels/TaskPanelHeaderActions';
+import { useTaskNotifications } from '@/contexts/TaskNotificationsContext';
 
 import type { TaskWithAttemptStatus, TaskStatus } from 'shared/types';
 
@@ -174,11 +175,22 @@ export function ProjectTasks() {
     isLoading,
     error: streamError,
   } = useProjectTasks(projectId || '');
+  const { ingestProjectTasks, clearTaskNotifications } = useTaskNotifications();
+
+  useEffect(() => {
+    if (!projectId || isLoading) return;
+    ingestProjectTasks(projectId, tasks);
+  }, [projectId, tasks, isLoading, ingestProjectTasks]);
 
   const selectedTask = useMemo(
     () => (taskId ? (tasksById[taskId] ?? null) : null),
     [taskId, tasksById]
   );
+
+  useEffect(() => {
+    if (!projectId || !selectedTask) return;
+    clearTaskNotifications(projectId, selectedTask.id);
+  }, [projectId, selectedTask, clearTaskNotifications]);
 
   const isPanelOpen = Boolean(taskId && selectedTask);
 

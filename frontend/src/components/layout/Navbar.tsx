@@ -9,6 +9,7 @@ import { openTaskForm } from '@/lib/openTaskForm';
 import { useProject } from '@/contexts/ProjectContext';
 import { useOpenProjectInEditor } from '@/hooks/useOpenProjectInEditor';
 import { OpenInIdeButton } from '@/components/ide/OpenInIdeButton';
+import { TaskNotificationsBell } from '@/components/layout/TaskNotificationsBell';
 
 function NavDivider() {
   return (
@@ -69,6 +70,7 @@ export function Navbar() {
             {projectId ? (
               <>
                 <div className="flex items-center gap-1">
+                  <TaskNotificationsBell />
                   <OpenInIdeButton
                     onClick={handleOpenInIDE}
                     className="h-9 w-9"

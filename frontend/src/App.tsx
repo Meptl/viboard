@@ -29,6 +29,7 @@ import { OnboardingDialog } from '@/components/dialogs/global/OnboardingDialog';
 import { ReleaseNotesDialog } from '@/components/dialogs/global/ReleaseNotesDialog';
 import { ClickedElementsProvider } from './contexts/ClickedElementsProvider';
 import NiceModal from '@ebay/nice-modal-react';
+import { TaskNotificationsProvider } from '@/contexts/TaskNotificationsContext';
 
 function AppContent() {
   const { config, updateAndSaveConfig, loading } = useUserSystem();
@@ -92,44 +93,46 @@ function AppContent() {
     <I18nextProvider i18n={i18n}>
       <ThemeProvider initialTheme={config?.theme || ThemeMode.SYSTEM}>
         <SearchProvider>
-          <div className="h-screen flex flex-col bg-background">
-            <Routes>
-              {/* VS Code full-page logs route (outside NormalLayout for minimal UI) */}
-              <Route
-                path="/projects/:projectId/tasks/:taskId/attempts/:attemptId/full"
-                element={<FullAttemptLogsPage />}
-              />
+          <TaskNotificationsProvider>
+            <div className="h-screen flex flex-col bg-background">
+              <Routes>
+                {/* VS Code full-page logs route (outside NormalLayout for minimal UI) */}
+                <Route
+                  path="/projects/:projectId/tasks/:taskId/attempts/:attemptId/full"
+                  element={<FullAttemptLogsPage />}
+                />
 
-              <Route element={<NormalLayout />}>
-                <Route path="/" element={<Projects />} />
-                <Route path="/projects" element={<Projects />} />
-                <Route path="/projects/:projectId" element={<Projects />} />
-                <Route
-                  path="/projects/:projectId/tasks"
-                  element={<ProjectTasks />}
-                />
-                <Route path="/settings/*" element={<SettingsLayout />}>
-                  <Route index element={<Navigate to="general" replace />} />
-                  <Route path="general" element={<GeneralSettings />} />
-                  <Route path="projects" element={<ProjectSettings />} />
-                  <Route path="agents" element={<AgentSettings />} />
-                  <Route path="mcp" element={<McpSettings />} />
+                <Route element={<NormalLayout />}>
+                  <Route path="/" element={<Projects />} />
+                  <Route path="/projects" element={<Projects />} />
+                  <Route path="/projects/:projectId" element={<Projects />} />
+                  <Route
+                    path="/projects/:projectId/tasks"
+                    element={<ProjectTasks />}
+                  />
+                  <Route path="/settings/*" element={<SettingsLayout />}>
+                    <Route index element={<Navigate to="general" replace />} />
+                    <Route path="general" element={<GeneralSettings />} />
+                    <Route path="projects" element={<ProjectSettings />} />
+                    <Route path="agents" element={<AgentSettings />} />
+                    <Route path="mcp" element={<McpSettings />} />
+                  </Route>
+                  <Route
+                    path="/mcp-servers"
+                    element={<Navigate to="/settings/mcp" replace />}
+                  />
+                  <Route
+                    path="/projects/:projectId/tasks/:taskId"
+                    element={<ProjectTasks />}
+                  />
+                  <Route
+                    path="/projects/:projectId/tasks/:taskId/attempts/:attemptId"
+                    element={<ProjectTasks />}
+                  />
                 </Route>
-                <Route
-                  path="/mcp-servers"
-                  element={<Navigate to="/settings/mcp" replace />}
-                />
-                <Route
-                  path="/projects/:projectId/tasks/:taskId"
-                  element={<ProjectTasks />}
-                />
-                <Route
-                  path="/projects/:projectId/tasks/:taskId/attempts/:attemptId"
-                  element={<ProjectTasks />}
-                />
-              </Route>
-            </Routes>
-          </div>
+              </Routes>
+            </div>
+          </TaskNotificationsProvider>
         </SearchProvider>
       </ThemeProvider>
     </I18nextProvider>

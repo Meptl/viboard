@@ -608,7 +608,18 @@ export function TaskFollowUpSection({
             {/* Review comments preview */}
             {reviewMarkdown && (
               <div className="mb-4">
-                <div className="text-sm whitespace-pre-wrap break-words rounded-md border bg-muted p-3">
+                <div className="relative rounded-md border bg-muted p-3 pr-40 pt-12 text-sm whitespace-pre-wrap break-words">
+                  {comments.length > 0 && (
+                    <Button
+                      onClick={clearComments}
+                      size="sm"
+                      variant="destructive"
+                      disabled={!isEditable}
+                      className="absolute right-3 top-3"
+                    >
+                      {t('followUp.clearReviewComments')}
+                    </Button>
+                  )}
                   {reviewMarkdown}
                 </div>
               </div>
@@ -832,16 +843,6 @@ export function TaskFollowUpSection({
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              {comments.length > 0 && (
-                <Button
-                  onClick={clearComments}
-                  size="sm"
-                  variant="destructive"
-                  disabled={!isEditable}
-                >
-                  {t('followUp.clearReviewComments')}
-                </Button>
-              )}
               <Button
                 onClick={onSendFollowUp}
                 disabled={!canSendFollowUp || !isEditable}

@@ -123,6 +123,15 @@ function GitOperations({
     return t('git.states.rebase');
   }, [rebasing, t]);
 
+  const shouldShowRebaseAction = useMemo(
+    () =>
+      Boolean(
+        branchStatus?.is_rebase_in_progress ||
+          (branchStatus?.commits_behind ?? 0) > 0
+      ),
+    [branchStatus?.commits_behind, branchStatus?.is_rebase_in_progress]
+  );
+
   const handleMergeClick = async () => {
     // Directly perform merge without checking branch status
     await performMerge();
@@ -333,39 +342,38 @@ function GitOperations({
         {branchStatus && (
           <div className={actionsClasses}>
             <Button
-              onClick={handleMergeClick}
+              onClick={
+                shouldShowRebaseAction ? handleRebaseClick : handleMergeClick
+              }
               disabled={
-                merging ||
-                hasConflictsCalculated ||
-                isAttemptRunning ||
-                ((branchStatus.commits_ahead ?? 0) === 0 &&
-                  !mergeSuccess)
+                shouldShowRebaseAction
+                  ? rebasing || isAttemptRunning || hasConflictsCalculated
+                  : merging ||
+                    hasConflictsCalculated ||
+                    isAttemptRunning ||
+                    ((branchStatus.commits_ahead ?? 0) === 0 && !mergeSuccess)
               }
               variant="outline"
               size="xs"
-              className="border-success text-success hover:bg-success gap-1 shrink-0"
-              aria-label={mergeButtonLabel}
-            >
-              <GitBranchIcon className="h-3.5 w-3.5" />
-              <span className="truncate max-w-[10ch]">{mergeButtonLabel}</span>
-            </Button>
-
-            <Button
-              onClick={handleRebaseClick}
-              disabled={
-                rebasing ||
-                isAttemptRunning ||
-                hasConflictsCalculated
+              className={`gap-1 shrink-0 ${
+                shouldShowRebaseAction
+                  ? 'border-warning text-warning hover:bg-warning'
+                  : 'border-success text-success hover:bg-success'
+              }`}
+              aria-label={
+                shouldShowRebaseAction ? rebaseButtonLabel : mergeButtonLabel
               }
-              variant="outline"
-              size="xs"
-              className="border-warning text-warning hover:bg-warning gap-1 shrink-0"
-              aria-label={rebaseButtonLabel}
             >
-              <RefreshCw
-                className={`h-3.5 w-3.5 ${rebasing ? 'animate-spin' : ''}`}
-              />
-              <span className="truncate max-w-[10ch]">{rebaseButtonLabel}</span>
+              {shouldShowRebaseAction ? (
+                <RefreshCw
+                  className={`h-3.5 w-3.5 ${rebasing ? 'animate-spin' : ''}`}
+                />
+              ) : (
+                <GitBranchIcon className="h-3.5 w-3.5" />
+              )}
+              <span className="truncate max-w-[10ch]">
+                {shouldShowRebaseAction ? rebaseButtonLabel : mergeButtonLabel}
+              </span>
             </Button>
           </div>
         )}

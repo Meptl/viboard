@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import { Trash2 } from 'lucide-react';
 import {
   type DragEndEvent,
   KanbanBoard,
@@ -41,9 +42,26 @@ function TaskKanbanBoard({
         return (
           <KanbanBoard key={status} id={statusKey}>
             <KanbanHeader
-              name={statusLabels[statusKey]}
+              name={
+                statusKey === 'cancelled' ? (
+                  <span className="flex items-center gap-1.5">
+                    <span>(1 hour)</span>
+                  </span>
+                ) : (
+                  statusLabels[statusKey]
+                )
+              }
               color={statusBoardColors[statusKey]}
               onAddTask={onCreateTask}
+              leadingIcon={
+                statusKey === 'cancelled' ? (
+                  <Trash2
+                    className="h-3.5 w-3.5 text-destructive"
+                    aria-hidden="true"
+                  />
+                ) : undefined
+              }
+              hideAddTask={statusKey === 'cancelled'}
             />
             <KanbanCards>
               {items.map((item, index) => {

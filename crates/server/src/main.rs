@@ -1,10 +1,13 @@
 use anyhow::{self, Error as AnyhowError};
+use chrono::{Duration as ChronoDuration, Utc};
+use db::models::task::Task;
 use local_deployment::{Deployment, DeploymentError};
 use server::{DeploymentImpl, routes};
 use services::services::container::ContainerService;
 use sqlx::Error as SqlxError;
 use strip_ansi_escapes::strip;
 use thiserror::Error;
+use tokio::time::{self, MissedTickBehavior};
 use tracing_subscriber::{EnvFilter, prelude::*};
 use utils::{assets::asset_dir, browser::open_browser, port_file::write_port_file};
 
@@ -19,6 +22,9 @@ pub enum VibeKanbanError {
     #[error(transparent)]
     Other(#[from] AnyhowError),
 }
+
+const CANCELLED_TASK_RETENTION: ChronoDuration = ChronoDuration::hours(1);
+const CANCELLED_TASK_CLEANUP_INTERVAL: std::time::Duration = std::time::Duration::from_secs(60);
 
 #[tokio::main]
 async fn main() -> Result<(), VibeKanbanError> {
@@ -58,6 +64,10 @@ async fn main() -> Result<(), VibeKanbanError> {
         {
             tracing::warn!("Failed to warm file search cache: {}", e);
         }
+    });
+    let deployment_for_cancelled_cleanup = deployment.clone();
+    tokio::spawn(async move {
+        run_cancelled_task_cleanup_loop(deployment_for_cancelled_cleanup).await;
     });
 
     let app_router = routes::router(deployment.clone());
@@ -105,6 +115,48 @@ async fn main() -> Result<(), VibeKanbanError> {
         .await?;
 
     perform_cleanup_actions(&deployment).await;
+
+    Ok(())
+}
+
+async fn run_cancelled_task_cleanup_loop(deployment: DeploymentImpl) {
+    let mut interval = time::interval(CANCELLED_TASK_CLEANUP_INTERVAL);
+    interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
+
+    loop {
+        interval.tick().await;
+        if let Err(err) = cleanup_expired_cancelled_tasks(&deployment).await {
+            tracing::warn!("Cancelled task cleanup sweep failed: {}", err);
+        }
+    }
+}
+
+async fn cleanup_expired_cancelled_tasks(deployment: &DeploymentImpl) -> Result<(), AnyhowError> {
+    let cutoff = Utc::now() - CANCELLED_TASK_RETENTION;
+    let expired_tasks = Task::find_cancelled_older_than(&deployment.db().pool, cutoff).await?;
+
+    for task in expired_tasks {
+        let task_id = task.id;
+        match routes::tasks::delete_task_with_cleanup(task, deployment.clone()).await {
+            Ok(()) => {
+                tracing::info!("Auto-deleted expired cancelled task {}", task_id);
+            }
+            Err(server::error::ApiError::Conflict(msg)) => {
+                tracing::info!(
+                    "Skipped auto-delete for cancelled task {} due to conflict: {}",
+                    task_id,
+                    msg
+                );
+            }
+            Err(err) => {
+                tracing::warn!(
+                    "Failed to auto-delete expired cancelled task {}: {}",
+                    task_id,
+                    err
+                );
+            }
+        }
+    }
 
     Ok(())
 }

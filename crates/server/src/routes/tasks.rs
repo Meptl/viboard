@@ -228,6 +228,13 @@ pub async fn delete_task(
     Extension(task): Extension<Task>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<(StatusCode, ResponseJson<ApiResponse<()>>), ApiError> {
+    delete_task_with_cleanup(task, deployment).await?;
+
+    // Return 202 Accepted to indicate deletion was scheduled
+    Ok((StatusCode::ACCEPTED, ResponseJson(ApiResponse::success(()))))
+}
+
+pub async fn delete_task_with_cleanup(task: Task, deployment: DeploymentImpl) -> Result<(), ApiError> {
     // Validate no running execution processes
     if deployment
         .container()
@@ -316,8 +323,7 @@ pub async fn delete_task(
         }
     });
 
-    // Return 202 Accepted to indicate deletion was scheduled
-    Ok((StatusCode::ACCEPTED, ResponseJson(ApiResponse::success(()))))
+    Ok(())
 }
 
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {

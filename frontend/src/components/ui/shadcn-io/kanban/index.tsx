@@ -149,10 +149,12 @@ export type KanbanHeaderProps =
       children: ReactNode;
     }
   | {
-      name: Status['name'];
+      name: ReactNode;
       color: Status['color'];
       className?: string;
       onAddTask?: () => void;
+      leadingIcon?: ReactNode;
+      hideAddTask?: boolean;
     };
 
 export const KanbanHeader = (props: KanbanHeaderProps) => {
@@ -174,28 +176,32 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
       }}
     >
       <span className="flex-1 flex items-center gap-2">
-        <div
-          className="h-2 w-2 rounded-full"
-          style={{ backgroundColor: `hsl(var(${props.color}))` }}
-        />
+        {props.leadingIcon ?? (
+          <div
+            className="h-2 w-2 rounded-full"
+            style={{ backgroundColor: `hsl(var(${props.color}))` }}
+          />
+        )}
 
-        <p className="m-0 text-sm">{props.name}</p>
+        <div className="m-0 text-sm">{props.name}</div>
       </span>
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              className="m-0 p-0 h-0 text-foreground/50 hover:text-foreground"
-              onClick={props.onAddTask}
-              aria-label={t('actions.addTask')}
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="top">{t('actions.addTask')}</TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      {!props.hideAddTask && (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                className="m-0 p-0 h-0 text-foreground/50 hover:text-foreground"
+                onClick={props.onAddTask}
+                aria-label={t('actions.addTask')}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">{t('actions.addTask')}</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
     </Card>
   );
 };

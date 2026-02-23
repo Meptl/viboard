@@ -207,6 +207,22 @@ ORDER BY t.created_at DESC"#,
         Ok(tasks)
     }
 
+    pub async fn find_cancelled_older_than(
+        pool: &SqlitePool,
+        max_updated_at: DateTime<Utc>,
+    ) -> Result<Vec<Self>, sqlx::Error> {
+        sqlx::query_as::<_, Task>(
+            r#"SELECT id, project_id, title, description, status, parent_task_attempt, created_at, updated_at
+               FROM tasks
+               WHERE status = $1 AND updated_at <= $2
+               ORDER BY updated_at ASC"#,
+        )
+        .bind(TaskStatus::Cancelled)
+        .bind(max_updated_at)
+        .fetch_all(pool)
+        .await
+    }
+
     pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as::<_, Task>(
             r#"SELECT id, project_id, title, description, status, parent_task_attempt, created_at, updated_at

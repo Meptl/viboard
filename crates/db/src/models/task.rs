@@ -209,16 +209,16 @@ ORDER BY t.created_at DESC"#,
 
     pub async fn find_cancelled_older_than(
         pool: &SqlitePool,
-        max_updated_at: DateTime<Utc>,
+        max_cancelled_at: DateTime<Utc>,
     ) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as::<_, Task>(
             r#"SELECT id, project_id, title, description, status, parent_task_attempt, created_at, updated_at
                FROM tasks
-               WHERE status = $1 AND updated_at <= $2
-               ORDER BY updated_at ASC"#,
+               WHERE status = $1 AND COALESCE(cancelled_at, updated_at) <= $2
+               ORDER BY COALESCE(cancelled_at, updated_at) ASC"#,
         )
         .bind(TaskStatus::Cancelled)
-        .bind(max_updated_at)
+        .bind(max_cancelled_at)
         .fetch_all(pool)
         .await
     }
@@ -252,8 +252,16 @@ ORDER BY t.created_at DESC"#,
     ) -> Result<Self, sqlx::Error> {
         let status = data.status.clone().unwrap_or_default();
         sqlx::query_as::<_, Task>(
-            r#"INSERT INTO tasks (id, project_id, title, description, status, parent_task_attempt) 
-               VALUES ($1, $2, $3, $4, $5, $6) 
+            r#"INSERT INTO tasks (id, project_id, title, description, status, parent_task_attempt, cancelled_at)
+               VALUES (
+                   $1,
+                   $2,
+                   $3,
+                   $4,
+                   $5,
+                   $6,
+                   CASE WHEN $5 = 'cancelled' THEN CURRENT_TIMESTAMP ELSE NULL END
+               )
                RETURNING id, project_id, title, description, status, parent_task_attempt, created_at, updated_at"#,
         )
         .bind(task_id)
@@ -277,7 +285,15 @@ ORDER BY t.created_at DESC"#,
     ) -> Result<Self, sqlx::Error> {
         sqlx::query_as::<_, Task>(
             r#"UPDATE tasks 
-               SET title = $3, description = $4, status = $5, parent_task_attempt = $6 
+               SET title = $3,
+                   description = $4,
+                   status = $5,
+                   parent_task_attempt = $6,
+                   updated_at = CURRENT_TIMESTAMP,
+                   cancelled_at = CASE
+                       WHEN $5 = 'cancelled' THEN COALESCE(cancelled_at, CURRENT_TIMESTAMP)
+                       ELSE NULL
+                   END
                WHERE id = $1 AND project_id = $2 
                RETURNING id, project_id, title, description, status, parent_task_attempt, created_at, updated_at"#,
         )
@@ -296,11 +312,18 @@ ORDER BY t.created_at DESC"#,
         id: Uuid,
         status: TaskStatus,
     ) -> Result<(), sqlx::Error> {
-        sqlx::query!(
-            "UPDATE tasks SET status = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $1",
-            id,
-            status
+        sqlx::query(
+            r#"UPDATE tasks
+               SET status = $2,
+                   updated_at = CURRENT_TIMESTAMP,
+                   cancelled_at = CASE
+                       WHEN $2 = 'cancelled' THEN COALESCE(cancelled_at, CURRENT_TIMESTAMP)
+                       ELSE NULL
+                   END
+               WHERE id = $1"#,
         )
+        .bind(id)
+        .bind(status)
         .execute(pool)
         .await?;
         Ok(())

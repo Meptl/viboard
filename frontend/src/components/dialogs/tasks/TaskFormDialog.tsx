@@ -432,7 +432,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
             {/* Description */}
             <form.Field name="description">
               {(field) => (
-                <div className="relative">
+                <div className="space-y-2">
                   {isRawMarkdownMode ? (
                     <textarea
                       placeholder={t('taskFormDialog.descriptionPlaceholder')}
@@ -472,7 +472,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
                     onValueChange={(value) => {
                       if (value) setIsRawMarkdownMode(value === 'markdown');
                     }}
-                    className="absolute bottom-2 right-2 bg-muted/90 backdrop-blur-sm rounded-sm p-0.5 gap-0"
+                    className="ml-auto w-fit bg-muted/90 backdrop-blur-sm rounded-sm p-0.5 gap-0"
                   >
                     <ToggleGroupItem
                       value="preview"

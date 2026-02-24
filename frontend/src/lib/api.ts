@@ -593,12 +593,20 @@ export const configApi = {
   },
 };
 
-// Task Tags APIs (all tags are global)
+// Task Tags APIs
 export const tagsApi = {
   list: async (params?: TagSearchParams): Promise<Tag[]> => {
-    const queryParam = params?.search
-      ? `?search=${encodeURIComponent(params.search)}`
-      : '';
+    const query = new URLSearchParams();
+    if (params?.search) {
+      query.set('search', params.search);
+    }
+    if (params?.project_id) {
+      query.set('project_id', params.project_id);
+    }
+    if (params?.include_global !== null && params?.include_global !== undefined) {
+      query.set('include_global', String(params.include_global));
+    }
+    const queryParam = query.toString() ? `?${query.toString()}` : '';
     const response = await makeRequest(`/api/tags${queryParam}`);
     return handleApiResponse<Tag[]>(response);
   },

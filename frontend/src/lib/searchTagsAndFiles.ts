@@ -17,12 +17,12 @@ export async function searchTagsAndFiles(
 ): Promise<SearchResultItem[]> {
   const results: SearchResultItem[] = [];
 
-  // Fetch all tags and filter client-side
-  const tags = await tagsApi.list();
-  const filteredTags = tags.filter((tag) =>
-    tag.tag_name.toLowerCase().includes(query.toLowerCase())
-  );
-  results.push(...filteredTags.map((tag) => ({ type: 'tag' as const, tag })));
+  const tags = await tagsApi.list({
+    search: query || null,
+    project_id: projectId ?? null,
+    include_global: projectId ? true : null,
+  });
+  results.push(...tags.map((tag) => ({ type: 'tag' as const, tag })));
 
   // Fetch files (if projectId is available and query has content)
   if (projectId && query.length > 0) {

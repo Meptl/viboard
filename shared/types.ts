@@ -14,9 +14,9 @@ export type SearchResult = { path: string, is_file: boolean, match_type: SearchM
 
 export type SearchMatchType = "FileName" | "DirectoryName" | "FullPath";
 
-export type Tag = { id: string, tag_name: string, content: string, created_at: string, updated_at: string, };
+export type Tag = { id: string, project_id: string | null, tag_name: string, content: string, created_at: string, updated_at: string, };
 
-export type CreateTag = { tag_name: string, content: string, };
+export type CreateTag = { project_id: string | null, tag_name: string, content: string, };
 
 export type UpdateTag = { tag_name: string | null, content: string | null, };
 
@@ -100,7 +100,7 @@ export type DiffChangeKind = "added" | "deleted" | "modified" | "renamed" | "cop
 
 export type ApiResponse<T, E = T> = { success: boolean, data: T | null, error_data: E | null, message: string | null, };
 
-export type TagSearchParams = { search: string | null, };
+export type TagSearchParams = { search: string | null, project_id: string | null, include_global: boolean | null, };
 
 export type UserSystemInfo = { config: Config, environment: Environment, 
 /**

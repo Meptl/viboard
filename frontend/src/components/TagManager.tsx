@@ -6,7 +6,12 @@ import { tagsApi } from '@/lib/api';
 import { TagEditDialog } from '@/components/dialogs/tasks/TagEditDialog';
 import type { Tag } from 'shared/types';
 
-export function TagManager() {
+interface TagManagerProps {
+  projectId?: string;
+  hideHeader?: boolean;
+}
+
+export function TagManager({ projectId, hideHeader = false }: TagManagerProps) {
   const { t } = useTranslation('settings');
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
@@ -14,14 +19,18 @@ export function TagManager() {
   const fetchTags = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await tagsApi.list();
+      const data = await tagsApi.list(
+        projectId
+          ? { search: null, project_id: projectId, include_global: false }
+          : undefined
+      );
       setTags(data);
     } catch (err) {
       console.error('Failed to fetch tags:', err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [projectId]);
 
   useEffect(() => {
     fetchTags();
@@ -32,6 +41,7 @@ export function TagManager() {
       try {
         const result = await TagEditDialog.show({
           tag: tag || null,
+          projectId: projectId ?? null,
         });
 
         if (result === 'saved') {
@@ -77,9 +87,13 @@ export function TagManager() {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold">
-          {t('settings.general.tags.manager.title')}
-        </h3>
+        {!hideHeader ? (
+          <h3 className="text-lg font-semibold">
+            {t('settings.general.tags.manager.title')}
+          </h3>
+        ) : (
+          <div />
+        )}
         <Button onClick={() => handleOpenDialog()} size="sm">
           <Plus className="h-4 w-4 mr-2" />
           {t('settings.general.tags.manager.addTag')}

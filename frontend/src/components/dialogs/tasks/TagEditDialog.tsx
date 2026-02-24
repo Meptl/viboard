@@ -20,11 +20,13 @@ import { defineModal, getErrorMessage } from '@/lib/modals';
 
 export interface TagEditDialogProps {
   tag?: Tag | null; // null for create mode
+  projectId?: string | null;
 }
 
 export type TagEditResult = 'saved' | 'canceled';
 
-const TagEditDialogImpl = NiceModal.create<TagEditDialogProps>(({ tag }) => {
+const TagEditDialogImpl = NiceModal.create<TagEditDialogProps>(
+  ({ tag, projectId = null }) => {
   const modal = useModal();
   const { t } = useTranslation('settings');
   const [formData, setFormData] = useState({
@@ -71,6 +73,7 @@ const TagEditDialogImpl = NiceModal.create<TagEditDialogProps>(({ tag }) => {
         await tagsApi.update(tag.id, updateData);
       } else {
         const createData: CreateTag = {
+          project_id: projectId,
           tag_name: formData.tag_name,
           content: formData.content,
         };
@@ -202,7 +205,8 @@ const TagEditDialogImpl = NiceModal.create<TagEditDialogProps>(({ tag }) => {
       </DialogContent>
     </Dialog>
   );
-});
+  }
+);
 
 export const TagEditDialog = defineModal<TagEditDialogProps, TagEditResult>(
   TagEditDialogImpl

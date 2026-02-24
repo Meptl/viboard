@@ -26,6 +26,7 @@ import { useProjects } from '@/hooks/useProjects';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
 import { useScriptPlaceholders } from '@/hooks/useScriptPlaceholders';
 import { CopyFilesField } from '@/components/projects/CopyFilesField';
+import { TagManager } from '@/components/TagManager';
 import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
 import { FolderPickerDialog } from '@/components/dialogs/shared/FolderPickerDialog';
 import type { Project, UpdateProject } from 'shared/types';
@@ -487,6 +488,18 @@ export function ProjectSettings() {
                   {t('settings.projects.scripts.copyFiles.helper')}
                 </p>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Project Local Tags</CardTitle>
+              <CardDescription>
+                Create tags that are only available within this project.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <TagManager projectId={selectedProject.id} hideHeader />
             </CardContent>
           </Card>
 

@@ -7,6 +7,7 @@ use uuid::Uuid;
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
 pub struct Tag {
     pub id: Uuid,
+    pub project_id: Option<Uuid>,
     pub tag_name: String,
     pub content: String,
     pub created_at: DateTime<Utc>,
@@ -15,6 +16,7 @@ pub struct Tag {
 
 #[derive(Debug, Deserialize, TS)]
 pub struct CreateTag {
+    pub project_id: Option<Uuid>,
     pub tag_name: String,
     pub content: String,
 }
@@ -26,10 +28,74 @@ pub struct UpdateTag {
 }
 
 impl Tag {
+    pub async fn find_for_project(
+        pool: &SqlitePool,
+        project_id: Option<Uuid>,
+        include_global: bool,
+    ) -> Result<Vec<Self>, sqlx::Error> {
+        match project_id {
+            Some(project_id) if include_global => {
+                sqlx::query_as!(
+                    Tag,
+                    r#"SELECT id as "id!: Uuid",
+                              project_id as "project_id: Uuid",
+                              tag_name,
+                              content as "content!",
+                              created_at as "created_at!: DateTime<Utc>",
+                              updated_at as "updated_at!: DateTime<Utc>"
+                       FROM tags
+                       WHERE project_id = $1 OR project_id IS NULL
+                       ORDER BY tag_name ASC"#,
+                    project_id
+                )
+                .fetch_all(pool)
+                .await
+            }
+            Some(project_id) => {
+                sqlx::query_as!(
+                    Tag,
+                    r#"SELECT id as "id!: Uuid",
+                              project_id as "project_id: Uuid",
+                              tag_name,
+                              content as "content!",
+                              created_at as "created_at!: DateTime<Utc>",
+                              updated_at as "updated_at!: DateTime<Utc>"
+                       FROM tags
+                       WHERE project_id = $1
+                       ORDER BY tag_name ASC"#,
+                    project_id
+                )
+                .fetch_all(pool)
+                .await
+            }
+            None => {
+                sqlx::query_as!(
+                    Tag,
+                    r#"SELECT id as "id!: Uuid",
+                              project_id as "project_id: Uuid",
+                              tag_name,
+                              content as "content!",
+                              created_at as "created_at!: DateTime<Utc>",
+                              updated_at as "updated_at!: DateTime<Utc>"
+                       FROM tags
+                       WHERE project_id IS NULL
+                       ORDER BY tag_name ASC"#
+                )
+                .fetch_all(pool)
+                .await
+            }
+        }
+    }
+
     pub async fn find_all(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
             Tag,
-            r#"SELECT id as "id!: Uuid", tag_name, content as "content!", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+            r#"SELECT id as "id!: Uuid",
+                      project_id as "project_id: Uuid",
+                      tag_name,
+                      content as "content!",
+                      created_at as "created_at!: DateTime<Utc>",
+                      updated_at as "updated_at!: DateTime<Utc>"
                FROM tags
                ORDER BY tag_name ASC"#
         )
@@ -40,7 +106,12 @@ impl Tag {
     pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             Tag,
-            r#"SELECT id as "id!: Uuid", tag_name, content as "content!", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+            r#"SELECT id as "id!: Uuid",
+                      project_id as "project_id: Uuid",
+                      tag_name,
+                      content as "content!",
+                      created_at as "created_at!: DateTime<Utc>",
+                      updated_at as "updated_at!: DateTime<Utc>"
                FROM tags
                WHERE id = $1"#,
             id
@@ -53,10 +124,16 @@ impl Tag {
         let id = Uuid::new_v4();
         sqlx::query_as!(
             Tag,
-            r#"INSERT INTO tags (id, tag_name, content)
-               VALUES ($1, $2, $3)
-               RETURNING id as "id!: Uuid", tag_name, content as "content!", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+            r#"INSERT INTO tags (id, project_id, tag_name, content)
+               VALUES ($1, $2, $3, $4)
+               RETURNING id as "id!: Uuid",
+                         project_id as "project_id: Uuid",
+                         tag_name,
+                         content as "content!",
+                         created_at as "created_at!: DateTime<Utc>",
+                         updated_at as "updated_at!: DateTime<Utc>""#,
             id,
+            data.project_id,
             data.tag_name,
             data.content
         )
@@ -81,7 +158,12 @@ impl Tag {
             r#"UPDATE tags
                SET tag_name = $2, content = $3, updated_at = datetime('now', 'subsec')
                WHERE id = $1
-               RETURNING id as "id!: Uuid", tag_name, content as "content!", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+               RETURNING id as "id!: Uuid",
+                         project_id as "project_id: Uuid",
+                         tag_name,
+                         content as "content!",
+                         created_at as "created_at!: DateTime<Utc>",
+                         updated_at as "updated_at!: DateTime<Utc>""#,
             id,
             tag_name,
             content

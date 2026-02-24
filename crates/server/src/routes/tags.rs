@@ -9,6 +9,7 @@ use db::models::tag::{CreateTag, Tag, UpdateTag};
 use local_deployment::Deployment;
 use serde::Deserialize;
 use ts_rs::TS;
+use uuid::Uuid;
 use utils::response::ApiResponse;
 
 use crate::{DeploymentImpl, error::ApiError, middleware::load_tag_middleware};
@@ -17,13 +18,22 @@ use crate::{DeploymentImpl, error::ApiError, middleware::load_tag_middleware};
 pub struct TagSearchParams {
     #[serde(default)]
     pub search: Option<String>,
+    #[serde(default)]
+    pub project_id: Option<Uuid>,
+    #[serde(default)]
+    pub include_global: Option<bool>,
 }
 
 pub async fn get_tags(
     State(deployment): State<DeploymentImpl>,
     Query(params): Query<TagSearchParams>,
 ) -> Result<ResponseJson<ApiResponse<Vec<Tag>>>, ApiError> {
-    let mut tags = Tag::find_all(&deployment.db().pool).await?;
+    let mut tags = Tag::find_for_project(
+        &deployment.db().pool,
+        params.project_id,
+        params.include_global.unwrap_or(false),
+    )
+    .await?;
 
     // Filter by search query if provided
     if let Some(search_query) = params.search {

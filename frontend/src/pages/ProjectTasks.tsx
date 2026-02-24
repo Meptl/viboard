@@ -106,11 +106,13 @@ function DiffsPanelContainer({
   projectId,
   branchStatus,
   branches,
+  onMergeSuccess,
 }: {
   attempt: TaskAttempt | null;
   projectId: string;
   branchStatus: BranchStatus | null;
   branches: GitBranch[];
+  onMergeSuccess?: () => void;
 }) {
   const { isAttemptRunning } = useAttemptExecution(attempt?.id);
 
@@ -125,6 +127,7 @@ function DiffsPanelContainer({
               branches,
               isAttemptRunning,
               selectedBranch: branchStatus?.target_branch_name ?? null,
+              onMergeSuccess,
             }
           : undefined
       }
@@ -540,6 +543,10 @@ export function ProjectTasks() {
       navigate(`/projects/${projectId}/tasks`, { replace: true });
     }
   }, [projectId, navigate]);
+
+  const handleMergeSuccess = useCallback(() => {
+    handleClosePanel();
+  }, [handleClosePanel]);
 
   const handleViewTaskDetails = useCallback(
     async (task: Task, attemptIdToShow?: string) => {
@@ -1023,6 +1030,7 @@ export function ProjectTasks() {
             projectId={projectId!}
             branchStatus={branchStatus ?? null}
             branches={branches}
+            onMergeSuccess={handleMergeSuccess}
           />
         )}
       </div>

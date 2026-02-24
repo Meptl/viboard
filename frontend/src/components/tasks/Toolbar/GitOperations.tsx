@@ -32,6 +32,7 @@ interface GitOperationsProps {
   isAttemptRunning: boolean;
   selectedBranch: string | null;
   layout?: 'horizontal' | 'vertical';
+  onMergeSuccess?: () => void;
 }
 
 export type GitOperationsInputs = Omit<GitOperationsProps, 'selectedAttempt'>;
@@ -44,6 +45,7 @@ function GitOperations({
   isAttemptRunning,
   selectedBranch,
   layout = 'horizontal',
+  onMergeSuccess,
 }: GitOperationsProps) {
   const { t } = useTranslation('tasks');
 
@@ -142,7 +144,10 @@ function GitOperations({
       setMerging(true);
       await git.actions.merge();
       setMergeSuccess(true);
-      setTimeout(() => setMergeSuccess(false), 2000);
+      onMergeSuccess?.();
+      if (!onMergeSuccess) {
+        setTimeout(() => setMergeSuccess(false), 2000);
+      }
     } finally {
       setMerging(false);
     }

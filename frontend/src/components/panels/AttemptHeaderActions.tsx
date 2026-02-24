@@ -39,8 +39,8 @@ export const AttemptHeaderActions = ({
             type="single"
             value={mode ?? ''}
             onValueChange={(v) => {
-              const newMode = (v as LayoutMode) || null;
-              onModeChange(newMode);
+              if (!v) return;
+              onModeChange(v as LayoutMode);
             }}
             className="inline-flex gap-4"
             aria-label="Layout mode"

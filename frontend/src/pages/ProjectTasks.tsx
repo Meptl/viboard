@@ -395,7 +395,7 @@ export function ProjectTasks() {
     });
 
     const getTimestamp = (item: KanbanColumnItem) => {
-      return new Date(item.task.created_at).getTime();
+      return new Date(item.task.updated_at).getTime();
     };
 
     TASK_STATUSES.forEach((status) => {
@@ -830,7 +830,7 @@ export function ProjectTasks() {
         return;
       }
 
-      const draggedCreatedAt = new Date(task.created_at).getTime();
+      const draggedUpdatedAt = new Date(task.updated_at).getTime();
       const targetItems = kanbanColumns[targetStatus].filter(
         (item) => item.task.id !== activeTaskId
       );
@@ -838,9 +838,9 @@ export function ProjectTasks() {
       let insertIndex = targetItems.length;
       for (let i = 0; i < targetItems.length; i++) {
         const itemTimestamp = new Date(
-          targetItems[i].task.created_at
+          targetItems[i].task.updated_at
         ).getTime();
-        if (draggedCreatedAt > itemTimestamp) {
+        if (draggedUpdatedAt > itemTimestamp) {
           insertIndex = i;
           break;
         }

@@ -126,7 +126,7 @@ export function TaskFollowUpSection({
 
   // Local message state for immediate UI feedback (before debounced save)
   const [localMessage, setLocalMessage] = useState('');
-  const [isRawMarkdownMode, setIsRawMarkdownMode] = useState(false);
+  const [isRawMarkdownMode, setIsRawMarkdownMode] = useState(true);
 
   // Variant selection - derive default from latest process
   const latestProfileId = useMemo<ExecutorProfileId | null>(() => {

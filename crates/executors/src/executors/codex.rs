@@ -219,8 +219,13 @@ impl Codex {
             .extend_params([Self::vk_mcp_url_config_arg()])
     }
 
-    fn vk_mcp_url_config_arg() -> &'static str {
-        "mcp_servers.vk.url=\"http://127.0.0.1:$MCP_PORT/mcp\""
+    fn vk_mcp_url_config_arg() -> String {
+        let mcp_port = std::env::var("MCP_PORT")
+            .ok()
+            .filter(|value| value.parse::<u16>().is_ok())
+            .unwrap_or_else(|| "3002".to_string());
+
+        format!("mcp_servers.vk.url=\"http://127.0.0.1:{mcp_port}/mcp\"")
     }
 
     fn build_command_builder(&self) -> CommandBuilder {

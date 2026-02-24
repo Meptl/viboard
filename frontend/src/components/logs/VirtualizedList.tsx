@@ -129,6 +129,7 @@ const VirtualizedList = ({ attempt }: VirtualizedListProps) => {
           <Button
             size="sm"
             variant={showOnlyUserMessages ? 'default' : 'outline'}
+            className={!showOnlyUserMessages ? 'bg-background hover:bg-background' : undefined}
             onClick={() => setShowOnlyUserMessages((prev) => !prev)}
             aria-pressed={showOnlyUserMessages}
           >

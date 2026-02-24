@@ -160,15 +160,8 @@ pub trait ContainerService {
         }
 
         let title = format!("Task Complete: {}", ctx.task.title);
-        let message = match ctx.execution_process.status {
-            ExecutionProcessStatus::Completed => format!(
-                "✅ '{}' completed successfully\nBranch: {:?}\nExecutor: {}",
-                ctx.task.title, ctx.task_attempt.branch, ctx.task_attempt.executor
-            ),
-            ExecutionProcessStatus::Failed => format!(
-                "❌ '{}' execution failed\nBranch: {:?}\nExecutor: {}",
-                ctx.task.title, ctx.task_attempt.branch, ctx.task_attempt.executor
-            ),
+        match ctx.execution_process.status {
+            ExecutionProcessStatus::Completed | ExecutionProcessStatus::Failed => {}
             _ => {
                 tracing::warn!(
                     "Tried to notify attempt completion for {} but process is still running!",
@@ -176,7 +169,8 @@ pub trait ContainerService {
                 );
                 return;
             }
-        };
+        }
+        let message = title.clone();
         let url = NotificationService::attempt_url(ctx.task.project_id, ctx.task.id, ctx.task_attempt.id);
         self.notification_service()
             .notify_with_url(&title, &message, Some(&url))

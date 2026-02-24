@@ -68,7 +68,7 @@ export function TaskNotificationsBell() {
           {projectNotifications.length > 0 ? (
             <span
               aria-hidden="true"
-              className="absolute right-0.5 top-0.5 h-2 w-2 -translate-x-[10px] translate-y-[8px] rounded-full bg-rose-400"
+              className="absolute right-0.5 top-0.5 h-2 w-2 -translate-x-[6px] translate-y-[6px] rounded-full bg-rose-400"
             />
           ) : null}
         </Button>

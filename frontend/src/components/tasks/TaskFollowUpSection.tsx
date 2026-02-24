@@ -10,7 +10,6 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,7 +41,6 @@ import { VariantSelector } from '@/components/tasks/VariantSelector';
 import { useAttemptBranch } from '@/hooks/useAttemptBranch';
 import { FollowUpConflictSection } from '@/components/tasks/follow-up/FollowUpConflictSection';
 import { ClickedElementsBanner } from '@/components/tasks/ClickedElementsBanner';
-import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { useRetryUi } from '@/contexts/RetryUiContext';
 import { useFollowUpSend } from '@/hooks/useFollowUpSend';
 import { useVariant } from '@/hooks/useVariant';
@@ -65,7 +63,7 @@ export function TaskFollowUpSection({
   selectedAttemptId,
 }: TaskFollowUpSectionProps) {
   const { t } = useTranslation('tasks');
-  const { projectId, project } = useProject();
+  const { project } = useProject();
 
   const { isAttemptRunning, stopExecution, isStopping, processes } =
     useAttemptExecution(selectedAttemptId, task.id);
@@ -126,7 +124,6 @@ export function TaskFollowUpSection({
 
   // Local message state for immediate UI feedback (before debounced save)
   const [localMessage, setLocalMessage] = useState('');
-  const [isRawMarkdownMode, setIsRawMarkdownMode] = useState(true);
 
   // Variant selection - derive default from latest process
   const latestProfileId = useMemo<ExecutorProfileId | null>(() => {
@@ -508,7 +505,7 @@ export function TaskFollowUpSection({
     [handlePasteFiles]
   );
 
-  // Stable onChange handler for WYSIWYGEditor
+  // Stable onChange handler for the follow-up editor
   const handleEditorChange = useCallback(
     (value: string) => {
       // Auto-cancel queue when user starts editing
@@ -669,55 +666,18 @@ export function TaskFollowUpSection({
                 }
               }}
             >
-              {isRawMarkdownMode ? (
-                <textarea
-                  placeholder={editorPlaceholder}
-                  value={displayMessage}
-                  onChange={(e) => handleEditorChange(e.target.value)}
-                  disabled={!isEditable}
-                  className="w-full min-h-[120px] bg-transparent resize-y outline-none font-mono text-sm leading-relaxed border rounded-md p-3"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                      handleSubmitShortcut(e.nativeEvent);
-                    }
-                  }}
-                />
-              ) : (
-                <WYSIWYGEditor
-                  placeholder={editorPlaceholder}
-                  value={displayMessage}
-                  onChange={handleEditorChange}
-                  disabled={!isEditable}
-                  onPasteFiles={handlePasteFiles}
-                  projectId={projectId}
-                  taskAttemptId={selectedAttemptId}
-                  onCmdEnter={handleSubmitShortcut}
-                  className="min-h-[40px]"
-                />
-              )}
-              <ToggleGroup
-                type="single"
-                value={isRawMarkdownMode ? 'markdown' : 'preview'}
-                onValueChange={(value) => {
-                  if (value) setIsRawMarkdownMode(value === 'markdown');
+              <textarea
+                placeholder={editorPlaceholder}
+                value={displayMessage}
+                onChange={(e) => handleEditorChange(e.target.value)}
+                disabled={!isEditable}
+                className="w-full min-h-[120px] bg-transparent resize-y outline-none font-mono text-sm leading-relaxed border rounded-md p-3"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                    handleSubmitShortcut(e.nativeEvent);
+                  }
                 }}
-                className="ml-auto w-fit bg-muted/90 backdrop-blur-sm rounded-sm p-0.5 gap-0"
-              >
-                <ToggleGroupItem
-                  value="preview"
-                  active={!isRawMarkdownMode}
-                  size="sm"
-                >
-                  {t('taskFormDialog.preview')}
-                </ToggleGroupItem>
-                <ToggleGroupItem
-                  value="markdown"
-                  active={isRawMarkdownMode}
-                  size="sm"
-                >
-                  {t('taskFormDialog.markdown')}
-                </ToggleGroupItem>
-              </ToggleGroup>
+              />
             </div>
           </div>
         </div>

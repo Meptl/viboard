@@ -174,6 +174,7 @@ export function ProjectTasks() {
     tasks,
     tasksById,
     isLoading,
+    isConnected,
     error: streamError,
   } = useProjectTasks(projectId || '');
   const { ingestProjectTasks, clearTaskNotifications } = useTaskNotifications();
@@ -910,7 +911,23 @@ export function ProjectTasks() {
   };
 
   const kanbanContent =
-    tasks.length === 0 ? (
+    tasks.length === 0 && !isConnected ? (
+      <div className="max-w-7xl mx-auto mt-8">
+        <Card>
+          <CardContent className="py-10">
+            <Loader
+              message="Connecting to backend..."
+              size={28}
+              className="py-2"
+            />
+            <p className="text-center text-sm text-muted-foreground mt-2">
+              Waiting for the backend connection to be established before
+              loading tasks.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    ) : tasks.length === 0 ? (
       <div className="max-w-7xl mx-auto mt-8">
         <Card>
           <CardContent className="text-center py-8">

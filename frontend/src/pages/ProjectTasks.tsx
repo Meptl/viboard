@@ -967,7 +967,7 @@ export function ProjectTasks() {
           <div className="flex items-start gap-1">
             <button
               type="button"
-              className="flex-1 min-w-0 text-base md:text-lg font-semibold text-left whitespace-normal break-words hover:underline"
+              className="min-w-0 max-w-full text-base md:text-lg font-semibold text-left whitespace-normal break-words hover:underline"
               onClick={() =>
                 navigate(paths.projectTasks(projectId!), { replace: true })
               }

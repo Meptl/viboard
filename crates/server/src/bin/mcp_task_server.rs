@@ -2,7 +2,10 @@ use std::net::SocketAddr;
 
 use rmcp::{
     ServiceExt,
-    transport::{SseServer, stdio},
+    transport::{
+        SseServer, StreamableHttpServerConfig, StreamableHttpService, stdio,
+        streamable_http_server::session::local::LocalSessionManager,
+    },
 };
 use server::mcp::task_server::TaskServer;
 use tracing_subscriber::{EnvFilter, prelude::*};
@@ -11,7 +14,8 @@ use utils::port_file::read_port_file;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum McpTransport {
     Stdio,
-    HttpSse,
+    HttpStreamable,
+    HttpSseLegacy,
 }
 
 #[derive(Debug, Clone)]
@@ -24,7 +28,9 @@ impl Default for Args {
     fn default() -> Self {
         Self {
             transport: McpTransport::Stdio,
-            http_bind: "127.0.0.1:8788".parse().expect("valid default bind address"),
+            http_bind: "127.0.0.1:8788"
+                .parse()
+                .expect("valid default bind address"),
         }
     }
 }
@@ -43,9 +49,9 @@ impl Args {
             args.http_bind = SocketAddr::from(([127, 0, 0, 1], port));
         }
         if let Ok(value) = std::env::var("MCP_HTTP_BIND") {
-            args.http_bind = value.parse().map_err(|e| {
-                anyhow::anyhow!("Invalid MCP_HTTP_BIND value '{}': {}", value, e)
-            })?;
+            args.http_bind = value
+                .parse()
+                .map_err(|e| anyhow::anyhow!("Invalid MCP_HTTP_BIND value '{}': {}", value, e))?;
         }
 
         let mut iter = std::env::args().skip(1);
@@ -81,18 +87,18 @@ impl Args {
             }
 
             if let Some(value) = arg.strip_prefix("--http-bind=") {
-                args.http_bind = value.parse().map_err(|e| {
-                    anyhow::anyhow!("Invalid --http-bind value '{}': {}", value, e)
-                })?;
+                args.http_bind = value
+                    .parse()
+                    .map_err(|e| anyhow::anyhow!("Invalid --http-bind value '{}': {}", value, e))?;
                 continue;
             }
             if arg == "--http-bind" {
                 let value = iter
                     .next()
                     .ok_or_else(|| anyhow::anyhow!("Missing value for --http-bind"))?;
-                args.http_bind = value.parse().map_err(|e| {
-                    anyhow::anyhow!("Invalid --http-bind value '{}': {}", value, e)
-                })?;
+                args.http_bind = value
+                    .parse()
+                    .map_err(|e| anyhow::anyhow!("Invalid --http-bind value '{}': {}", value, e))?;
                 continue;
             }
 
@@ -111,8 +117,14 @@ impl Args {
 fn parse_transport(value: &str) -> anyhow::Result<McpTransport> {
     match value.to_ascii_lowercase().as_str() {
         "stdio" => Ok(McpTransport::Stdio),
-        "http" | "sse" => Ok(McpTransport::HttpSse),
-        other => anyhow::bail!("Invalid transport '{}'. Expected: stdio, http", other),
+        "http" | "streamable-http" | "streamable_http" | "streamable" => {
+            Ok(McpTransport::HttpStreamable)
+        }
+        "sse" | "http-sse" | "http_sse" => Ok(McpTransport::HttpSseLegacy),
+        other => anyhow::bail!(
+            "Invalid transport '{}'. Expected: stdio, http, streamable-http, sse",
+            other
+        ),
     }
 }
 
@@ -122,8 +134,11 @@ fn print_help() {
          \n\
          Options:\n\
            --port <PORT>              MCP listener port on 127.0.0.1 (default: 8788)\n\
-           --transport <stdio|http>   MCP transport (default: stdio)\n\
-           --http-bind <ADDR>         Advanced: bind address for HTTP/SSE transport (overrides --port)\n\
+           --transport <stdio|http|sse>\n\
+                                     MCP transport (default: stdio)\n\
+                                     'http' = Streamable HTTP (recommended)\n\
+                                     'sse' = legacy HTTP/SSE transport\n\
+           --http-bind <ADDR>         Advanced: bind address for HTTP transport (overrides --port)\n\
          \n\
          Environment:\n\
            MCP_TRANSPORT, MCP_PORT, MCP_HTTP_BIND, VIBE_BACKEND_URL, HOST, BACKEND_PORT, PORT"
@@ -191,16 +206,46 @@ fn main() -> anyhow::Result<()> {
 
                     service.waiting().await?;
                 }
-                McpTransport::HttpSse => {
+                McpTransport::HttpStreamable => {
+                    let service = TaskServer::new(&base_url).init().await;
+                    let mcp_service: StreamableHttpService<TaskServer, LocalSessionManager> =
+                        StreamableHttpService::new(
+                        move || Ok(service.clone()),
+                        Default::default(),
+                        StreamableHttpServerConfig::default(),
+                    );
+                    let router = axum::Router::new().nest_service("/mcp", mcp_service);
+                    let listener = tokio::net::TcpListener::bind(args.http_bind).await?;
+                    tracing::info!(
+                        "[MCP] Streamable HTTP MCP server listening on http://{}/mcp",
+                        args.http_bind
+                    );
+                    axum::serve(listener, router)
+                        .with_graceful_shutdown(async {
+                            if let Err(err) = tokio::signal::ctrl_c().await {
+                                tracing::warn!(
+                                    "[MCP] Failed to listen for shutdown signal: {}",
+                                    err
+                                );
+                            }
+                            tracing::info!(
+                                "[MCP] Received shutdown signal, stopping Streamable HTTP MCP server"
+                            );
+                        })
+                        .await?;
+                }
+                McpTransport::HttpSseLegacy => {
                     let service = TaskServer::new(&base_url).init().await;
                     let sse_server = SseServer::serve(args.http_bind).await?;
                     tracing::info!(
-                        "[MCP] HTTP/SSE MCP server listening on http://{} (SSE: /sse, POST: /message)",
+                        "[MCP] Legacy HTTP/SSE MCP server listening on http://{} (SSE: /sse, POST: /message)",
                         args.http_bind
                     );
                     let shutdown = sse_server.with_service(move || service.clone());
                     tokio::signal::ctrl_c().await?;
-                    tracing::info!("[MCP] Received shutdown signal, stopping HTTP/SSE MCP server");
+                    tracing::info!(
+                        "[MCP] Received shutdown signal, stopping legacy HTTP/SSE MCP server"
+                    );
                     shutdown.cancel();
                 }
             }

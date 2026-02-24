@@ -9,8 +9,8 @@ use db::models::tag::{CreateTag, Tag, UpdateTag};
 use local_deployment::Deployment;
 use serde::Deserialize;
 use ts_rs::TS;
-use uuid::Uuid;
 use utils::response::ApiResponse;
+use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError, middleware::load_tag_middleware};
 

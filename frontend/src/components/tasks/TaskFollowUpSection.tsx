@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -125,6 +126,7 @@ export function TaskFollowUpSection({
 
   // Local message state for immediate UI feedback (before debounced save)
   const [localMessage, setLocalMessage] = useState('');
+  const [isRawMarkdownMode, setIsRawMarkdownMode] = useState(false);
 
   // Variant selection - derive default from latest process
   const latestProfileId = useMemo<ExecutorProfileId | null>(() => {
@@ -667,17 +669,55 @@ export function TaskFollowUpSection({
                 }
               }}
             >
-              <WYSIWYGEditor
-                placeholder={editorPlaceholder}
-                value={displayMessage}
-                onChange={handleEditorChange}
-                disabled={!isEditable}
-                onPasteFiles={handlePasteFiles}
-                projectId={projectId}
-                taskAttemptId={selectedAttemptId}
-                onCmdEnter={handleSubmitShortcut}
-                className="min-h-[40px]"
-              />
+              {isRawMarkdownMode ? (
+                <textarea
+                  placeholder={editorPlaceholder}
+                  value={displayMessage}
+                  onChange={(e) => handleEditorChange(e.target.value)}
+                  disabled={!isEditable}
+                  className="w-full min-h-[120px] bg-transparent resize-y outline-none font-mono text-sm leading-relaxed border rounded-md p-3"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                      handleSubmitShortcut(e.nativeEvent);
+                    }
+                  }}
+                />
+              ) : (
+                <WYSIWYGEditor
+                  placeholder={editorPlaceholder}
+                  value={displayMessage}
+                  onChange={handleEditorChange}
+                  disabled={!isEditable}
+                  onPasteFiles={handlePasteFiles}
+                  projectId={projectId}
+                  taskAttemptId={selectedAttemptId}
+                  onCmdEnter={handleSubmitShortcut}
+                  className="min-h-[40px]"
+                />
+              )}
+              <ToggleGroup
+                type="single"
+                value={isRawMarkdownMode ? 'markdown' : 'preview'}
+                onValueChange={(value) => {
+                  if (value) setIsRawMarkdownMode(value === 'markdown');
+                }}
+                className="ml-auto w-fit bg-muted/90 backdrop-blur-sm rounded-sm p-0.5 gap-0"
+              >
+                <ToggleGroupItem
+                  value="preview"
+                  active={!isRawMarkdownMode}
+                  size="sm"
+                >
+                  {t('taskFormDialog.preview')}
+                </ToggleGroupItem>
+                <ToggleGroupItem
+                  value="markdown"
+                  active={isRawMarkdownMode}
+                  size="sm"
+                >
+                  {t('taskFormDialog.markdown')}
+                </ToggleGroupItem>
+              </ToggleGroup>
             </div>
           </div>
         </div>

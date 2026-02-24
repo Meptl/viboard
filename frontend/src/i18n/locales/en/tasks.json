@@ -172,7 +172,7 @@
       "agent": "Agent",
       "branch": "Branch",
       "diffs": "Diffs",
-      "summaryAndActions": "Summary & Actions"
+      "summaryAndActions": "Summary"
     },
     "agent": "Agent",
     "path": "Path",

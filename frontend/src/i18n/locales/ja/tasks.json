@@ -42,7 +42,7 @@
       "attempt": "試行",
       "branch": "ブランチ",
       "diffs": "差分",
-      "summaryAndActions": "概要とアクション"
+      "summaryAndActions": "概要"
     },
     "newAttempt": "New Attempt",
     "openInEditor": "Open in {{editor}}",

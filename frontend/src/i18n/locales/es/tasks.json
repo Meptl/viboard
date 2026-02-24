@@ -42,7 +42,7 @@
       "attempt": "Intento",
       "branch": "Rama",
       "diffs": "Diferencias",
-      "summaryAndActions": "Resumen y Acciones"
+      "summaryAndActions": "Resumen"
     },
     "newAttempt": "New Attempt",
     "openInEditor": "Open in {{editor}}",

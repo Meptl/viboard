@@ -42,7 +42,7 @@
       "attempt": "시도",
       "branch": "브랜치",
       "diffs": "변경사항",
-      "summaryAndActions": "요약 및 작업"
+      "summaryAndActions": "요약"
     },
     "newAttempt": "New Attempt",
     "openInEditor": "Open in {{editor}}",

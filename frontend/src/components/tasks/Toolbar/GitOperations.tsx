@@ -32,6 +32,7 @@ interface GitOperationsProps {
   isAttemptRunning: boolean;
   selectedBranch: string | null;
   layout?: 'horizontal' | 'vertical';
+  display?: 'full' | 'action-only';
   onMergeSuccess?: () => void;
 }
 
@@ -45,6 +46,7 @@ function GitOperations({
   isAttemptRunning,
   selectedBranch,
   layout = 'horizontal',
+  display = 'full',
   onMergeSuccess,
 }: GitOperationsProps) {
   const { t } = useTranslation('tasks');
@@ -176,6 +178,43 @@ function GitOperations({
   const actionsClasses = isVertical
     ? 'flex flex-wrap items-center gap-2'
     : 'shrink-0 flex flex-wrap items-center gap-2 overflow-y-hidden overflow-x-visible max-h-8';
+
+  const actionButton = (
+    <Button
+      onClick={shouldShowRebaseAction ? handleRebaseClick : handleMergeClick}
+      disabled={
+        shouldShowRebaseAction
+          ? rebasing || isAttemptRunning || hasConflictsCalculated
+          : merging ||
+            hasConflictsCalculated ||
+            isAttemptRunning ||
+            (branchStatus != null &&
+              (branchStatus.commits_ahead ?? 0) === 0 &&
+              !mergeSuccess)
+      }
+      variant="outline"
+      size="xs"
+      className={`gap-1 shrink-0 ${
+        shouldShowRebaseAction
+          ? 'border-warning text-warning hover:bg-warning'
+          : 'border-success text-success hover:bg-success'
+      }`}
+      aria-label={shouldShowRebaseAction ? rebaseButtonLabel : mergeButtonLabel}
+    >
+      {shouldShowRebaseAction ? (
+        <RefreshCw className={`h-3.5 w-3.5 ${rebasing ? 'animate-spin' : ''}`} />
+      ) : (
+        <GitBranchIcon className="h-3.5 w-3.5" />
+      )}
+      <span className="truncate max-w-[10ch]">
+        {shouldShowRebaseAction ? rebaseButtonLabel : mergeButtonLabel}
+      </span>
+    </Button>
+  );
+
+  if (display === 'action-only') {
+    return actionButton;
+  }
 
   return (
     <div className="w-full border-b py-2">
@@ -344,44 +383,7 @@ function GitOperations({
         </div>
 
         {/* Right: Actions */}
-        <div className={actionsClasses}>
-          <Button
-            onClick={
-              shouldShowRebaseAction ? handleRebaseClick : handleMergeClick
-            }
-            disabled={
-              shouldShowRebaseAction
-                ? rebasing || isAttemptRunning || hasConflictsCalculated
-                : merging ||
-                  hasConflictsCalculated ||
-                  isAttemptRunning ||
-                  (branchStatus != null &&
-                    (branchStatus.commits_ahead ?? 0) === 0 &&
-                    !mergeSuccess)
-            }
-            variant="outline"
-            size="xs"
-            className={`gap-1 shrink-0 ${
-              shouldShowRebaseAction
-                ? 'border-warning text-warning hover:bg-warning'
-                : 'border-success text-success hover:bg-success'
-            }`}
-            aria-label={
-              shouldShowRebaseAction ? rebaseButtonLabel : mergeButtonLabel
-            }
-          >
-            {shouldShowRebaseAction ? (
-              <RefreshCw
-                className={`h-3.5 w-3.5 ${rebasing ? 'animate-spin' : ''}`}
-              />
-            ) : (
-              <GitBranchIcon className="h-3.5 w-3.5" />
-            )}
-            <span className="truncate max-w-[10ch]">
-              {shouldShowRebaseAction ? rebaseButtonLabel : mergeButtonLabel}
-            </span>
-          </Button>
-        </div>
+        <div className={actionsClasses}>{actionButton}</div>
       </div>
     </div>
   );

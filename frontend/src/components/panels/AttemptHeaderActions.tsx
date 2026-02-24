@@ -12,6 +12,9 @@ import type { LayoutMode } from '../layout/TasksLayout';
 import type { TaskAttempt, TaskWithAttemptStatus } from 'shared/types';
 import { ActionsDropdown } from '../ui/actions-dropdown';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import GitOperations, {
+  type GitOperationsInputs,
+} from '@/components/tasks/Toolbar/GitOperations.tsx';
 
 interface AttemptHeaderActionsProps {
   onClose: () => void;
@@ -19,6 +22,7 @@ interface AttemptHeaderActionsProps {
   onModeChange?: (mode: LayoutMode) => void;
   task: TaskWithAttemptStatus;
   attempt?: TaskAttempt | null;
+  gitOps?: GitOperationsInputs;
 }
 
 export const AttemptHeaderActions = ({
@@ -27,6 +31,7 @@ export const AttemptHeaderActions = ({
   onModeChange,
   task,
   attempt,
+  gitOps,
 }: AttemptHeaderActionsProps) => {
   const { t } = useTranslation('tasks');
   const isXL = useMediaQuery('(min-width: 1280px)');
@@ -34,48 +39,57 @@ export const AttemptHeaderActions = ({
   return (
     <>
       {typeof mode !== 'undefined' && onModeChange && isXL && (
-        <TooltipProvider>
-          <ToggleGroup
-            type="single"
-            value={mode ?? ''}
-            onValueChange={(v) => {
-              if (!v) return;
-              onModeChange(v as LayoutMode);
-            }}
-            className="inline-flex gap-4"
-            aria-label="Layout mode"
-          >
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <ToggleGroupItem
-                  value="preview"
-                  aria-label="Preview"
-                  active={mode === 'preview'}
-                >
-                  <Eye className="h-4 w-4" />
-                </ToggleGroupItem>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                {t('attemptHeaderActions.preview')}
-              </TooltipContent>
-            </Tooltip>
+        <div className="inline-flex items-center gap-4">
+          <TooltipProvider>
+            <ToggleGroup
+              type="single"
+              value={mode ?? ''}
+              onValueChange={(v) => {
+                if (!v) return;
+                onModeChange(v as LayoutMode);
+              }}
+              className="inline-flex gap-4"
+              aria-label="Layout mode"
+            >
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <ToggleGroupItem
+                    value="preview"
+                    aria-label="Preview"
+                    active={mode === 'preview'}
+                  >
+                    <Eye className="h-4 w-4" />
+                  </ToggleGroupItem>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  {t('attemptHeaderActions.preview')}
+                </TooltipContent>
+              </Tooltip>
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <ToggleGroupItem
-                  value="diffs"
-                  aria-label="Diffs"
-                  active={mode === 'diffs'}
-                >
-                  <FileDiff className="h-4 w-4" />
-                </ToggleGroupItem>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                {t('attemptHeaderActions.diffs')}
-              </TooltipContent>
-            </Tooltip>
-          </ToggleGroup>
-        </TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <ToggleGroupItem
+                    value="diffs"
+                    aria-label="Diffs"
+                    active={mode === 'diffs'}
+                  >
+                    <FileDiff className="h-4 w-4" />
+                  </ToggleGroupItem>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  {t('attemptHeaderActions.diffs')}
+                </TooltipContent>
+              </Tooltip>
+            </ToggleGroup>
+          </TooltipProvider>
+          {attempt && gitOps && (
+            <GitOperations
+              selectedAttempt={attempt}
+              {...gitOps}
+              display="action-only"
+            />
+          )}
+        </div>
       )}
       {typeof mode !== 'undefined' && onModeChange && isXL && (
         <div className="h-4 w-px bg-border" />

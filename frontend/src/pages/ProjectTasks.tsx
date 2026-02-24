@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { AlertTriangle, Pencil, Plus } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
 import { attemptsApi, projectsApi, tasksApi } from '@/lib/api';
-import type { GitBranch, TaskAttempt, BranchStatus } from 'shared/types';
+import type { GitBranch } from 'shared/types';
 import { openTaskForm } from '@/lib/openTaskForm';
 import { FeatureShowcaseDialog } from '@/components/dialogs/global/FeatureShowcaseDialog';
 import { ConfirmDialog } from '@/components/dialogs/shared/ConfirmDialog';
@@ -60,6 +60,7 @@ import TodoPanel from '@/components/tasks/TodoPanel';
 import { NewCard, NewCardHeader } from '@/components/ui/new-card';
 import { AttemptHeaderActions } from '@/components/panels/AttemptHeaderActions';
 import { useTaskNotifications } from '@/contexts/TaskNotificationsContext';
+import type { GitOperationsInputs } from '@/components/tasks/Toolbar/GitOperations';
 
 import type { TaskWithAttemptStatus, TaskStatus } from 'shared/types';
 
@@ -93,36 +94,31 @@ function GitErrorBanner() {
   );
 }
 
-function DiffsPanelContainer({
+function AttemptHeaderActionsWithGitOps({
+  mode,
+  onModeChange,
+  task,
   attempt,
-  projectId,
-  branchStatus,
-  branches,
-  onMergeSuccess,
+  gitOps,
+  onClose,
 }: {
-  attempt: TaskAttempt | null;
-  projectId: string;
-  branchStatus: BranchStatus | null;
-  branches: GitBranch[];
-  onMergeSuccess?: () => void;
+  mode: LayoutMode;
+  onModeChange: (mode: LayoutMode) => void;
+  task: TaskWithAttemptStatus;
+  attempt: NonNullable<ReturnType<typeof useTaskAttempt>['data']>;
+  gitOps?: Omit<GitOperationsInputs, 'isAttemptRunning'>;
+  onClose: () => void;
 }) {
   const { isAttemptRunning } = useAttemptExecution(attempt?.id);
 
   return (
-    <DiffsPanel
-      selectedAttempt={attempt}
-      gitOps={
-        attempt
-          ? {
-              projectId,
-              branchStatus: branchStatus ?? null,
-              branches,
-              isAttemptRunning,
-              selectedBranch: branchStatus?.target_branch_name ?? null,
-              onMergeSuccess,
-            }
-          : undefined
-      }
+    <AttemptHeaderActions
+      mode={mode}
+      onModeChange={onModeChange}
+      task={task}
+      attempt={attempt}
+      gitOps={gitOps ? { ...gitOps, isAttemptRunning } : undefined}
+      onClose={onClose}
     />
   );
 }
@@ -946,17 +942,28 @@ export function ProjectTasks() {
     );
 
   const effectiveMode: LayoutMode = mode ?? (attempt ? 'diffs' : null);
+  const headerGitOps =
+    attempt && projectId
+      ? {
+          projectId,
+          branchStatus: branchStatus ?? null,
+          branches,
+          selectedBranch: branchStatus?.target_branch_name ?? null,
+          onMergeSuccess: handleMergeSuccess,
+        }
+      : undefined;
 
   const rightHeader =
     selectedTask && attempt ? (
       <NewCardHeader
         className="shrink-0"
         actions={
-          <AttemptHeaderActions
+          <AttemptHeaderActionsWithGitOps
             mode={effectiveMode}
             onModeChange={setMode}
             task={selectedTask}
             attempt={attempt}
+            gitOps={headerGitOps}
             onClose={() =>
               navigate(`/projects/${projectId}/tasks`, { replace: true })
             }
@@ -1025,13 +1032,7 @@ export function ProjectTasks() {
       <div className="relative h-full w-full">
         {effectiveMode === 'preview' && <PreviewPanel />}
         {effectiveMode === 'diffs' && (
-          <DiffsPanelContainer
-            attempt={attempt}
-            projectId={projectId!}
-            branchStatus={branchStatus ?? null}
-            branches={branches}
-            onMergeSuccess={handleMergeSuccess}
-          />
+          <DiffsPanel selectedAttempt={attempt} />
         )}
       </div>
     ) : (

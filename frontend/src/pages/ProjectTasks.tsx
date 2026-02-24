@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { AlertTriangle, Plus } from 'lucide-react';
+import { AlertTriangle, Pencil, Plus } from 'lucide-react';
 import { Loader } from '@/components/ui/loader';
 import { attemptsApi, projectsApi, tasksApi } from '@/lib/api';
 import type { GitBranch, TaskAttempt, BranchStatus } from 'shared/types';
@@ -58,14 +58,6 @@ import { DiffsPanel } from '@/components/panels/DiffsPanel';
 import TaskAttemptPanel from '@/components/panels/TaskAttemptPanel';
 import TodoPanel from '@/components/tasks/TodoPanel';
 import { NewCard, NewCardHeader } from '@/components/ui/new-card';
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbList,
-  BreadcrumbLink,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb';
 import { AttemptHeaderActions } from '@/components/panels/AttemptHeaderActions';
 import { useTaskNotifications } from '@/contexts/TaskNotificationsContext';
 
@@ -897,18 +889,6 @@ export function ProjectTasks() {
     return <Loader message={t('loading')} size={32} className="py-8" />;
   }
 
-  const truncateTitle = (title: string | undefined, maxLength = 20) => {
-    if (!title) return 'Task';
-    if (title.length <= maxLength) return title;
-
-    const truncated = title.substring(0, maxLength);
-    const lastSpace = truncated.lastIndexOf(' ');
-
-    return lastSpace > 0
-      ? `${truncated.substring(0, lastSpace)}...`
-      : `${truncated}...`;
-  };
-
   const kanbanContent =
     tasks.length === 0 && !isConnected ? (
       <div className="max-w-7xl mx-auto mt-8">
@@ -984,26 +964,30 @@ export function ProjectTasks() {
         }
       >
         <div className="mx-auto w-full">
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbLink
-                  className="cursor-pointer hover:underline"
-                  onClick={() =>
-                    navigate(paths.projectTasks(projectId!), { replace: true })
-                  }
-                >
-                  {truncateTitle(selectedTask?.title)}
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbPage>
-                  {attempt.branch || 'Task Attempt'}
-                </BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
+          <div className="flex items-start gap-1">
+            <button
+              type="button"
+              className="flex-1 min-w-0 text-base md:text-lg font-semibold text-left whitespace-normal break-words hover:underline"
+              onClick={() =>
+                navigate(paths.projectTasks(projectId!), { replace: true })
+              }
+            >
+              {selectedTask.title || 'Task'}
+            </button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0"
+              aria-label="Edit task"
+              onClick={() => {
+                if (!projectId) return;
+                openTaskForm({ mode: 'edit', projectId, task: selectedTask });
+              }}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </NewCardHeader>
     ) : null;

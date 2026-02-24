@@ -57,9 +57,6 @@ export function useTaskMutations(projectId?: string) {
           ),
         });
       }
-      if (projectId) {
-        navigate(`${paths.task(projectId, createdTask.id)}/attempts/latest`);
-      }
     },
     onError: (err) => {
       console.error('Failed to create and start task:', err);

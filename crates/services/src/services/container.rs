@@ -159,26 +159,15 @@ pub trait ContainerService {
             return;
         }
 
-        let title = match ctx.execution_process.status {
-            ExecutionProcessStatus::Completed => {
-                format!("Task Success: {}", ctx.task.title)
-            }
-            ExecutionProcessStatus::Failed => {
-                format!("Task Failed: {}", ctx.task.title)
-            }
-            _ => {
-                tracing::warn!(
-                    "Tried to notify attempt completion for {} but process is still running!",
-                    ctx.task_attempt.id
-                );
-                return;
-            }
-        };
-        let url =
-            NotificationService::attempt_url(ctx.task.project_id, ctx.task.id, ctx.task_attempt.id);
-        self.notification_service()
-            .notify_with_url(&title, "", Some(&url))
-            .await;
+        if !matches!(
+            ctx.execution_process.status,
+            ExecutionProcessStatus::Completed | ExecutionProcessStatus::Failed
+        ) {
+            tracing::warn!(
+                "Tried to finalize attempt {} but process is still running!",
+                ctx.task_attempt.id
+            );
+        }
     }
 
     /// Cleanup executions marked as running in the db, call at startup

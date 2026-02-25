@@ -34,7 +34,6 @@ function formatRelativeTime(timestamp: number) {
 }
 
 function outcomeLabel(outcome: 'merged' | 'failed' | 'completed') {
-  if (outcome === 'merged') return 'Merged';
   if (outcome === 'failed') return 'Failed';
   return 'Completed';
 }

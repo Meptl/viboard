@@ -8,13 +8,15 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import {
   taskNotificationsApi,
   type TaskNotificationOutcome,
   type TaskNotificationRecord,
 } from '@/lib/api';
+import { useUserSystem } from '@/components/ConfigProvider';
+import { paths } from '@/lib/paths';
 
 export interface TaskNotification {
   id: string;
@@ -38,6 +40,13 @@ interface TaskNotificationsContextValue {
   clearAllNotifications: () => void;
 }
 
+interface InAppToast {
+  id: string;
+  projectId: string;
+  taskId: string;
+  title: string;
+}
+
 const TaskNotificationsContext =
   createContext<TaskNotificationsContextValue | null>(null);
 
@@ -52,9 +61,12 @@ function toTaskSnapshot(task: TaskWithAttemptStatus): TaskSnapshot {
 }
 
 function getOutcome(task: TaskSnapshot): TaskNotificationOutcome {
-  if (task.has_merged_attempt) return 'merged';
   if (task.last_attempt_failed) return 'failed';
   return 'completed';
+}
+
+function normalizeOutcome(outcome: TaskNotificationOutcome): TaskNotificationOutcome {
+  return outcome === 'failed' ? 'failed' : 'completed';
 }
 
 function fromServerNotification(record: TaskNotificationRecord): TaskNotification {
@@ -63,9 +75,19 @@ function fromServerNotification(record: TaskNotificationRecord): TaskNotificatio
     projectId: record.project_id,
     taskId: record.task_id,
     taskTitle: record.task_title,
-    outcome: record.outcome,
+    outcome: normalizeOutcome(record.outcome),
     createdAt: Date.parse(record.created_at),
   };
+}
+
+function isAppFocused() {
+  return document.visibilityState === 'visible' && document.hasFocus();
+}
+
+function notificationTitle(notification: TaskNotification): string {
+  return notification.outcome === 'failed'
+    ? `Task failed: ${notification.taskTitle}`
+    : `Task completed: ${notification.taskTitle}`;
 }
 
 export function TaskNotificationsProvider({
@@ -73,8 +95,12 @@ export function TaskNotificationsProvider({
 }: {
   children: ReactNode;
 }) {
+  const navigate = useNavigate();
+  const { config } = useUserSystem();
   const location = useLocation();
   const [notifications, setNotifications] = useState<TaskNotification[]>([]);
+  const [toasts, setToasts] = useState<InAppToast[]>([]);
+  const toastTimersRef = useRef<Record<string, number>>({});
   const previousTasksByProjectRef = useRef<Record<string, Record<string, TaskSnapshot>>>(
     {}
   );
@@ -128,6 +154,66 @@ export function TaskNotificationsProvider({
     void taskNotificationsApi.clearAll().catch((error) => {
       console.error('Failed to clear all notifications', error);
     });
+  }, []);
+
+  const removeToast = useCallback((toastId: string) => {
+    setToasts((prev) => prev.filter((toast) => toast.id !== toastId));
+    const timerId = toastTimersRef.current[toastId];
+    if (timerId) {
+      window.clearTimeout(timerId);
+      delete toastTimersRef.current[toastId];
+    }
+  }, []);
+
+  const showInAppToast = useCallback((notification: TaskNotification) => {
+    const toast: InAppToast = {
+      id: notification.id,
+      projectId: notification.projectId,
+      taskId: notification.taskId,
+      title: notificationTitle(notification),
+    };
+
+    setToasts((prev) => [toast, ...prev.slice(0, 4)]);
+    const timerId = window.setTimeout(() => removeToast(toast.id), 5000);
+    toastTimersRef.current[toast.id] = timerId;
+  }, [removeToast]);
+
+  const showBrowserNotification = useCallback(
+    async (notification: TaskNotification) => {
+      if (!('Notification' in window)) return;
+
+      const title = notificationTitle(notification);
+
+      const create = () => {
+        const browserNotification = new Notification(title);
+        browserNotification.onclick = () => {
+          window.focus();
+          navigate(paths.task(notification.projectId, notification.taskId));
+        };
+      };
+
+      if (Notification.permission === 'granted') {
+        create();
+        return;
+      }
+
+      if (Notification.permission === 'default') {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+          create();
+        }
+      }
+    },
+    [navigate]
+  );
+
+  useEffect(() => {
+    return () => {
+      for (const timerId of Object.values(toastTimersRef.current)) {
+        window.clearTimeout(timerId);
+      }
+      toastTimersRef.current = {};
+    };
   }, []);
 
   const ingestProjectTasks = useCallback(
@@ -191,20 +277,35 @@ export function TaskNotificationsProvider({
         return [...nextNotifications, ...deduped];
       });
 
+      if (config?.notifications.push_enabled) {
+        for (const notification of nextNotifications) {
+          if (isAppFocused()) {
+            showInAppToast(notification);
+          } else {
+            void showBrowserNotification(notification);
+          }
+        }
+      }
+
       for (const notification of nextNotifications) {
         void taskNotificationsApi
           .create({
             project_id: notification.projectId,
             task_id: notification.taskId,
             task_title: notification.taskTitle,
-            outcome: notification.outcome,
+            outcome: normalizeOutcome(notification.outcome),
           })
           .catch((error) => {
             console.error('Failed to persist task notification', error);
           });
       }
     },
-    [currentTaskRoute]
+    [
+      config?.notifications.push_enabled,
+      currentTaskRoute,
+      showBrowserNotification,
+      showInAppToast,
+    ]
   );
 
   useEffect(() => {
@@ -232,6 +333,21 @@ export function TaskNotificationsProvider({
   return (
     <TaskNotificationsContext.Provider value={value}>
       {children}
+      <div className="fixed right-4 top-4 z-50 flex w-[360px] max-w-[calc(100vw-2rem)] flex-col gap-2 pointer-events-none">
+        {toasts.map((toast) => (
+          <button
+            key={toast.id}
+            type="button"
+            onClick={() => {
+              removeToast(toast.id);
+              navigate(paths.task(toast.projectId, toast.taskId));
+            }}
+            className="pointer-events-auto rounded-md border border-border bg-background px-4 py-3 text-left shadow-md transition hover:bg-accent"
+          >
+            <div className="text-sm font-medium text-foreground">{toast.title}</div>
+          </button>
+        ))}
+      </div>
     </TaskNotificationsContext.Provider>
   );
 }

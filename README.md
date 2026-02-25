@@ -6,6 +6,7 @@ Initial rough changes include:
 - General UI/UX improvements
 - In app notifications
 - Backend MCP integration with agents
+- Fixed features
 
 
 <p align="center">

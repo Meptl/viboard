@@ -290,22 +290,20 @@ pub async fn follow_up(
     )
     .await?;
 
-    let prompt = task.with_agent_conversation_metadata(&payload.prompt);
-
     let cleanup_action = deployment
         .container()
         .cleanup_action(project.cleanup_script);
 
     let action_type = if let Some(session_id) = latest_session_id {
         ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
-            prompt: prompt.clone(),
+            prompt: payload.prompt.clone(),
             session_id,
             executor_profile_id: executor_profile_id.clone(),
         })
     } else {
         ExecutorActionType::CodingAgentInitialRequest(
             executors::actions::coding_agent_initial::CodingAgentInitialRequest {
-                prompt,
+                prompt: task.with_agent_conversation_metadata(&payload.prompt),
                 executor_profile_id: executor_profile_id.clone(),
             },
         )

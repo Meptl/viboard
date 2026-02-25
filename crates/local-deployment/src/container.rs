@@ -637,12 +637,14 @@ impl LocalContainerService {
         &self,
         worktree_path: &Path,
         base_commit: &Commit,
+        target_branch: &str,
         stats_only: bool,
     ) -> Result<DiffStreamHandle, ContainerError> {
         diff_stream::create(
             self.git().clone(),
             worktree_path.to_path_buf(),
             base_commit.clone(),
+            Some(target_branch.to_string()),
             stats_only,
         )
         .await
@@ -1156,7 +1158,12 @@ impl ContainerService for LocalContainerService {
         )?;
 
         let wrapper = self
-            .create_live_diff_stream(&worktree_path, &base_commit, stats_only)
+            .create_live_diff_stream(
+                &worktree_path,
+                &base_commit,
+                &task_attempt.target_branch,
+                stats_only,
+            )
             .await?;
         Ok(Box::pin(wrapper))
     }

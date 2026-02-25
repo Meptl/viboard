@@ -84,6 +84,7 @@ struct DiffWatcherContext {
     git_service: GitService,
     worktree_path: PathBuf,
     base_commit: Commit,
+    target_branch: Option<String>,
     cumulative: Arc<AtomicUsize>,
     full_sent: Arc<std::sync::RwLock<HashSet<String>>>,
     stats_only: bool,
@@ -106,6 +107,7 @@ impl DiffWatcherContext {
         let git_service = self.git_service.clone();
         let worktree_path = self.worktree_path.clone();
         let base_commit = self.base_commit.clone();
+        let target_branch = self.target_branch.clone();
         let cumulative = self.cumulative.clone();
         let full_sent = self.full_sent.clone();
         let stats_only = self.stats_only;
@@ -115,6 +117,7 @@ impl DiffWatcherContext {
                 &git_service,
                 &worktree_path,
                 &base_commit,
+                target_branch.as_deref(),
                 &changed_paths,
                 &cumulative,
                 &full_sent,
@@ -146,6 +149,7 @@ pub async fn create(
     git_service: GitService,
     worktree_path: PathBuf,
     base_commit: Commit,
+    target_branch: Option<String>,
     stats_only: bool,
 ) -> Result<DiffStreamHandle, DiffStreamError> {
     let (tx, rx) = mpsc::channel::<Result<LogMsg, io::Error>>(DIFF_STREAM_CHANNEL_CAPACITY);
@@ -162,12 +166,25 @@ pub async fn create(
         let git_for_diff = git_service.clone();
         let worktree_for_diff = worktree_path.clone();
         let base_for_diff = base_commit.clone();
+        let target_branch_for_diff = target_branch.clone();
 
         let initial_diffs_result = tokio::task::spawn_blocking(move || {
+            let effective_base = resolve_base_commit(
+                &git_for_diff,
+                &worktree_for_diff,
+                &base_for_diff,
+                target_branch_for_diff.as_deref(),
+            )
+            .unwrap_or_else(|err| {
+                tracing::warn!(
+                    "Failed to refresh diff base commit for initial stream snapshot: {err}"
+                );
+                base_for_diff.clone()
+            });
             git_for_diff.get_diffs(
                 DiffTarget::Worktree {
                     worktree_path: &worktree_for_diff,
-                    base_commit: &base_for_diff,
+                    base_commit: &effective_base,
                 },
                 None,
             )
@@ -236,6 +253,7 @@ pub async fn create(
             git_service,
             worktree_path,
             base_commit,
+            target_branch,
             cumulative,
             full_sent,
             stats_only,
@@ -368,6 +386,7 @@ fn process_file_changes(
     git_service: &GitService,
     worktree_path: &Path,
     base_commit: &Commit,
+    target_branch: Option<&str>,
     changed_paths: &[String],
     cumulative_bytes: &Arc<AtomicUsize>,
     full_sent_paths: &Arc<std::sync::RwLock<HashSet<String>>>,
@@ -375,10 +394,16 @@ fn process_file_changes(
 ) -> Result<Vec<LogMsg>, DiffStreamError> {
     let path_filter: Vec<&str> = changed_paths.iter().map(|s| s.as_str()).collect();
 
+    let effective_base = resolve_base_commit(git_service, worktree_path, base_commit, target_branch)
+        .unwrap_or_else(|err| {
+            tracing::warn!("Failed to refresh diff base commit during live update: {err}");
+            base_commit.clone()
+        });
+
     let current_diffs = git_service.get_diffs(
         DiffTarget::Worktree {
             worktree_path,
-            base_commit,
+            base_commit: &effective_base,
         },
         Some(&path_filter),
     )?;
@@ -412,4 +437,22 @@ fn process_file_changes(
     }
 
     Ok(msgs)
+}
+
+fn resolve_base_commit(
+    git_service: &GitService,
+    worktree_path: &Path,
+    fallback_base_commit: &Commit,
+    target_branch: Option<&str>,
+) -> Result<Commit, DiffStreamError> {
+    let Some(target_branch) = target_branch else {
+        return Ok(fallback_base_commit.clone());
+    };
+
+    let head = git_service.get_head_info(worktree_path)?;
+    Ok(git_service.get_base_commit(
+        worktree_path,
+        &head.branch,
+        target_branch,
+    )?)
 }

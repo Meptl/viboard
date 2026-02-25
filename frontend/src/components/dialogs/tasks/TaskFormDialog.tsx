@@ -160,6 +160,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
         data: {
           title: value.title,
           description: value.description,
+          status: props.task.status,
           parent_task_attempt: null,
           image_ids: images.length > 0 ? images.map((img) => img.id) : null,
         },

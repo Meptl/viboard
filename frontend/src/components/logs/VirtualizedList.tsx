@@ -15,7 +15,7 @@ import {
   PatchTypeWithKey,
   useConversationHistory,
 } from '@/hooks/useConversationHistory';
-import { Loader2 } from 'lucide-react';
+import { ChevronDown, Loader2 } from 'lucide-react';
 import { TaskAttempt } from 'shared/types';
 import { ApprovalFormProvider } from '@/contexts/ApprovalFormContext';
 import { Button } from '@/components/ui/button';
@@ -83,6 +83,7 @@ const VirtualizedList = ({ attempt }: VirtualizedListProps) => {
     useState<DataWithScrollModifier<PatchTypeWithKey> | null>(null);
   const [loading, setLoading] = useState(true);
   const [showOnlyUserMessages, setShowOnlyUserMessages] = useState(false);
+  const [isAtBottom, setIsAtBottom] = useState(true);
   const { setEntries, reset } = useEntries();
 
   useEffect(() => {
@@ -121,6 +122,7 @@ const VirtualizedList = ({ attempt }: VirtualizedListProps) => {
       data: (channelData.data ?? []).filter(isUserMessageEntry),
     };
   }, [channelData, showOnlyUserMessages]);
+  const hasVisibleEntries = (visibleChannelData?.data?.length ?? 0) > 0;
 
   return (
     <ApprovalFormProvider>
@@ -147,10 +149,33 @@ const VirtualizedList = ({ attempt }: VirtualizedListProps) => {
             context={messageListContext}
             computeItemKey={computeItemKey}
             ItemContent={ItemContent}
+            onScroll={(location) => {
+              setIsAtBottom(location.isAtBottom);
+            }}
             Header={() => <div className="h-12"></div>}
             Footer={() => <div className="h-2"></div>}
           />
         </VirtuosoMessageListLicense>
+        {!loading && hasVisibleEntries && !isAtBottom && (
+          <div className="absolute bottom-3 right-[11px] z-10">
+            <Button
+              size="icon"
+              variant="outline"
+              className="h-8 w-8 rounded-full bg-background p-0 shadow-sm"
+              onClick={() =>
+                messageListRef.current?.scrollToItem({
+                  index: 'LAST',
+                  align: 'end',
+                  behavior: 'smooth',
+                })
+              }
+              aria-label="Jump to most recent"
+              title="Jump to most recent"
+            >
+              <ChevronDown className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        )}
         {loading && (
           <div className="absolute inset-0 bg-primary flex flex-col gap-2 justify-center items-center">
             <Loader2 className="h-8 w-8 animate-spin" />

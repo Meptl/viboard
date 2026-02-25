@@ -10,7 +10,7 @@ import {
   type KeyboardEvent,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { FileText, Tag as TagIcon } from 'lucide-react';
+import { FileText, List, Tag as TagIcon } from 'lucide-react';
 import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
 import { cn } from '@/lib/utils';
 import {
@@ -45,6 +45,10 @@ type ActiveQuery = {
   start: number;
   end: number;
 };
+
+function toTaskMentionAlias(title: string) {
+  return title.trim().replace(/\s+/g, '_');
+}
 
 function getMenuPosition(textareaEl: HTMLTextAreaElement) {
   const rect = textareaEl.getBoundingClientRect();
@@ -138,14 +142,16 @@ export function PlainTextTagTextarea({
     const currentRequestId = ++requestIdRef.current;
     const timer = setTimeout(async () => {
       try {
-        const results = await searchTagsAndFiles(activeQuery.query, projectId);
+        const results = await searchTagsAndFiles(activeQuery.query, projectId, {
+          includeTasks: true,
+        });
         if (requestIdRef.current !== currentRequestId) return;
         setOptions(results);
         setIsOpen(true);
         setSelectedIndex(results.length > 0 ? 0 : -1);
       } catch (error) {
         if (requestIdRef.current !== currentRequestId) return;
-        console.error('Failed to search tags/files', error);
+        console.error('Failed to search tags/files/tasks', error);
         setOptions([]);
         setIsOpen(true);
         setSelectedIndex(-1);
@@ -199,7 +205,13 @@ export function PlainTextTagTextarea({
       if (!textareaRef.current || !activeQuery) return;
 
       const textToInsert =
-        item.type === 'tag' ? (item.tag?.content ?? '') : (item.file?.path ?? '');
+        item.type === 'tag'
+          ? (item.tag?.content ?? '')
+          : item.type === 'file'
+            ? (item.file?.path ?? '')
+            : item.task
+              ? `task with task_id ${item.task.id}`
+              : '';
 
       const before = value.slice(0, activeQuery.start);
       const after = value.slice(activeQuery.end);
@@ -223,6 +235,16 @@ export function PlainTextTagTextarea({
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
+      if ((isOpen || activeQuery) && e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsOpen(false);
+        setActiveQuery(null);
+        setOptions([]);
+        setSelectedIndex(-1);
+        return;
+      }
+
       if (isOpen && options.length > 0) {
         if (e.key === 'ArrowDown') {
           e.preventDefault();
@@ -239,12 +261,6 @@ export function PlainTextTagTextarea({
           insertSelection(options[selectedIndex]);
           return;
         }
-        if (e.key === 'Escape') {
-          e.preventDefault();
-          setIsOpen(false);
-          setActiveQuery(null);
-          return;
-        }
       }
 
       if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
@@ -259,7 +275,16 @@ export function PlainTextTagTextarea({
 
       onKeyDown?.(e);
     },
-    [insertSelection, isOpen, onCmdEnter, onKeyDown, onShiftCmdEnter, options, selectedIndex]
+    [
+      activeQuery,
+      insertSelection,
+      isOpen,
+      onCmdEnter,
+      onKeyDown,
+      onShiftCmdEnter,
+      options,
+      selectedIndex,
+    ]
   );
 
   const handleSelect = useCallback(
@@ -315,7 +340,7 @@ export function PlainTextTagTextarea({
             >
               {options.length === 0 ? (
                 <div className="p-2 text-sm text-muted-foreground">
-                  No tags or files found
+                  No tags, files, or tasks found
                 </div>
               ) : (
                 <>
@@ -396,6 +421,46 @@ export function PlainTextTagTextarea({
                             </div>
                             <div className="text-xs text-muted-foreground truncate">
                               {file.path}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </>
+                  )}
+
+                  {options.some((o) => o.type === 'task') && (
+                    <>
+                      {options.some(
+                        (o) => o.type === 'tag' || o.type === 'file'
+                      ) && <div className="border-t my-1" />}
+                      <div className="px-3 py-1 text-xs font-semibold text-muted-foreground uppercase">
+                        Tasks
+                      </div>
+                      {options.map((option, index) => {
+                        if (option.type !== 'task' || !option.task) return null;
+                        const task = option.task;
+                        const taskAlias = toTaskMentionAlias(task.title);
+                        return (
+                          <button
+                            key={`task-${task.id}`}
+                            type="button"
+                            ref={(el) => {
+                              if (el) itemRefs.current.set(index, el);
+                              else itemRefs.current.delete(index);
+                            }}
+                            className={cn(
+                              'w-full text-left px-3 py-2 cursor-pointer text-sm',
+                              index === selectedIndex
+                                ? 'bg-muted text-foreground'
+                                : 'hover:bg-muted'
+                            )}
+                            onMouseEnter={() => setSelectedIndex(index)}
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => handleSelect(index)}
+                          >
+                            <div className="flex items-center gap-2 font-medium truncate">
+                              <List className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                              @{taskAlias}
                             </div>
                           </button>
                         );

@@ -287,6 +287,13 @@ export const tasksApi = {
     return handleApiResponse<Task>(response);
   },
 
+  list: async (projectId: string): Promise<TaskWithAttemptStatus[]> => {
+    const response = await makeRequest(
+      `/api/tasks?project_id=${encodeURIComponent(projectId)}`
+    );
+    return handleApiResponse<TaskWithAttemptStatus[]>(response);
+  },
+
   create: async (data: CreateTask): Promise<Task> => {
     const response = await makeRequest(`/api/tasks`, {
       method: 'POST',
@@ -319,7 +326,6 @@ export const tasksApi = {
     });
     return handleApiResponse<void>(response);
   },
-
 };
 
 // Task Attempts APIs

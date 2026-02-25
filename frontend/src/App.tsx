@@ -1,5 +1,12 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import {
+  BrowserRouter,
+  Navigate,
+  Route,
+  Routes,
+  generatePath,
+  useParams,
+} from 'react-router-dom';
 import { I18nextProvider } from 'react-i18next';
 import i18n from '@/i18n';
 import { Projects } from '@/pages/Projects';
@@ -30,6 +37,21 @@ import { ReleaseNotesDialog } from '@/components/dialogs/global/ReleaseNotesDial
 import { ClickedElementsProvider } from './contexts/ClickedElementsProvider';
 import NiceModal from '@ebay/nice-modal-react';
 import { TaskNotificationsProvider } from '@/contexts/TaskNotificationsContext';
+
+function ProjectRouteRedirect() {
+  const { projectId } = useParams<{ projectId: string }>();
+
+  if (!projectId) {
+    return <Navigate to="/projects" replace />;
+  }
+
+  return (
+    <Navigate
+      to={generatePath('/projects/:projectId/tasks', { projectId })}
+      replace
+    />
+  );
+}
 
 function AppContent() {
   const { config, updateAndSaveConfig, loading } = useUserSystem();
@@ -105,7 +127,7 @@ function AppContent() {
                 <Route element={<NormalLayout />}>
                   <Route path="/" element={<Projects />} />
                   <Route path="/projects" element={<Projects />} />
-                  <Route path="/projects/:projectId" element={<Projects />} />
+                  <Route path="/projects/:projectId" element={<ProjectRouteRedirect />} />
                   <Route
                     path="/projects/:projectId/tasks"
                     element={<ProjectTasks />}

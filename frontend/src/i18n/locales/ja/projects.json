@@ -11,7 +11,6 @@
     "description": "最初のプロジェクトを作成して始めましょう。",
     "createFirst": "最初のプロジェクトを作成"
   },
-  "viewProject": "プロジェクトを表示",
   "openInIDE": "IDEで開く",
   "createdDate": "作成日 {{date}}",
   "copyFilesPlaceholderWithSearch": "パスまたはglobパターンを入力 (.env, config/*.json)"

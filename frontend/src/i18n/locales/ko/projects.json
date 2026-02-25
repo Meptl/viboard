@@ -11,7 +11,6 @@
     "description": "첫 번째 프로젝트를 만들어 시작하세요.",
     "createFirst": "첫 번째 프로젝트 생성"
   },
-  "viewProject": "프로젝트 보기",
   "openInIDE": "IDE에서 열기",
   "createdDate": "생성일 {{date}}",
   "copyFilesPlaceholderWithSearch": "경로 또는 glob 패턴 입력 (.env, config/*.json)"

@@ -11,7 +11,6 @@
     "description": "通过创建您的第一个项目开始。",
     "createFirst": "创建您的第一个项目"
   },
-  "viewProject": "查看项目",
   "openInIDE": "在 IDE 中打开",
   "createdDate": "创建于 {{date}}",
   "copyFilesPlaceholderWithSearch": "文件路径或 glob 模式（例如：.env、config/*.json）"

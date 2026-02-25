@@ -14,7 +14,6 @@ import { Button } from '@/components/ui/button.tsx';
 import {
   Calendar,
   Edit,
-  ExternalLink,
   FolderOpen,
   MoreHorizontal,
   Trash2,
@@ -96,15 +95,6 @@ function ProjectCard({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigate(`/projects/${project.id}`);
-                  }}
-                >
-                  <ExternalLink className="mr-2 h-4 w-4" />
-                  {t('viewProject')}
-                </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.stopPropagation();

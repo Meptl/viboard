@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Search } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { Project } from 'shared/types';
@@ -14,7 +14,10 @@ interface SearchBarProps {
 }
 
 export const SearchBar = React.forwardRef<HTMLInputElement, SearchBarProps>(
-  ({ className, value = '', onChange, disabled = false, project }, ref) => {
+  (
+    { className, value = '', onChange, disabled = false, onClear, project },
+    ref
+  ) => {
     if (disabled) {
       return null;
     }
@@ -28,8 +31,19 @@ export const SearchBar = React.forwardRef<HTMLInputElement, SearchBarProps>(
           onChange={(e) => onChange?.(e.target.value)}
           disabled={disabled}
           placeholder={project ? `Search ${project.name}...` : 'Search...'}
-          className="pl-8 pr-14 h-8 bg-muted"
+          className="h-8 bg-muted pl-8 pr-8"
         />
+        {value && onClear ? (
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={onClear}
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/40"
+            aria-label="Clear search"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        ) : null}
       </div>
     );
   }

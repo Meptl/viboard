@@ -44,7 +44,6 @@ import {
   BaseCodingAgent,
   RunAgentSetupRequest,
   RunAgentSetupResponse,
-  RunScriptError,
   CommitCompareResult,
   OpenEditorResponse,
   OpenEditorRequest,
@@ -480,34 +479,6 @@ export const attemptsApi = {
       }
     );
     return handleApiResponse<void>(response);
-  },
-
-  runSetupScript: async (
-    attemptId: string
-  ): Promise<Result<ExecutionProcess, RunScriptError>> => {
-    const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/run-setup-script`,
-      {
-        method: 'POST',
-      }
-    );
-    return handleApiResponseAsResult<ExecutionProcess, RunScriptError>(
-      response
-    );
-  },
-
-  runCleanupScript: async (
-    attemptId: string
-  ): Promise<Result<ExecutionProcess, RunScriptError>> => {
-    const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/run-cleanup-script`,
-      {
-        method: 'POST',
-      }
-    );
-    return handleApiResponseAsResult<ExecutionProcess, RunScriptError>(
-      response
-    );
   },
 
 };

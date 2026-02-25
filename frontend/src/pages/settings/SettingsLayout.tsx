@@ -13,6 +13,7 @@ import { useEffect, useRef } from 'react';
 import { useHotkeysContext } from 'react-hotkeys-hook';
 import { useKeyExit } from '@/keyboard/hooks';
 import { Scope } from '@/keyboard/registry';
+import { TaskNotificationsBell } from '@/components/layout/TaskNotificationsBell';
 
 const settingsNavigation = [
   {
@@ -85,14 +86,17 @@ export function SettingsLayout() {
           <h1 className="text-2xl font-semibold">
             {t('settings.layout.nav.title')}
           </h1>
-          <Button
-            variant="ghost"
-            onClick={handleBack}
-            className="h-8 px-2 rounded-none border border-foreground/20 hover:border-foreground/30 transition-all hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 flex items-center gap-1.5"
-          >
-            <X className="h-4 w-4" />
-            <span className="text-xs font-medium">ESC</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            <TaskNotificationsBell />
+            <Button
+              variant="ghost"
+              onClick={handleBack}
+              className="h-8 px-2 rounded-none border border-foreground/20 hover:border-foreground/30 transition-all hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 flex items-center gap-1.5"
+            >
+              <X className="h-4 w-4" />
+              <span className="text-xs font-medium">ESC</span>
+            </Button>
+          </div>
         </div>
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Sidebar Navigation */}

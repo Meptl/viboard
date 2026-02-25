@@ -70,7 +70,6 @@ export function Navbar() {
             {projectId ? (
               <>
                 <div className="flex items-center gap-1">
-                  <TaskNotificationsBell />
                   <OpenInIdeButton
                     onClick={handleOpenInIDE}
                     className="h-9 w-9"
@@ -89,7 +88,8 @@ export function Navbar() {
               </>
             ) : null}
 
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 shrink-0">
+              <TaskNotificationsBell />
               <Button
                 variant="ghost"
                 size="icon"

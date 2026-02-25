@@ -52,7 +52,7 @@ export function TaskNotificationsBell() {
         <Button
           variant="ghost"
           size="icon"
-          className="relative h-9 w-9"
+          className="relative h-9 w-9 shrink-0"
           aria-label="Notifications"
         >
           <Bell className="h-4 w-4" />

@@ -111,7 +111,7 @@ function ProjectCard({
                   }}
                 >
                   <Edit className="mr-2 h-4 w-4" />
-                  {t('common:buttons.edit')}
+                  Settings
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={(e) => {

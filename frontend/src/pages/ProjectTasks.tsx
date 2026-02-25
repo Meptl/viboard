@@ -798,15 +798,11 @@ export function ProjectTasks() {
           return;
         }
 
-        const newAttempt = await attemptsApi.create({
+        await attemptsApi.create({
           task_id: task.id,
           executor_profile_id: config.executor_profile,
           base_branch: baseBranch,
         });
-
-        navigateToAttemptDiffs(
-          paths.attempt(projectId, task.id, newAttempt.id)
-        );
       } catch (err) {
         console.error(
           'Failed to update task status / auto-start attempt:',
@@ -814,13 +810,7 @@ export function ProjectTasks() {
         );
       }
     },
-    [
-      branches,
-      config?.executor_profile,
-      navigateToAttemptDiffs,
-      projectId,
-      tasksById,
-    ]
+    [branches, config?.executor_profile, projectId, tasksById]
   );
 
   const clearDropPreview = useCallback(() => {

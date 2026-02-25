@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import WYSIWYGEditor from '@/components/ui/wysiwyg';
+import { PlainTextTagTextarea } from '@/components/ui/plain-text-tag-textarea';
 import { useReview, type ReviewDraft } from '@/contexts/ReviewProvider';
 import { Scope, useKeyExit, useKeySubmitComment } from '@/keyboard';
 import { useHotkeysContext } from 'react-hotkeys-hook';
@@ -76,14 +76,15 @@ export function CommentWidgetLine({
 
   return (
     <div className="p-4 border-y bg-primary">
-      <WYSIWYGEditor
+      <PlainTextTagTextarea
         value={value}
         onChange={setValue}
         placeholder="Add a comment... (type @ to search files)"
-        className="w-full bg-primary text-primary-foreground text-sm font-mono min-h-[60px]"
+        className="w-full bg-primary text-primary-foreground text-sm font-mono min-h-[80px] border rounded-md p-3"
         projectId={projectId}
         onCmdEnter={handleSave}
         autoFocus
+        maxRows={8}
       />
       <div className="mt-2 flex gap-2">
         <Button size="xs" onClick={handleSave} disabled={!value.trim()}>

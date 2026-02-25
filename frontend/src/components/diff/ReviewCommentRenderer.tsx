@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { PlainTextTagTextarea } from '@/components/ui/plain-text-tag-textarea';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { useReview, type ReviewComment } from '@/contexts/ReviewProvider';
 
@@ -40,14 +41,15 @@ export function ReviewCommentRenderer({
   if (isEditing) {
     return (
       <div className="border-y bg-background p-4">
-        <WYSIWYGEditor
+        <PlainTextTagTextarea
           value={editText}
           onChange={setEditText}
           placeholder="Edit comment... (type @ to search files)"
-          className="w-full bg-background text-foreground text-sm font-mono min-h-[60px]"
+          className="w-full bg-background text-foreground text-sm font-mono min-h-[80px] border rounded-md p-3"
           projectId={projectId}
           onCmdEnter={handleSave}
           autoFocus
+          maxRows={8}
         />
         <div className="mt-2 flex gap-2">
           <Button size="xs" onClick={handleSave} disabled={!editText.trim()}>

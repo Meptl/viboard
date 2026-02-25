@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import WYSIWYGEditor from '@/components/ui/wysiwyg';
+import { PlainTextTagTextarea } from '@/components/ui/plain-text-tag-textarea';
 import { useProject } from '@/contexts/ProjectContext';
 import { cn } from '@/lib/utils';
 import { VariantSelector } from '@/components/tasks/VariantSelector';
@@ -130,16 +130,18 @@ export function RetryEditorInline({
   return (
     <div className="space-y-2">
       <div className="relative">
-        <WYSIWYGEditor
+        <PlainTextTagTextarea
           placeholder="Edit and resend your message..."
           value={message}
           onChange={setMessage}
           disabled={isSending}
           onCmdEnter={handleCmdEnter}
           onPasteFiles={handlePasteFiles}
-          className={cn('min-h-[40px]', 'bg-background')}
+          className={cn(
+            'min-h-[80px] border rounded-md p-3 bg-background font-mono text-sm'
+          )}
           projectId={projectId}
-          taskAttemptId={attemptId}
+          maxRows={12}
         />
         {isSending && (
           <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-background/60">

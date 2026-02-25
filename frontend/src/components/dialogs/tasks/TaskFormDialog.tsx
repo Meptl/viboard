@@ -26,9 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import WYSIWYGEditor from '@/components/ui/wysiwyg';
-import type { LocalImageMetadata } from '@/components/ui/wysiwyg/context/task-attempt-context';
+import { PlainTextTagTextarea } from '@/components/ui/plain-text-tag-textarea';
 import BranchSelector from '@/components/tasks/BranchSelector';
 import { ExecutorProfileSelector } from '@/components/settings';
 import { useUserSystem } from '@/components/ConfigProvider';
@@ -105,7 +103,6 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
     []
   );
   const [showDiscardWarning, setShowDiscardWarning] = useState(false);
-  const [isRawMarkdownMode, setIsRawMarkdownMode] = useState(true);
   const forceCreateOnlyRef = useRef(false);
 
   const { data: branches, isLoading: branchesLoading } =
@@ -280,21 +277,6 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
     [editMode, props, upload, uploadForTask, form]
   );
 
-  const handleDescriptionPaste = useCallback(
-    (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
-      const files = Array.from(e.clipboardData.items)
-        .filter((item) => item.kind === 'file' && item.type.startsWith('image/'))
-        .map((item) => item.getAsFile())
-        .filter((file): file is File => file !== null);
-
-      if (files.length === 0) return;
-
-      e.preventDefault();
-      void onDrop(files);
-    },
-    [onDrop]
-  );
-
   const {
     getRootProps,
     getInputProps,
@@ -307,19 +289,6 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
     noClick: true,
     noKeyboard: true,
   });
-
-  // Compute localImages for WYSIWYG rendering of uploaded images
-  const localImages: LocalImageMetadata[] = useMemo(
-    () =>
-      images.map((img) => ({
-        path: img.file_path,
-        proxy_url: `/api/images/${img.id}/file`,
-        file_name: img.original_name,
-        size_bytes: Number(img.size_bytes),
-        format: img.mime_type?.split('/')[1] ?? 'png',
-      })),
-    [images]
-  );
 
   // Unsaved changes detection
   const hasUnsavedChanges = useCallback(() => {
@@ -468,75 +437,30 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
             <form.Field name="description">
               {(field) => (
                 <div className="space-y-2">
-                  {isRawMarkdownMode ? (
-                    <textarea
-                      placeholder={t('taskFormDialog.descriptionPlaceholder')}
-                      className="w-full min-h-[220px] bg-transparent resize-none outline-none font-mono text-md leading-relaxed"
-                      value={field.state.value}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      onPaste={handleDescriptionPaste}
-                      disabled={isSubmitting}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                          if (e.shiftKey) {
-                            handleSubmitCreateOnly();
-                          } else {
-                            primaryAction();
-                          }
-                          e.preventDefault();
-                        }
-                      }}
-                    />
-                  ) : (
-                    <WYSIWYGEditor
-                      placeholder={t('taskFormDialog.descriptionPlaceholder')}
-                      value={field.state.value}
-                      onChange={(desc) => field.handleChange(desc)}
-                      disabled={isSubmitting}
-                      projectId={projectId}
-                      onPasteFiles={onDrop}
-                      className="border-none shadow-none px-0 text-md font-normal"
-                      onCmdEnter={primaryAction}
-                      onShiftCmdEnter={handleSubmitCreateOnly}
-                      taskId={editMode ? props.task.id : undefined}
-                      localImages={localImages}
-                    />
-                  )}
-                  <ToggleGroup
-                    type="single"
-                    value={isRawMarkdownMode ? 'markdown' : 'preview'}
-                    onValueChange={(value) => {
-                      if (value) setIsRawMarkdownMode(value === 'markdown');
-                    }}
-                    className="ml-auto w-fit bg-muted/90 backdrop-blur-sm rounded-sm p-0.5 gap-0"
-                  >
-                    <ToggleGroupItem
-                      value="preview"
-                      active={!isRawMarkdownMode}
-                      size="sm"
-                    >
-                      {t('taskFormDialog.preview')}
-                    </ToggleGroupItem>
-                    <ToggleGroupItem
-                      value="markdown"
-                      active={isRawMarkdownMode}
-                      size="sm"
-                    >
-                      {t('taskFormDialog.markdown')}
-                    </ToggleGroupItem>
-                  </ToggleGroup>
+                  <PlainTextTagTextarea
+                    placeholder={t('taskFormDialog.descriptionPlaceholder')}
+                    value={field.state.value}
+                    onChange={(desc) => field.handleChange(desc)}
+                    disabled={isSubmitting}
+                    projectId={projectId}
+                    onPasteFiles={onDrop}
+                    className="w-full min-h-[220px] bg-transparent resize-none outline-none font-mono text-md leading-relaxed p-0"
+                    onCmdEnter={primaryAction}
+                    onShiftCmdEnter={handleSubmitCreateOnly}
+                    disableInternalScroll
+                  />
                 </div>
               )}
             </form.Field>
-            {/* Edit mode status */}
-            {editMode && (
+          </div>
+
+          {/* Edit mode status */}
+          {editMode && (
+            <div className="flex-none px-4 py-3 border border-1 border-border">
               <form.Field name="status">
                 {(field) => (
                   <div className="space-y-2">
-                    <Label
-                      htmlFor="task-status"
-                      className="text-sm font-medium"
-                    >
+                    <Label htmlFor="task-status" className="text-sm font-medium">
                       {t('taskFormDialog.statusLabel')}
                     </Label>
                     <Select
@@ -546,7 +470,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
                       }
                       disabled={isSubmitting}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger id="task-status">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -570,8 +494,8 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
                   </div>
                 )}
               </form.Field>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Start dropdowns */}
           <form.Field name="autoStart" mode="array">

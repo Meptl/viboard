@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/tooltip';
 import { approvalsApi } from '@/lib/api';
 import { Check, X } from 'lucide-react';
-import WYSIWYGEditor from '@/components/ui/wysiwyg';
+import { PlainTextTagTextarea } from '@/components/ui/plain-text-tag-textarea';
 
 import { useHotkeysContext } from 'react-hotkeys-hook';
 import { TabNavContext } from '@/contexts/TabNavigationContext';
@@ -141,14 +141,15 @@ function DenyReasonForm({
 }) {
   return (
     <div className="flex flex-col gap-2 p-4">
-      <WYSIWYGEditor
+      <PlainTextTagTextarea
         value={value}
         onChange={onChange}
         placeholder="Let the agent know why this request was denied... Type @ to insert tags or search files."
         disabled={isResponding}
-        className="min-h-[80px]"
+        className="min-h-[80px] border rounded-md p-3 bg-background font-mono text-sm"
         projectId={projectId}
         onCmdEnter={onSubmit}
+        maxRows={12}
       />
       <div className="flex flex-wrap items-center justify-end gap-2">
         <Button

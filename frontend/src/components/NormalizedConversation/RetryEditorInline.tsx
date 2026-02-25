@@ -16,6 +16,12 @@ import { useVariant } from '@/hooks/useVariant';
 import { useRetryProcess } from '@/hooks/useRetryProcess';
 import { extractProfileFromAction } from '@/utils/executor';
 
+const VK_CONTEXT_BLOCK_RE = /\[vk_context\][\s\S]*?\[\/vk_context\]/gi;
+
+function stripVkContextBlocks(content: string): string {
+  return content.replace(VK_CONTEXT_BLOCK_RE, '').trimStart();
+}
+
 export function RetryEditorInline({
   attempt,
   executionProcessId,
@@ -34,7 +40,7 @@ export function RetryEditorInline({
   const { profiles } = useUserSystem();
   const { projectId } = useProject();
 
-  const [message, setMessage] = useState(initialContent);
+  const [message, setMessage] = useState(() => stripVkContextBlocks(initialContent));
   const [sendError, setSendError] = useState<string | null>(null);
 
   // Extract variant from the process being retried

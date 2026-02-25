@@ -6,6 +6,12 @@ import { useRetryUi } from '@/contexts/RetryUiContext';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import { RetryEditorInline } from './RetryEditorInline';
 
+const VK_CONTEXT_BLOCK_RE = /\[vk_context\][\s\S]*?\[\/vk_context\]/gi;
+
+function stripVkContextBlocks(content: string): string {
+  return content.replace(VK_CONTEXT_BLOCK_RE, '').trimStart();
+}
+
 const UserMessage = ({
   content,
   executionProcessId,
@@ -50,6 +56,7 @@ const UserMessage = ({
 
   // Only show retry button when allowed (has process, can fork, not running)
   const canRetry = executionProcessId && canFork && !isAttemptRunning;
+  const displayContent = stripVkContextBlocks(content);
 
   return (
     <div className={`py-2 ${greyed ? 'opacity-50 pointer-events-none' : ''}`}>
@@ -64,7 +71,7 @@ const UserMessage = ({
             />
           ) : (
             <WYSIWYGEditor
-              value={content}
+              value={displayContent}
               disabled
               className="whitespace-pre-wrap break-words flex flex-col gap-1 font-light"
               taskAttemptId={taskAttempt?.id}

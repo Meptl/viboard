@@ -1,7 +1,7 @@
 
 A fork of Vibe-Kanban off commit v0.0.136-20251215225138 (Prior to multi-repo workspaces).
 
-Initial rough changes include:
+Rough changes include:
 - Removal of telemetry, cloud, collab, and remote features
 - General UI/UX improvements
 - In app notifications

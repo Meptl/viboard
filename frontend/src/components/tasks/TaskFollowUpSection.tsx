@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/tooltip';
 //
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import { ScratchType, type TaskWithAttemptStatus } from 'shared/types';
+import { type TaskWithAttemptStatus } from 'shared/types';
 import { useBranchStatus } from '@/hooks';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import { useUserSystem } from '@/components/ConfigProvider';
@@ -48,11 +48,11 @@ import { useVariant } from '@/hooks/useVariant';
 import type { DraftFollowUpData, ExecutorProfileId } from 'shared/types';
 import { buildResolveConflictsInstructions } from '@/lib/conflicts';
 import { useTranslation } from 'react-i18next';
-import { useScratch } from '@/hooks/useScratch';
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
 import { useQueueStatus } from '@/hooks/useQueueStatus';
 import { imagesApi, attemptsApi } from '@/lib/api';
 import { extractProfileFromAction } from '@/utils/executor';
+import { useFollowUpDraftStorage } from '@/hooks/useFollowUpDraftStorage';
 
 interface TaskFollowUpSectionProps {
   task: TaskWithAttemptStatus;
@@ -107,18 +107,14 @@ export function TaskFollowUpSection({
     branchStatus?.conflict_op,
   ]);
 
-  // Editor state (persisted via scratch)
+  // Editor state (persisted in localStorage)
   const {
-    scratch,
-    updateScratch,
-    isLoading: isScratchLoading,
-  } = useScratch(ScratchType.DRAFT_FOLLOW_UP, selectedAttemptId ?? '');
+    draft,
+    saveDraft,
+    clearDraft,
+  } = useFollowUpDraftStorage(selectedAttemptId);
 
-  // Derive the message and variant from scratch
-  const scratchData: DraftFollowUpData | undefined =
-    scratch?.payload?.type === 'DRAFT_FOLLOW_UP'
-      ? scratch.payload.data
-      : undefined;
+  const scratchData: DraftFollowUpData | undefined = draft ?? undefined;
 
   // Track whether the follow-up textarea is focused
   const [isTextareaFocused, setIsTextareaFocused] = useState(false);
@@ -145,7 +141,7 @@ export function TaskFollowUpSection({
     return profiles?.[latestProfileId.executor] ?? null;
   }, [latestProfileId, profiles]);
 
-  // Variant selection with priority: user selection > scratch > process
+  // Variant selection with priority: user selection > persisted draft > process
   const { selectedVariant, setSelectedVariant: setVariantFromHook } =
     useVariant({
       processVariant,
@@ -159,34 +155,28 @@ export function TaskFollowUpSection({
   }, [selectedVariant]);
 
   // Refs to stabilize callbacks - avoid re-creating callbacks when these values change
-  const scratchRef = useRef(scratch);
+  const scratchRef = useRef<DraftFollowUpData | undefined>(scratchData);
   useEffect(() => {
-    scratchRef.current = scratch;
-  }, [scratch]);
+    scratchRef.current = scratchData;
+  }, [scratchData]);
 
-  // Save scratch helper (used for both message and variant changes)
-  // Uses scratchRef to avoid callback invalidation when scratch updates
+  // Save draft helper (used for both message and variant changes)
+  // Uses scratchRef to avoid callback invalidation when draft state updates
   const saveToScratch = useCallback(
     async (message: string, variant: string | null) => {
       if (!selectedAttemptId) return;
-      // Don't create empty scratch entries - only save if there's actual content,
-      // a variant is selected, or scratch already exists (to allow clearing a draft)
+      // Don't create empty draft entries unless one already exists (to allow clearing).
       if (!message.trim() && !variant && !scratchRef.current) return;
       try {
-        await updateScratch({
-          payload: {
-            type: 'DRAFT_FOLLOW_UP',
-            data: { message, variant },
-          },
-        });
+        saveDraft({ message, variant });
       } catch (e) {
         console.error('Failed to save follow-up draft', e);
       }
     },
-    [selectedAttemptId, updateScratch]
+    [selectedAttemptId, saveDraft]
   );
 
-  // Wrapper to update variant and save to scratch immediately
+  // Wrapper to update variant and save to localStorage immediately
   const setSelectedVariant = useCallback(
     (variant: string | null) => {
       setVariantFromHook(variant);
@@ -206,12 +196,11 @@ export function TaskFollowUpSection({
       500
     );
 
-  // Sync local message from scratch when it loads (but not while user is typing)
+  // Sync local message from persisted draft (but not while user is typing)
   useEffect(() => {
-    if (isScratchLoading) return;
     if (isTextareaFocused) return; // Don't overwrite while user is typing
     setLocalMessage(scratchData?.message ?? '');
-  }, [isScratchLoading, scratchData?.message, isTextareaFocused]);
+  }, [scratchData?.message, isTextareaFocused]);
 
   // During retry, follow-up box is greyed/disabled (not hidden)
   // Use RetryUi context so optimistic retry immediately disables this box
@@ -247,15 +236,20 @@ export function TaskFollowUpSection({
     // Refresh when a new process starts (could be queued message consumption or follow-up)
     if (processes.length > prevCount) {
       refreshQueueStatus();
-      // Re-sync local message from current scratch state
-      // If scratch was deleted, scratchData will be undefined, so localMessage becomes ''
-      setLocalMessage(scratchData?.message ?? '');
+      if (isQueued) {
+        clearDraft();
+        setLocalMessage('');
+      } else {
+        setLocalMessage(scratchData?.message ?? '');
+      }
     }
   }, [
     isAttemptRunning,
+    isQueued,
     selectedAttemptId,
     processes.length,
     refreshQueueStatus,
+    clearDraft,
     scratchData?.message,
   ]);
 
@@ -289,8 +283,8 @@ export function TaskFollowUpSection({
       clearClickedElements,
       onAfterSendCleanup: () => {
         cancelDebouncedSave(); // Cancel any pending debounced save to avoid race condition
+        clearDraft();
         setLocalMessage(''); // Clear local state immediately
-        // Scratch deletion is handled by the backend when the queued message is consumed
       },
     });
 
@@ -475,7 +469,7 @@ export function TaskFollowUpSection({
               const newMessage = prev
                 ? `${prev}\n\n${imageMarkdown}`
                 : imageMarkdown;
-              setFollowUpMessageRef.current(newMessage); // Debounced save to scratch
+              setFollowUpMessageRef.current(newMessage); // Debounced save to localStorage
               return newMessage;
             });
           }
@@ -514,7 +508,7 @@ export function TaskFollowUpSection({
         cancelQueueRef.current();
       }
       setLocalMessage(value); // Immediate update for UI responsiveness
-      setFollowUpMessageRef.current(value); // Debounced save to scratch
+      setFollowUpMessageRef.current(value); // Debounced save to localStorage
       if (followUpErrorRef.current) setFollowUpError(null);
     },
     [setFollowUpError]
@@ -579,14 +573,6 @@ export function TaskFollowUpSection({
   ]);
 
   if (!selectedAttemptId) return null;
-
-  if (isScratchLoading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <Loader2 className="animate-spin h-6 w-6" />
-      </div>
-    );
-  }
 
   return (
     <div

@@ -159,9 +159,15 @@ pub trait ContainerService {
             return;
         }
 
-        let title = format!("Task Complete: {}", ctx.task.title);
-        match ctx.execution_process.status {
-            ExecutionProcessStatus::Completed | ExecutionProcessStatus::Failed => {}
+        let (title, message) = match ctx.execution_process.status {
+            ExecutionProcessStatus::Completed => (
+                format!("Task complete: {}", ctx.task.title),
+                "Execution finished successfully".to_string(),
+            ),
+            ExecutionProcessStatus::Failed => (
+                format!("Task failed: {}", ctx.task.title),
+                "Execution finished with errors".to_string(),
+            ),
             _ => {
                 tracing::warn!(
                     "Tried to notify attempt completion for {} but process is still running!",
@@ -169,8 +175,7 @@ pub trait ContainerService {
                 );
                 return;
             }
-        }
-        let message = title.clone();
+        };
         let url =
             NotificationService::attempt_url(ctx.task.project_id, ctx.task.id, ctx.task_attempt.id);
         self.notification_service()

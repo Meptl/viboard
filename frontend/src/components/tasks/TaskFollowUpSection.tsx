@@ -598,18 +598,27 @@ export function TaskFollowUpSection({
             {/* Review comments preview */}
             {reviewMarkdown && (
               <div className="mb-4">
-                <div className="rounded-md border bg-muted p-3">
+                <div className="relative rounded-md border bg-muted p-3">
                   {comments.length > 0 && (
-                    <div className="mb-3 flex justify-end">
-                      <Button
-                        onClick={clearComments}
-                        size="sm"
-                        variant="destructive"
-                        disabled={!isEditable}
-                      >
-                        {t('followUp.clearReviewComments')}
-                      </Button>
-                    </div>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            onClick={clearComments}
+                            size="xs"
+                            variant="destructive"
+                            disabled={!isEditable}
+                            aria-label={t('followUp.clearReviewComments')}
+                            className="absolute top-2 right-2 z-10 h-6 w-6 p-0"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="left">
+                          {t('followUp.clearReviewComments')}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   )}
                   <div className="text-sm whitespace-pre-wrap break-words">
                     {reviewMarkdown}

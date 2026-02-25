@@ -561,7 +561,7 @@ pub trait ContainerService {
             .await?
             .ok_or(SqlxError::RowNotFound)?;
 
-        let prompt = task.to_prompt();
+        let prompt = task.with_agent_conversation_metadata(&task.to_prompt());
 
         let cleanup_action = self.cleanup_action(project.cleanup_script.clone());
 

@@ -290,7 +290,7 @@ pub async fn follow_up(
     )
     .await?;
 
-    let prompt = payload.prompt;
+    let prompt = task.with_agent_conversation_metadata(&payload.prompt);
 
     let cleanup_action = deployment
         .container()

@@ -119,6 +119,26 @@ pub struct UpdateTask {
 }
 
 impl Task {
+    pub fn agent_conversation_metadata_preamble(&self) -> String {
+        format!(
+            concat!(
+                "VK task context:\n",
+                "project_id: {}\n",
+                "task_id: {}\n",
+                "These are the associated ids for this task for use with the vk MCP server."
+            ),
+            self.project_id, self.id
+        )
+    }
+
+    pub fn with_agent_conversation_metadata(&self, prompt: &str) -> String {
+        format!(
+            "{}\n\n{}",
+            self.agent_conversation_metadata_preamble(),
+            prompt
+        )
+    }
+
     pub fn to_prompt(&self) -> String {
         if let Some(description) = self.description.as_ref().filter(|d| !d.trim().is_empty()) {
             format!("{}\n\n{}", &self.title, description)

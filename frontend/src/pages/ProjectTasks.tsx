@@ -383,7 +383,17 @@ export function ProjectTasks() {
         navigate('/projects');
       }
     },
-    { scope: Scope.KANBAN }
+    {
+      scope: Scope.KANBAN,
+      enableOnFormTags: [
+        'input',
+        'INPUT',
+        'textarea',
+        'TEXTAREA',
+        'select',
+        'SELECT',
+      ],
+    }
   );
 
   const hasSearch = Boolean(searchQuery.trim());

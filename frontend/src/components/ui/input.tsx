@@ -20,9 +20,6 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     ref
   ) => {
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === 'Escape') {
-        e.currentTarget.blur();
-      }
       if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
         if (e.metaKey && e.shiftKey) {
           onCommandShiftEnter?.(e);

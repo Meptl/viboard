@@ -43,6 +43,14 @@ const Dialog = React.forwardRef<
     {
       scope: Scope.DIALOG,
       when: () => !!open,
+      enableOnFormTags: [
+        'input',
+        'INPUT',
+        'textarea',
+        'TEXTAREA',
+        'select',
+        'SELECT',
+      ],
     }
   );
 

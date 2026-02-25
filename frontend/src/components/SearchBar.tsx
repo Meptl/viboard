@@ -38,7 +38,7 @@ export const SearchBar = React.forwardRef<HTMLInputElement, SearchBarProps>(
             type="button"
             onMouseDown={(e) => e.preventDefault()}
             onClick={onClear}
-            className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/40"
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground transition-all duration-150 hover:scale-105 hover:bg-foreground/10 hover:text-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/40"
             aria-label="Clear search"
           >
             <X className="h-3.5 w-3.5" />

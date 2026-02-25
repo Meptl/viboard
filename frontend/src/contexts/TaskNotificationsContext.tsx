@@ -333,7 +333,7 @@ export function TaskNotificationsProvider({
   return (
     <TaskNotificationsContext.Provider value={value}>
       {children}
-      <div className="fixed right-4 top-4 z-50 flex w-[360px] max-w-[calc(100vw-2rem)] flex-col gap-2 pointer-events-none">
+      <div className="fixed bottom-4 right-4 z-50 flex w-[360px] max-w-[calc(100vw-2rem)] flex-col-reverse gap-2 pointer-events-none">
         {toasts.map((toast) => (
           <button
             key={toast.id}

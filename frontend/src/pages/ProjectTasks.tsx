@@ -385,14 +385,6 @@ export function ProjectTasks() {
     },
     {
       scope: Scope.KANBAN,
-      enableOnFormTags: [
-        'input',
-        'INPUT',
-        'textarea',
-        'TEXTAREA',
-        'select',
-        'SELECT',
-      ],
     }
   );
 

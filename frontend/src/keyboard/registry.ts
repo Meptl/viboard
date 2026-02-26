@@ -53,7 +53,7 @@ export const keyBindings: KeyBinding[] = [
     action: Action.EXIT,
     keys: 'esc',
     scopes: [Scope.DIALOG],
-    description: 'Close dialog or blur input',
+    description: 'Close dialog',
     group: 'Dialog',
   },
   {

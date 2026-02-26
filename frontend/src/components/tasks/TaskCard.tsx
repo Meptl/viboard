@@ -113,7 +113,7 @@ export function TaskCard({
               )}
               <ActionsDropdown
                 task={task}
-                triggerClassName="h-8 w-8 -m-2 rounded-md opacity-0 transition-[opacity,background-color,color] group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100 hover:bg-foreground/10 hover:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+                triggerClassName="h-7 w-7 -m-1 rounded-md opacity-0 transition-[opacity,background-color,color] group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100 hover:bg-foreground/10 hover:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
               />
             </>
           }

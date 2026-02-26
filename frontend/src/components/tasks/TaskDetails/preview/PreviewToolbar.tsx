@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ExternalLink, RefreshCw, Copy, Loader2, Pause } from 'lucide-react';
+import { ExternalLink, RefreshCw, Copy, Loader2, Square } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -124,7 +124,7 @@ export function PreviewToolbar({
                 {isStopping ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  <Pause className="h-4 w-4 text-destructive" />
+                  <Square className="h-4 w-4 text-destructive" />
                 )}
               </Button>
             </TooltipTrigger>

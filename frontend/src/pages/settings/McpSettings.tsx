@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
@@ -252,11 +251,10 @@ export function McpSettings() {
       )}
 
       <Card>
-        <CardHeader>
+        <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-3">
             <div>
               <CardTitle>{t('settings.mcp.title')}</CardTitle>
-              <CardDescription>{t('settings.mcp.description')}</CardDescription>
             </div>
             <Button
               onClick={handleApplyMcpServers}

@@ -270,7 +270,6 @@
     },
     "mcp": {
       "title": "MCP Server Configuration",
-      "description": "Configure Model Context Protocol servers to extend coding agent capabilities with custom tools and resources.",
       "loading": "Loading MCP configuration...",
       "applying": "Applying configuration...",
       "labels": {

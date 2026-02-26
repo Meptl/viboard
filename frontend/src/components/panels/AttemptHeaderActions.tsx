@@ -2,7 +2,6 @@ import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Eye, FileDiff, X } from 'lucide-react';
 import { Button } from '../ui/button';
-import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group';
 import {
   Tooltip,
   TooltipContent,
@@ -38,54 +37,35 @@ export const AttemptHeaderActions = ({
 }: AttemptHeaderActionsProps) => {
   const { t } = useTranslation('tasks');
   const isXL = useMediaQuery('(min-width: 1280px)');
+  const isPreviewMode = mode !== 'diffs';
+  const nextMode: LayoutMode = isPreviewMode ? 'diffs' : 'preview';
 
   return (
     <>
       {typeof mode !== 'undefined' && onModeChange && isXL && (
         <div className="inline-flex items-center gap-4">
           <TooltipProvider>
-            <ToggleGroup
-              type="single"
-              value={mode ?? ''}
-              onValueChange={(v) => {
-                if (!v) return;
-                onModeChange(v as LayoutMode);
-              }}
-              className="inline-flex gap-4"
-              aria-label="Layout mode"
-            >
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <ToggleGroupItem
-                    value="preview"
-                    aria-label="Preview"
-                    active={mode !== 'preview'}
-                    disabled={mode === 'preview'}
-                  >
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="icon"
+                  onClick={() => onModeChange(nextMode)}
+                  aria-label={`Switch to ${t(`attemptHeaderActions.${nextMode}`)}`}
+                  className={`h-7 w-7 border border-border transition-all duration-200 ${
+                    isPreviewMode ? 'rounded-full' : 'rounded-sm'
+                  }`}
+                >
+                  {isPreviewMode ? (
                     <Eye className="h-4 w-4" />
-                  </ToggleGroupItem>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  {t('attemptHeaderActions.preview')}
-                </TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <ToggleGroupItem
-                    value="diffs"
-                    aria-label="Diffs"
-                    active={mode !== 'diffs'}
-                    disabled={mode === 'diffs'}
-                  >
+                  ) : (
                     <FileDiff className="h-4 w-4" />
-                  </ToggleGroupItem>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  {t('attemptHeaderActions.diffs')}
-                </TooltipContent>
-              </Tooltip>
-            </ToggleGroup>
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                {t(`attemptHeaderActions.${nextMode}`)}
+              </TooltipContent>
+            </Tooltip>
           </TooltipProvider>
           {attempt && gitOps && (
             <GitOperations

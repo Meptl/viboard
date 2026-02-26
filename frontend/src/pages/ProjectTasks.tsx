@@ -728,6 +728,38 @@ export function ProjectTasks() {
       if (!task || task.status === newStatus) return;
 
       try {
+        const shouldAutoStartAttempt =
+          newStatus === 'inprogress' && !!projectId && !!config?.executor_profile;
+        let existingAttempts = null;
+
+        if (shouldAutoStartAttempt) {
+          try {
+            existingAttempts = await attemptsApi.getAll(task.id);
+          } catch (error) {
+            console.warn(
+              'Failed to load attempts before status update; continuing without pre-confirmation:',
+              error
+            );
+          }
+
+          if (existingAttempts && existingAttempts.length > 0) {
+            const confirmResult = await ConfirmDialog.show({
+              title: 'Start a new attempt?',
+              message:
+                "This task already has an attempt. If you're looking to continue this conversation, do so in the chat window.",
+              confirmText: 'Start New Attempt',
+              cancelText: 'Cancel',
+              variant: 'destructive',
+            }).finally(() => {
+              ConfirmDialog.hide();
+            });
+
+            if (confirmResult !== 'confirmed') {
+              return;
+            }
+          }
+        }
+
         await tasksApi.update(draggedTaskId, {
           title: task.title,
           description: task.description,
@@ -736,30 +768,12 @@ export function ProjectTasks() {
           image_ids: null,
         });
 
-        if (
-          newStatus !== 'inprogress' ||
-          !projectId ||
-          !config?.executor_profile
-        ) {
+        if (!shouldAutoStartAttempt) {
           return;
         }
 
-        const existingAttempts = await attemptsApi.getAll(task.id);
-        if (existingAttempts.length > 0) {
-          const confirmResult = await ConfirmDialog.show({
-            title: 'Start a new attempt?',
-            message:
-              "This task already has an attempt. If you're looking to continue this conversation, do so in the chat window.",
-            confirmText: 'Start New Attempt',
-            cancelText: 'Cancel',
-            variant: 'destructive',
-          }).finally(() => {
-            ConfirmDialog.hide();
-          });
-
-          if (confirmResult !== 'confirmed') {
-            return;
-          }
+        if (!existingAttempts) {
+          existingAttempts = await attemptsApi.getAll(task.id);
         }
 
         const latestAttempt =

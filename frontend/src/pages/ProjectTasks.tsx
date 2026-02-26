@@ -731,7 +731,6 @@ export function ProjectTasks() {
         const shouldAutoStartAttempt =
           newStatus === 'inprogress' && !!projectId && !!config?.executor_profile;
         let existingAttempts = null;
-        let hasConfirmedNewAttemptWarning = false;
 
         const confirmNewAttemptWarning = async (): Promise<boolean> => {
           let dontShowAgain = false;
@@ -764,7 +763,6 @@ export function ProjectTasks() {
             return false;
           }
 
-          hasConfirmedNewAttemptWarning = true;
           if (dontShowAgain) {
             void updateAndSaveConfig({
               show_new_attempt_drag_warning: false,
@@ -810,17 +808,6 @@ export function ProjectTasks() {
 
         if (!existingAttempts) {
           existingAttempts = await attemptsApi.getAll(task.id);
-        }
-
-        if (
-          !hasConfirmedNewAttemptWarning &&
-          existingAttempts.length > 0 &&
-          config.show_new_attempt_drag_warning
-        ) {
-          const confirmed = await confirmNewAttemptWarning();
-          if (!confirmed) {
-            return;
-          }
         }
 
         const latestAttempt =

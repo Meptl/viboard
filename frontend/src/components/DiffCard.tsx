@@ -1,7 +1,7 @@
 import { Diff } from 'shared/types';
 import { DiffModeEnum, DiffView, SplitSide } from '@git-diff-view/react';
 import { generateDiffFile, type DiffFile } from '@git-diff-view/file';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef, type ComponentProps } from 'react';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { getHighLightLanguageFromPath } from '@/utils/extToLanguage';
 import { getActualTheme } from '@/utils/theme';
@@ -35,6 +35,12 @@ import {
   useWrapTextDiff,
 } from '@/stores/useDiffViewStore';
 import { useProject } from '@/contexts/ProjectContext';
+
+type DiffWidgetHook = NonNullable<
+  ComponentProps<typeof DiffView>['onCreateUseWidgetHook']
+> extends (hook: infer Hook) => void
+  ? Hook
+  : never;
 
 type Props = {
   diff: Diff;
@@ -152,6 +158,14 @@ export default function DiffCard({
     () => comments.filter((c) => c.filePath === filePath),
     [comments, filePath]
   );
+  const draftEntriesForFile = useMemo(
+    () =>
+      Object.entries(drafts)
+        .filter(([, draft]) => draft.filePath === filePath)
+        .sort(([, a], [, b]) => a.lineNumber - b.lineNumber),
+    [drafts, filePath]
+  );
+  const widgetHookRef = useRef<DiffWidgetHook | null>(null);
 
   // Transform comments to git-diff-view extendData format
   const extendData = useMemo(() => {
@@ -211,6 +225,29 @@ export default function DiffCard({
       <ReviewCommentRenderer comment={lineData.data} projectId={projectId} />
     );
   };
+
+  useEffect(() => {
+    if (!expanded) return;
+    if (draftEntriesForFile.length === 0) return;
+
+    const hook = widgetHookRef.current;
+    if (!hook) return;
+
+    const state = hook.getReadonlyState();
+    const activeSide = state.widgetSide;
+    const activeLineNumber = state.widgetLineNumber;
+    const hasActiveSavedDraft = draftEntriesForFile.some(
+      ([, draft]) =>
+        draft.side === activeSide && draft.lineNumber === activeLineNumber
+    );
+    if (hasActiveSavedDraft) return;
+
+    const firstDraft = draftEntriesForFile[0][1];
+    state.setWidget({
+      side: firstDraft.side,
+      lineNumber: firstDraft.lineNumber,
+    });
+  }, [expanded, draftEntriesForFile]);
 
   // Title row
   const title = (
@@ -313,6 +350,9 @@ export default function DiffCard({
             diffViewAddWidget
             onAddWidgetClick={handleAddWidgetClick}
             renderWidgetLine={renderWidgetLine}
+            onCreateUseWidgetHook={(hook) => {
+              widgetHookRef.current = hook;
+            }}
             extendData={extendData}
             renderExtendLine={renderExtendLine}
           />

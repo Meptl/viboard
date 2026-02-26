@@ -20,4 +20,6 @@ pub struct DraftFollowUpData {
     pub variant: Option<String>,
     #[serde(default)]
     pub review_comments: Vec<DraftReviewCommentData>,
+    #[serde(default)]
+    pub review_comment_drafts: Vec<DraftReviewCommentData>,
 }

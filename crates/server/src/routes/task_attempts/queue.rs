@@ -28,6 +28,7 @@ pub async fn queue_message(
         message: payload.message,
         variant: payload.variant,
         review_comments: Vec::new(),
+        review_comment_drafts: Vec::new(),
     };
 
     let queued = deployment

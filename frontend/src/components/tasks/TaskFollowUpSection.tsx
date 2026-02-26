@@ -165,6 +165,8 @@ export function TaskFollowUpSection({
           message,
           variant,
           review_comments: scratchRef.current?.review_comments ?? [],
+          review_comment_drafts:
+            scratchRef.current?.review_comment_drafts ?? [],
         });
       } catch (e) {
         console.error('Failed to save follow-up draft', e);

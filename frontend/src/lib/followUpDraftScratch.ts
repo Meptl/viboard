@@ -36,6 +36,7 @@ function isDraftFollowUpData(value: unknown): value is DraftFollowUpData {
     message?: unknown;
     variant?: unknown;
     review_comments?: unknown;
+    review_comment_drafts?: unknown;
   };
 
   const messageValid = typeof candidate.message === 'string';
@@ -47,8 +48,14 @@ function isDraftFollowUpData(value: unknown): value is DraftFollowUpData {
     candidate.review_comments === undefined ||
     (Array.isArray(candidate.review_comments) &&
       candidate.review_comments.every(isDraftReviewCommentData));
+  const reviewCommentDraftsValid =
+    candidate.review_comment_drafts === undefined ||
+    (Array.isArray(candidate.review_comment_drafts) &&
+      candidate.review_comment_drafts.every(isDraftReviewCommentData));
 
-  return messageValid && variantValid && reviewCommentsValid;
+  return (
+    messageValid && variantValid && reviewCommentsValid && reviewCommentDraftsValid
+  );
 }
 
 function normalizeDraft(draft: DraftFollowUpData): DraftFollowUpData {
@@ -56,6 +63,7 @@ function normalizeDraft(draft: DraftFollowUpData): DraftFollowUpData {
     message: draft.message,
     variant: draft.variant ?? null,
     review_comments: draft.review_comments ?? [],
+    review_comment_drafts: draft.review_comment_drafts ?? [],
   };
 }
 
@@ -86,7 +94,8 @@ export function writeFollowUpDraftScratch(
   const isEmpty =
     !normalized.message.trim() &&
     !normalized.variant &&
-    normalized.review_comments.length === 0;
+    normalized.review_comments.length === 0 &&
+    normalized.review_comment_drafts.length === 0;
 
   if (isEmpty) {
     window.localStorage.removeItem(key);
@@ -100,4 +109,3 @@ export function clearFollowUpDraftScratch(attemptId: string | undefined) {
   if (!attemptId || typeof window === 'undefined') return;
   window.localStorage.removeItem(getStorageKey(attemptId));
 }
-

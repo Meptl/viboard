@@ -25,6 +25,10 @@ export function CommentWidgetLine({
   const { enableScope, disableScope } = useHotkeysContext();
 
   useEffect(() => {
+    setValue(draft.text);
+  }, [draft.text]);
+
+  useEffect(() => {
     enableScope(Scope.EDIT_COMMENT);
     return () => {
       disableScope(Scope.EDIT_COMMENT);
@@ -74,11 +78,19 @@ export function CommentWidgetLine({
     preventDefault: true,
   });
 
+  const handleChange = useCallback(
+    (nextValue: string) => {
+      setValue(nextValue);
+      setDraft(widgetKey, { ...draft, text: nextValue });
+    },
+    [draft, setDraft, widgetKey]
+  );
+
   return (
     <div className="p-4 border-y bg-primary">
       <PlainTextTagTextarea
         value={value}
-        onChange={setValue}
+        onChange={handleChange}
         placeholder="Add a comment... (type @ to search files)"
         className="w-full bg-primary text-primary-foreground text-sm font-mono min-h-[80px] border rounded-md p-3"
         projectId={projectId}

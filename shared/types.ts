@@ -34,7 +34,7 @@ export type UpdateTask = { title: string | null, description: string | null, sta
 
 export type DraftReviewCommentData = { file_path: string, line_number: number, side: string, text: string, code_line: string | null, };
 
-export type DraftFollowUpData = { message: string, variant: string | null, review_comments: Array<DraftReviewCommentData>, };
+export type DraftFollowUpData = { message: string, variant: string | null, review_comments: Array<DraftReviewCommentData>, review_comment_drafts: Array<DraftReviewCommentData>, };
 
 export type Image = { id: string, file_path: string, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, created_at: string, updated_at: string, };
 

@@ -52,6 +52,10 @@ function serializeSplitSide(side: SplitSide): string {
   return side === SplitSide.old ? 'old' : 'new';
 }
 
+function makeDraftKey(filePath: string, side: SplitSide, lineNumber: number) {
+  return `${filePath}-${side}-${lineNumber}`;
+}
+
 export function useReview() {
   const context = useContext(ReviewContext);
   if (!context) {
@@ -77,6 +81,7 @@ export function ReviewProvider({
   useEffect(() => {
     if (!attemptId) {
       setComments([]);
+      setDrafts({});
       return;
     }
 
@@ -90,8 +95,25 @@ export function ReviewProvider({
         text: comment.text,
         ...(comment.code_line ? { codeLine: comment.code_line } : {}),
       })) ?? [];
+    const nextDrafts = Object.fromEntries(
+      (draft?.review_comment_drafts ?? []).map((comment) => {
+        const side = deserializeSplitSide(comment.side);
+        const key = makeDraftKey(comment.file_path, side, comment.line_number);
+        return [
+          key,
+          {
+            filePath: comment.file_path,
+            lineNumber: comment.line_number,
+            side,
+            text: comment.text,
+            ...(comment.code_line ? { codeLine: comment.code_line } : {}),
+          } satisfies ReviewDraft,
+        ];
+      })
+    );
 
     setComments(nextComments);
+    setDrafts(nextDrafts);
   }, [attemptId]);
 
   useEffect(() => {
@@ -111,11 +133,23 @@ export function ReviewProvider({
             code_line: comment.codeLine ?? null,
           })
         ),
+        review_comment_drafts: Object.values(drafts).map(
+          (draft): DraftReviewCommentData => ({
+            file_path: draft.filePath,
+            line_number: draft.lineNumber,
+            side: serializeSplitSide(draft.side),
+            text: draft.text,
+            code_line: draft.codeLine ?? null,
+          })
+        ),
       });
     } catch (error) {
-      console.error('Failed to persist review comments to draft scratch', error);
+      console.error(
+        'Failed to persist review comments and drafts to draft scratch',
+        error
+      );
     }
-  }, [attemptId, comments]);
+  }, [attemptId, comments, drafts]);
 
   const addComment = (comment: Omit<ReviewComment, 'id'>) => {
     const newComment: ReviewComment = {

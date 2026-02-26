@@ -169,7 +169,19 @@ export function PlainTextTagTextarea({
   const updateQueryFromTextarea = useCallback(
     (target: HTMLTextAreaElement) => {
       const cursor = target.selectionStart ?? 0;
-      setActiveQuery(getActiveAtQuery(target.value, cursor));
+      const nextQuery = getActiveAtQuery(target.value, cursor);
+      setActiveQuery((prev) => {
+        if (!prev && !nextQuery) return prev;
+        if (!prev || !nextQuery) return nextQuery;
+        if (
+          prev.query === nextQuery.query &&
+          prev.start === nextQuery.start &&
+          prev.end === nextQuery.end
+        ) {
+          return prev;
+        }
+        return nextQuery;
+      });
     },
     []
   );

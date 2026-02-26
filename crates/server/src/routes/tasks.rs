@@ -14,6 +14,7 @@ use axum::{
 };
 use db::models::{
     image::TaskImage,
+    merge::Merge,
     task::{CreateTask, Task, TaskWithAttemptStatus, UpdateTask},
     task_attempt::{CreateTaskAttempt, TaskAttempt},
 };
@@ -100,6 +101,14 @@ pub async fn get_task(
     State(_deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<Task>>, ApiError> {
     Ok(ResponseJson(ApiResponse::success(task)))
+}
+
+pub async fn get_task_merges(
+    Extension(task): Extension<Task>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<Vec<Merge>>>, ApiError> {
+    let merges = Merge::find_by_task_id(&deployment.db().pool, task.id).await?;
+    Ok(ResponseJson(ApiResponse::success(merges)))
 }
 
 pub async fn create_task(
@@ -336,6 +345,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
 
     let task_id_router = Router::new()
         .route("/", get(get_task))
+        .route("/merges", get(get_task_merges))
         .merge(task_actions_router)
         .layer(from_fn_with_state(deployment.clone(), load_task_middleware));
 

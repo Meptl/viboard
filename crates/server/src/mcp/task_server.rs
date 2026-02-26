@@ -1,6 +1,7 @@
 use std::{future::Future, path::PathBuf, str::FromStr};
 
 use db::models::{
+    merge::Merge,
     project::Project,
     tag::Tag,
     task::{CreateTask, Task, TaskStatus, TaskWithAttemptStatus, UpdateTask},
@@ -218,6 +219,45 @@ pub struct StartTaskAttemptRequest {
 pub struct ListTaskAttemptsRequest {
     #[schemars(description = "The ID of the task to list attempts for")]
     pub task_id: Uuid,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct GetTaskMergesRequest {
+    #[schemars(description = "The ID of the task to retrieve merges for")]
+    pub task_id: Uuid,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub struct TaskMergeSummary {
+    #[schemars(description = "The unique identifier of the merge record")]
+    pub id: String,
+    #[schemars(description = "The task attempt that produced this merge")]
+    pub task_attempt_id: String,
+    #[schemars(description = "The merged commit SHA")]
+    pub merge_commit: String,
+    #[schemars(description = "The target branch this merge was applied to")]
+    pub target_branch_name: String,
+    #[schemars(description = "When this merge record was created")]
+    pub created_at: String,
+}
+
+impl TaskMergeSummary {
+    fn from_merge(merge: Merge) -> Self {
+        Self {
+            id: merge.id.to_string(),
+            task_attempt_id: merge.task_attempt_id.to_string(),
+            merge_commit: merge.merge_commit,
+            target_branch_name: merge.target_branch_name,
+            created_at: merge.created_at.to_rfc3339(),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub struct GetTaskMergesResponse {
+    pub task_id: String,
+    pub merges: Vec<TaskMergeSummary>,
+    pub count: usize,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
@@ -716,6 +756,31 @@ impl TaskServer {
         TaskServer::success(&response)
     }
 
+    #[tool(description = "List merge records for a given task. `task_id` is required!")]
+    async fn get_task_merges(
+        &self,
+        Parameters(GetTaskMergesRequest { task_id }): Parameters<GetTaskMergesRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let url = self.url(&format!("/api/tasks/{task_id}/merges"));
+        let merges: Vec<Merge> = match self.send_json(self.client.get(&url)).await {
+            Ok(merges) => merges,
+            Err(e) => return Ok(e),
+        };
+
+        let merge_summaries = merges
+            .into_iter()
+            .map(TaskMergeSummary::from_merge)
+            .collect::<Vec<_>>();
+
+        let response = GetTaskMergesResponse {
+            task_id: task_id.to_string(),
+            count: merge_summaries.len(),
+            merges: merge_summaries,
+        };
+
+        TaskServer::success(&response)
+    }
+
     #[tool(
         description = "Update an existing task/ticket's title, description, or status. `project_id` and `task_id` are required! `title`, `description`, and `status` are optional."
     )]
@@ -828,7 +893,7 @@ impl TaskServer {
 #[tool_handler]
 impl ServerHandler for TaskServer {
     fn get_info(&self) -> ServerInfo {
-        let mut instruction = "A task and project management server. If you need to create or update tickets or tasks then use these tools. Most of them absolutely require that you pass the `project_id` of the project that you are currently working on. You can get project ids by using `list projects`. Call `list_tasks` to fetch the `task_ids` of all the tasks in a project`.. TOOLS: 'list_projects', 'list_tasks', 'create_task', 'create_attempt', 'list_attempts', 'get_task', 'get_attempt_diff', 'update_task', 'delete_task'. Make sure to pass `project_id` or `task_id`/`attempt_id` where required. You can use list tools to get the available ids.".to_string();
+        let mut instruction = "A task and project management server. If you need to create or update tickets or tasks then use these tools. Most of them absolutely require that you pass the `project_id` of the project that you are currently working on. You can get project ids by using `list projects`. Call `list_tasks` to fetch the `task_ids` of all the tasks in a project`.. TOOLS: 'list_projects', 'list_tasks', 'create_task', 'create_attempt', 'list_attempts', 'get_task_merges', 'get_task', 'get_attempt_diff', 'update_task', 'delete_task'. Make sure to pass `project_id` or `task_id`/`attempt_id` where required. You can use list tools to get the available ids.".to_string();
         if self.context.is_some() {
             let context_instruction = "Use 'get_context' to fetch project/task/attempt metadata for the active Vibe Kanban attempt when available.";
             instruction = format!("{} {}", context_instruction, instruction);

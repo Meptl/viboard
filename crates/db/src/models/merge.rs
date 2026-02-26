@@ -74,4 +74,21 @@ impl Merge {
         .fetch_optional(pool)
         .await
     }
+
+    pub async fn find_by_task_id(
+        pool: &SqlitePool,
+        task_id: Uuid,
+    ) -> Result<Vec<Self>, sqlx::Error> {
+        sqlx::query_as::<_, Merge>(
+            r#"SELECT
+                m.id, m.task_attempt_id, m.merge_commit, m.target_branch_name, m.created_at
+            FROM merges m
+            INNER JOIN task_attempts ta ON ta.id = m.task_attempt_id
+            WHERE ta.task_id = ?
+            ORDER BY m.created_at DESC"#,
+        )
+        .bind(task_id)
+        .fetch_all(pool)
+        .await
+    }
 }

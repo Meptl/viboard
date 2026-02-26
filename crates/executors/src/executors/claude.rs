@@ -28,8 +28,7 @@ use crate::{
     env::ExecutionEnv,
     executors::{
         AppendPrompt, AvailabilityInfo, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
-        codex::client::LogWriter,
-        vk_mcp_port_from_env,
+        codex::client::LogWriter, vk_mcp_port_from_env,
     },
     logs::{
         ActionType, FileChange, NormalizedEntry, NormalizedEntryError, NormalizedEntryType,

@@ -113,16 +113,16 @@ impl DiffWatcherContext {
         let stats_only = self.stats_only;
 
         match tokio::task::spawn_blocking(move || {
-            process_file_changes(
-                &git_service,
-                &worktree_path,
-                &base_commit,
-                target_branch.as_deref(),
-                &changed_paths,
-                &cumulative,
-                &full_sent,
+            process_file_changes(ProcessFileChangesInput {
+                git_service: &git_service,
+                worktree_path: &worktree_path,
+                base_commit: &base_commit,
+                target_branch: target_branch.as_deref(),
+                changed_paths: &changed_paths,
+                cumulative_bytes: &cumulative,
+                full_sent_paths: &full_sent,
                 stats_only,
-            )
+            })
         })
         .await
         {
@@ -382,16 +382,31 @@ fn extract_changed_paths(
         .collect()
 }
 
-fn process_file_changes(
-    git_service: &GitService,
-    worktree_path: &Path,
-    base_commit: &Commit,
-    target_branch: Option<&str>,
-    changed_paths: &[String],
-    cumulative_bytes: &Arc<AtomicUsize>,
-    full_sent_paths: &Arc<std::sync::RwLock<HashSet<String>>>,
+struct ProcessFileChangesInput<'a> {
+    git_service: &'a GitService,
+    worktree_path: &'a Path,
+    base_commit: &'a Commit,
+    target_branch: Option<&'a str>,
+    changed_paths: &'a [String],
+    cumulative_bytes: &'a Arc<AtomicUsize>,
+    full_sent_paths: &'a Arc<std::sync::RwLock<HashSet<String>>>,
     stats_only: bool,
+}
+
+fn process_file_changes(
+    input: ProcessFileChangesInput<'_>,
 ) -> Result<Vec<LogMsg>, DiffStreamError> {
+    let ProcessFileChangesInput {
+        git_service,
+        worktree_path,
+        base_commit,
+        target_branch,
+        changed_paths,
+        cumulative_bytes,
+        full_sent_paths,
+        stats_only,
+    } = input;
+
     let path_filter: Vec<&str> = changed_paths.iter().map(|s| s.as_str()).collect();
 
     let effective_base =

@@ -325,7 +325,7 @@ export function PlainTextTagTextarea({
       zIndex: 10000,
       '--typeahead-menu-max-height': `${placement.maxHeight}px`,
     } as CSSProperties;
-  }, [isOpen, value, activeQuery, options.length]);
+  }, [isOpen]);
 
   return (
     <>

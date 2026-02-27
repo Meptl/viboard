@@ -51,7 +51,7 @@ export function TagManager({ projectId, hideHeader = false }: TagManagerProps) {
         // User cancelled - do nothing
       }
     },
-    [fetchTags]
+    [fetchTags, projectId]
   );
 
   const handleDelete = useCallback(

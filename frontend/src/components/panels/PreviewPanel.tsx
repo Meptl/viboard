@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Loader2, X } from 'lucide-react';
@@ -143,16 +143,16 @@ export function PreviewPanel() {
     };
   }, [previewState.status, previewState.url, addElement]);
 
-  function startTimer() {
+  const startTimer = useCallback(() => {
     setLoadingTimeFinished(false);
     setTimeout(() => {
       setLoadingTimeFinished(true);
     }, 5000);
-  }
+  }, []);
 
   useEffect(() => {
     startTimer();
-  }, []);
+  }, [startTimer]);
 
   useEffect(() => {
     if (
@@ -182,13 +182,13 @@ export function PreviewPanel() {
     setShowLogs((v) => !v);
   };
 
-  const handleStartDevServer = () => {
+  const handleStartDevServer = useCallback(() => {
     setLoadingTimeFinished(false);
     startDevServer();
     startTimer();
     setShowHelp(false);
     setIsReady(false);
-  };
+  }, [startDevServer, startTimer]);
 
   const handleStopAndEdit = () => {
     stopDevServer(undefined, {

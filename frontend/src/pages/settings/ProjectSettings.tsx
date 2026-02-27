@@ -68,8 +68,13 @@ function normalizeProjectFormState(state: ProjectFormState): ProjectFormState {
 function stripManualProjectFields(
   state: ProjectFormState
 ): Omit<ProjectFormState, 'name' | 'git_repo_path'> {
-  const { name: _name, git_repo_path: _gitRepoPath, ...rest } = state;
-  return rest;
+  return {
+    setup_script: state.setup_script,
+    parallel_setup_script: state.parallel_setup_script,
+    dev_script: state.dev_script,
+    cleanup_script: state.cleanup_script,
+    copy_files: state.copy_files,
+  };
 }
 
 export function ProjectSettings() {

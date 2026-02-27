@@ -16,7 +16,6 @@ type NextActionCardProps = {
 
 export function NextActionCard({
   attemptId,
-  containerRef: _containerRef,
   failed,
   execution_processes,
   needsSetup,

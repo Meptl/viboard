@@ -3,14 +3,21 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 
-// Replaced during npm pack by workflow
-const R2_BASE_URL = "__R2_PUBLIC_URL__";
-const BINARY_TAG = "__BINARY_TAG__"; // e.g., v0.0.135-20251215122030
+const GITHUB_REPOSITORY = "Meptl/vibe-kanban";
 const CACHE_DIR = path.join(require("os").homedir(), ".vibe-kanban", "bin");
 
 async function fetchJson(url) {
   return new Promise((resolve, reject) => {
-    https.get(url, (res) => {
+    https
+      .get(
+        url,
+        {
+          headers: {
+            Accept: "application/vnd.github+json",
+            "User-Agent": "vibe-kanban-cli",
+          },
+        },
+        (res) => {
       if (res.statusCode === 301 || res.statusCode === 302) {
         return fetchJson(res.headers.location).then(resolve).catch(reject);
       }
@@ -26,7 +33,9 @@ async function fetchJson(url) {
           reject(new Error(`Failed to parse JSON from ${url}`));
         }
       });
-    }).on("error", reject);
+        },
+      )
+      .on("error", reject);
   });
 }
 
@@ -86,30 +95,36 @@ async function downloadFile(url, destPath, expectedSha256, onProgress) {
   });
 }
 
-async function ensureBinary(platform, binaryName, onProgress) {
-  const cacheDir = path.join(CACHE_DIR, BINARY_TAG, platform);
+async function ensureBinary(platform, binaryName, releaseTag, onProgress) {
+  const cacheDir = path.join(CACHE_DIR, releaseTag, platform);
   const zipPath = path.join(cacheDir, `${binaryName}.zip`);
 
   if (fs.existsSync(zipPath)) return zipPath;
 
   fs.mkdirSync(cacheDir, { recursive: true });
 
-  const manifest = await fetchJson(`${R2_BASE_URL}/binaries/${BINARY_TAG}/manifest.json`);
-  const binaryInfo = manifest.platforms?.[platform]?.[binaryName];
-
-  if (!binaryInfo) {
-    throw new Error(`Binary ${binaryName} not available for ${platform}`);
-  }
-
-  const url = `${R2_BASE_URL}/binaries/${BINARY_TAG}/${platform}/${binaryName}.zip`;
-  await downloadFile(url, zipPath, binaryInfo.sha256, onProgress);
+  const assetName = `${binaryName}-${platform}.zip`;
+  const url = `https://github.com/${GITHUB_REPOSITORY}/releases/download/${releaseTag}/${assetName}`;
+  await downloadFile(url, zipPath, null, onProgress);
 
   return zipPath;
 }
 
 async function getLatestVersion() {
-  const manifest = await fetchJson(`${R2_BASE_URL}/binaries/manifest.json`);
-  return manifest.latest;
+  const releases = await fetchJson(
+    `https://api.github.com/repos/${GITHUB_REPOSITORY}/releases?per_page=1`,
+  );
+
+  if (!Array.isArray(releases) || releases.length === 0 || !releases[0].tag_name) {
+    throw new Error(`No releases found for ${GITHUB_REPOSITORY}`);
+  }
+
+  return releases[0].tag_name;
 }
 
-module.exports = { R2_BASE_URL, BINARY_TAG, CACHE_DIR, ensureBinary, getLatestVersion };
+module.exports = {
+  GITHUB_REPOSITORY,
+  CACHE_DIR,
+  ensureBinary,
+  getLatestVersion,
+};

@@ -6,7 +6,7 @@
     "vibe-kanban": "npx-cli/bin/cli.js"
   },
   "files": [
-    "npx-cli/bin/cli.js",
+    "npx-cli/bin/**",
     "npx-cli/dist/**"
   ],
   "scripts": {

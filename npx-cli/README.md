@@ -10,6 +10,18 @@ Run vibe kanban instantly without installation:
 npx vibe-kanban
 ```
 
+Run directly from a GitHub fork:
+
+```bash
+npx github:Meptl/vibe-kanban
+```
+
+Optional overrides for custom release source:
+
+```bash
+VIBE_KANBAN_RELEASE_TAG=v0.0.136-20260227120000 npx github:owner/repo
+```
+
 This will launch the application locally and open it in your browser automatically.
 
 ## What is Vibe Kanban?

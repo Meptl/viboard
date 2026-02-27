@@ -4,7 +4,7 @@ const { execSync, spawn } = require("child_process");
 const AdmZip = require("adm-zip");
 const path = require("path");
 const fs = require("fs");
-const { ensureBinary, BINARY_TAG, CACHE_DIR, getLatestVersion } = require("./download");
+const { ensureBinary, CACHE_DIR, getLatestVersion } = require("./download");
 
 const CLI_VERSION = require("../package.json").version;
 
@@ -71,7 +71,6 @@ function getBinaryName(base) {
 }
 
 const platformDir = getPlatformDir();
-const versionCacheDir = path.join(CACHE_DIR, BINARY_TAG, platformDir);
 
 function showProgress(downloaded, total) {
   const percent = total ? Math.round((downloaded / total) * 100) : 0;
@@ -80,7 +79,8 @@ function showProgress(downloaded, total) {
   process.stdout.write(`\r   Downloading: ${mb}MB / ${totalMb}MB (${percent}%)`);
 }
 
-async function extractAndRun(baseName, launch) {
+async function extractAndRun(baseName, releaseTag, launch) {
+  const versionCacheDir = path.join(CACHE_DIR, releaseTag, platformDir);
   const binName = getBinaryName(baseName);
   const binPath = path.join(versionCacheDir, binName);
   const zipPath = path.join(versionCacheDir, `${baseName}.zip`);
@@ -100,7 +100,7 @@ async function extractAndRun(baseName, launch) {
   if (!fs.existsSync(zipPath)) {
     console.log(`Downloading ${baseName}...`);
     try {
-      await ensureBinary(platformDir, baseName, showProgress);
+      await ensureBinary(platformDir, baseName, releaseTag, showProgress);
       console.log(""); // newline after progress
     } catch (err) {
       console.error(`\nDownload failed: ${err.message}`);
@@ -139,26 +139,17 @@ async function extractAndRun(baseName, launch) {
 }
 
 async function main() {
+  const releaseTag =
+    process.env.VIBE_KANBAN_RELEASE_TAG || (await getLatestVersion());
+  const versionCacheDir = path.join(CACHE_DIR, releaseTag, platformDir);
   fs.mkdirSync(versionCacheDir, { recursive: true });
-
-  // Non-blocking update check
-  getLatestVersion()
-    .then((latest) => {
-      if (latest && latest !== CLI_VERSION) {
-        setTimeout(() => {
-          console.log(`\nUpdate available: ${CLI_VERSION} -> ${latest}`);
-          console.log(`Run: npx vibe-kanban@latest`);
-        }, 2000);
-      }
-    })
-    .catch(() => {});
 
   const args = process.argv.slice(2);
   const isMcpMode = args.includes("--mcp");
   const isReviewMode = args[0] === "review";
 
   if (isMcpMode) {
-    await extractAndRun("vibe-kanban-mcp", (bin) => {
+    await extractAndRun("vibe-kanban-mcp", releaseTag, (bin) => {
       const proc = spawn(bin, [], { stdio: "inherit" });
       proc.on("exit", (c) => process.exit(c || 0));
       proc.on("error", (e) => {
@@ -171,7 +162,7 @@ async function main() {
       process.on("SIGTERM", () => proc.kill("SIGTERM"));
     });
   } else if (isReviewMode) {
-    await extractAndRun("vibe-kanban-review", (bin) => {
+    await extractAndRun("vibe-kanban-review", releaseTag, (bin) => {
       const reviewArgs = args.slice(1);
       const proc = spawn(bin, reviewArgs, { stdio: "inherit" });
       proc.on("exit", (c) => process.exit(c || 0));
@@ -181,8 +172,8 @@ async function main() {
       });
     });
   } else {
-    console.log(`Starting vibe-kanban v${CLI_VERSION}...`);
-    await extractAndRun("vibe-kanban", (bin) => {
+    console.log(`Starting vibe-kanban v${CLI_VERSION} (${releaseTag})...`);
+    await extractAndRun("vibe-kanban", releaseTag, (bin) => {
       if (platform === "win32") {
         execSync(`"${bin}"`, { stdio: "inherit" });
       } else {

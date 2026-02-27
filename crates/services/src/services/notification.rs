@@ -160,6 +160,7 @@ impl NotificationService {
     }
 
     /// Send Linux notification using notify-rust
+    #[cfg(target_os = "linux")]
     async fn send_linux_notification(title: &str, message: &str, url: Option<&str>) {
         use notify_rust::Notification;
 
@@ -198,6 +199,10 @@ impl NotificationService {
         });
         drop(_handle); // Don't await, fire-and-forget
     }
+
+    /// No-op Linux notification stub for non-Linux targets to keep cross-platform builds compiling.
+    #[cfg(not(target_os = "linux"))]
+    async fn send_linux_notification(_title: &str, _message: &str, _url: Option<&str>) {}
 
     /// Send Windows/WSL notification using PowerShell toast script
     async fn send_windows_notification(title: &str, message: &str, url: Option<&str>) {

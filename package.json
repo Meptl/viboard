@@ -13,7 +13,7 @@
     "lint": "pnpm run frontend:lint && pnpm run backend:lint",
     "format": "cargo fmt --all && cd frontend && pnpm run format",
     "check": "pnpm run frontend:check && pnpm run backend:check",
-    "dev": "export FRONTEND_PORT=$(node scripts/setup-dev-environment.js frontend) && export BACKEND_PORT=$(node scripts/setup-dev-environment.js backend) && export MCP_PORT=$(node scripts/setup-dev-environment.js mcp) && concurrently \"pnpm run backend:dev:watch\" \"pnpm run frontend:dev\" \"pnpm run mcp:dev:http\"",
+    "dev": "export FRONTEND_PORT=$(node scripts/setup-dev-environment.js frontend) && export BACKEND_PORT=$(node scripts/setup-dev-environment.js backend) && export MCP_PORT=$(node scripts/setup-dev-environment.js mcp) && concurrently \"pnpm run backend:dev:watch\" \"pnpm run frontend:dev -- --mode production\" \"pnpm run mcp:dev:http\"",
     "test:npm": "./test-npm-package.sh",
     "frontend:lint": "cd frontend && pnpm run lint",
     "frontend:dev": "cd frontend && pnpm run dev -- --port ${FRONTEND_PORT:-3000} --host",

@@ -30,6 +30,9 @@
     "build:npx": "bash ./local-build.sh",
     "prepack": "pnpm run build:npx"
   },
+  "dependencies": {
+    "adm-zip": "^0.5.16"
+  },
   "devDependencies": {
     "concurrently": "^8.2.2",
     "vite": "^6.3.5"

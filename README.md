@@ -118,6 +118,7 @@ The following environment variables can be configured at build time or runtime:
 | `PORT` | Runtime | Auto-assign | **Production**: Server port. **Dev**: Frontend port (backend uses PORT+1) |
 | `BACKEND_PORT` | Runtime | `0` (auto-assign) | Backend server port (dev mode only, overrides PORT+1) |
 | `FRONTEND_PORT` | Runtime | `3000` | Frontend dev server port (dev mode only, overrides PORT) |
+| `MCP_PORT` | Runtime | `0` (auto-assign) | MCP HTTP server port. |
 | `HOST` | Runtime | `127.0.0.1` | Backend server host |
 | `DISABLE_WORKTREE_ORPHAN_CLEANUP` | Runtime | Not set | Disable git worktree cleanup (for debugging) |
 

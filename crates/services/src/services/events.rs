@@ -1,12 +1,12 @@
-use std::{collections::HashMap, str::FromStr, sync::Arc};
+use std::{str::FromStr, sync::Arc};
 
 use db::{
     DBService,
     models::{
         execution_process::ExecutionProcess,
-        task::{Task, TaskWithAttemptStatus},
+        task::Task,
         task_attempt::TaskAttempt,
-        task_notification::{CreateTaskNotification, TaskNotification, TaskNotificationOutcome},
+        task_notification::TaskNotification,
     },
 };
 use serde_json::json;
@@ -49,52 +49,9 @@ impl EventService {
         }
     }
 
-    async fn maybe_create_task_notification(
-        pool: &SqlitePool,
-        transition_state: Arc<RwLock<HashMap<Uuid, TaskWithAttemptStatus>>>,
-        task_with_status: &TaskWithAttemptStatus,
-    ) {
-        let previous = {
-            let mut state = transition_state.write().await;
-            state.insert(task_with_status.id, task_with_status.clone())
-        };
-
-        let Some(prev) = previous else {
-            return;
-        };
-
-        let attempt_just_finished =
-            prev.has_in_progress_attempt && !task_with_status.has_in_progress_attempt;
-        if !attempt_just_finished {
-            return;
-        }
-
-        let outcome = if task_with_status.last_attempt_failed {
-            TaskNotificationOutcome::Failed
-        } else {
-            TaskNotificationOutcome::Completed
-        };
-
-        let payload = CreateTaskNotification {
-            project_id: task_with_status.project_id,
-            task_id: task_with_status.id,
-            task_title: task_with_status.title.clone(),
-            outcome,
-        };
-
-        if let Err(err) = TaskNotification::create(pool, &payload).await {
-            tracing::error!(
-                "Failed to create task notification for task {}: {}",
-                task_with_status.id,
-                err
-            );
-        }
-    }
-
     async fn push_task_update_for_task(
         pool: &SqlitePool,
         msg_store: Arc<MsgStore>,
-        transition_state: Arc<RwLock<HashMap<Uuid, TaskWithAttemptStatus>>>,
         task_id: Uuid,
     ) -> Result<(), SqlxError> {
         if let Some(task) = Task::find_by_id(pool, task_id).await? {
@@ -104,12 +61,6 @@ impl EventService {
                 .into_iter()
                 .find(|task_with_status| task_with_status.id == task_id)
             {
-                Self::maybe_create_task_notification(
-                    pool,
-                    transition_state,
-                    &task_with_status,
-                )
-                .await;
                 msg_store.push_patch(task_patch::replace(&task_with_status));
             }
         }
@@ -120,12 +71,10 @@ impl EventService {
     async fn push_task_update_for_attempt(
         pool: &SqlitePool,
         msg_store: Arc<MsgStore>,
-        transition_state: Arc<RwLock<HashMap<Uuid, TaskWithAttemptStatus>>>,
         attempt_id: Uuid,
     ) -> Result<(), SqlxError> {
         if let Some(attempt) = TaskAttempt::find_by_id(pool, attempt_id).await? {
-            Self::push_task_update_for_task(pool, msg_store, transition_state, attempt.task_id)
-                .await?;
+            Self::push_task_update_for_task(pool, msg_store, attempt.task_id).await?;
         }
 
         Ok(())
@@ -136,7 +85,6 @@ impl EventService {
         msg_store: Arc<MsgStore>,
         entry_count: Arc<RwLock<usize>>,
         db_service: DBService,
-        task_transition_state: Arc<RwLock<HashMap<Uuid, TaskWithAttemptStatus>>>,
     ) -> impl for<'a> Fn(
         &'a mut sqlx::sqlite::SqliteConnection,
     ) -> std::pin::Pin<
@@ -148,15 +96,11 @@ impl EventService {
             let msg_store_for_hook = msg_store.clone();
             let entry_count_for_hook = entry_count.clone();
             let db_for_hook = db_service.clone();
-            let task_transition_state_for_hook = task_transition_state.clone();
             Box::pin(async move {
                 let mut handle = conn.lock_handle().await?;
                 let runtime_handle = tokio::runtime::Handle::current();
-                let runtime_handle_for_preupdate = runtime_handle.clone();
                 handle.set_preupdate_hook({
                     let msg_store_for_preupdate = msg_store_for_hook.clone();
-                    let task_transition_state_for_preupdate =
-                        task_transition_state_for_hook.clone();
                     move |preupdate: sqlx::sqlite::PreupdateHookResult<'_>| {
                         if preupdate.operation != SqliteOperation::Delete {
                             return;
@@ -169,13 +113,6 @@ impl EventService {
                                 {
                                     let patch = task_patch::remove(task_id);
                                     msg_store_for_preupdate.push_patch(patch);
-                                    let task_transition_state_for_preupdate =
-                                        task_transition_state_for_preupdate.clone();
-                                    runtime_handle_for_preupdate.spawn(async move {
-                                        let mut state =
-                                            task_transition_state_for_preupdate.write().await;
-                                        state.remove(&task_id);
-                                    });
                                 }
                             }
                             "task_attempts" => {
@@ -213,7 +150,6 @@ impl EventService {
                     let entry_count_for_hook = entry_count_for_hook.clone();
                     let msg_store_for_hook = msg_store_for_hook.clone();
                     let db = db_for_hook.clone();
-                    let task_transition_state_for_hook = task_transition_state_for_hook.clone();
 
                     if let Ok(table) = HookTables::from_str(hook.table) {
                         let rowid = hook.rowid;
@@ -313,12 +249,6 @@ impl EventService {
                                         && let Some(task_with_status) =
                                             task_list.into_iter().find(|t| t.id == task.id)
                                     {
-                                        EventService::maybe_create_task_notification(
-                                            &db.pool,
-                                            task_transition_state_for_hook.clone(),
-                                            &task_with_status,
-                                        )
-                                        .await;
                                         let patch = match hook.operation {
                                             SqliteOperation::Insert => {
                                                 task_patch::add(&task_with_status)
@@ -353,12 +283,6 @@ impl EventService {
                                         && let Some(task_with_status) =
                                             task_list.into_iter().find(|t| t.id == attempt.task_id)
                                     {
-                                        EventService::maybe_create_task_notification(
-                                            &db.pool,
-                                            task_transition_state_for_hook.clone(),
-                                            &task_with_status,
-                                        )
-                                        .await;
                                         let patch = task_patch::replace(&task_with_status);
                                         msg_store_for_hook.push_patch(patch);
                                         return;
@@ -380,12 +304,6 @@ impl EventService {
                                         && let Some(task_with_status) =
                                             task_list.into_iter().find(|t| t.id == *task_id)
                                     {
-                                        EventService::maybe_create_task_notification(
-                                            &db.pool,
-                                            task_transition_state_for_hook.clone(),
-                                            &task_with_status,
-                                        )
-                                        .await;
                                         let patch = task_patch::replace(&task_with_status);
                                         msg_store_for_hook.push_patch(patch);
                                         return;
@@ -406,7 +324,6 @@ impl EventService {
                                     if let Err(err) = EventService::push_task_update_for_attempt(
                                         &db.pool,
                                         msg_store_for_hook.clone(),
-                                        task_transition_state_for_hook.clone(),
                                         process.task_attempt_id,
                                     )
                                     .await
@@ -432,7 +349,6 @@ impl EventService {
                                             EventService::push_task_update_for_attempt(
                                                 &db.pool,
                                                 msg_store_for_hook.clone(),
-                                                task_transition_state_for_hook.clone(),
                                                 *task_attempt_id,
                                             )
                                             .await

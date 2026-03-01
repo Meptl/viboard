@@ -16,6 +16,7 @@ use db::{
         executor_session::{CreateExecutorSession, ExecutorSession},
         task::{Task, TaskStatus},
         task_attempt::{TaskAttempt, TaskAttemptError},
+        task_notification::{CreateTaskNotification, TaskNotification, TaskNotificationOutcome},
     },
 };
 use executors::{
@@ -166,6 +167,28 @@ pub trait ContainerService {
             tracing::warn!(
                 "Tried to finalize attempt {} but process is still running!",
                 ctx.task_attempt.id
+            );
+            return;
+        }
+
+        let outcome = if matches!(ctx.execution_process.status, ExecutionProcessStatus::Failed) {
+            TaskNotificationOutcome::Failed
+        } else {
+            TaskNotificationOutcome::Completed
+        };
+
+        let payload = CreateTaskNotification {
+            project_id: ctx.task.project_id,
+            task_id: ctx.task.id,
+            task_title: ctx.task.title.clone(),
+            outcome,
+        };
+
+        if let Err(e) = TaskNotification::create(&self.db().pool, &payload).await {
+            tracing::error!(
+                "Failed to create task notification for task {}: {}",
+                ctx.task.id,
+                e
             );
         }
     }

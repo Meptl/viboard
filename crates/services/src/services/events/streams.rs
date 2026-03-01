@@ -1,6 +1,7 @@
 use db::models::{
     execution_process::ExecutionProcess,
     task::{Task, TaskWithAttemptStatus},
+    task_notification::TaskNotification,
 };
 use futures::StreamExt;
 use serde_json::json;
@@ -136,6 +137,56 @@ impl EventService {
                     }
                 }
             });
+
+        // Start with initial snapshot, then live updates
+        let initial_stream = futures::stream::once(async move { Ok(initial_msg) });
+        let combined_stream = initial_stream.chain(filtered_stream).boxed();
+
+        Ok(combined_stream)
+    }
+
+    /// Stream raw task notification messages with initial snapshot
+    pub async fn stream_task_notifications_raw(
+        &self,
+    ) -> Result<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>, EventError>
+    {
+        // Get initial snapshot of notifications
+        let notifications = TaskNotification::find_all(&self.db.pool).await?;
+
+        // Convert notifications array to object keyed by notification ID
+        let notifications_map: serde_json::Map<String, serde_json::Value> = notifications
+            .into_iter()
+            .map(|notification| {
+                (
+                    notification.id.to_string(),
+                    serde_json::to_value(notification).unwrap(),
+                )
+            })
+            .collect();
+
+        let initial_patch = json!([{
+            "op": "replace",
+            "path": "/task_notifications",
+            "value": notifications_map
+        }]);
+        let initial_msg = LogMsg::JsonPatch(serde_json::from_value(initial_patch).unwrap());
+
+        let filtered_stream = BroadcastStream::new(self.msg_store.get_receiver()).filter_map(
+            move |msg_result| async move {
+                match msg_result {
+                    Ok(LogMsg::JsonPatch(patch)) => {
+                        if let Some(patch_op) = patch.0.first()
+                            && patch_op.path().starts_with("/task_notifications/")
+                        {
+                            return Some(Ok(LogMsg::JsonPatch(patch)));
+                        }
+                        None
+                    }
+                    Ok(other) => Some(Ok(other)),
+                    Err(_) => None,
+                }
+            },
+        );
 
         // Start with initial snapshot, then live updates
         let initial_stream = futures::stream::once(async move { Ok(initial_msg) });

@@ -175,12 +175,7 @@ export function ProjectTasks() {
     isLoading,
     isConnected,
   } = useProjectTasks(projectId || '');
-  const { ingestProjectTasks, clearTaskNotifications } = useTaskNotifications();
-
-  useEffect(() => {
-    if (!projectId || isLoading) return;
-    ingestProjectTasks(projectId, tasks);
-  }, [projectId, tasks, isLoading, ingestProjectTasks]);
+  const { clearTaskNotifications } = useTaskNotifications();
 
   const selectedTask = useMemo(
     () => (taskId ? (tasksById[taskId] ?? null) : null),

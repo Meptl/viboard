@@ -89,6 +89,30 @@ pub struct CreateTaskNotification {
 }
 
 impl TaskNotification {
+    pub async fn find_by_rowid(pool: &SqlitePool, rowid: i64) -> Result<Option<Self>, sqlx::Error> {
+        let row = sqlx::query_as::<_, TaskNotificationRow>(
+            r#"
+            SELECT
+                id,
+                project_id,
+                task_id,
+                task_title,
+                outcome,
+                created_at
+            FROM task_notifications
+            WHERE rowid = ?
+            "#,
+        )
+        .bind(rowid)
+        .fetch_optional(pool)
+        .await?;
+
+        match row {
+            Some(row) => TaskNotification::try_from(row).map(Some),
+            None => Ok(None),
+        }
+    }
+
     pub async fn find_all(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
         let rows = sqlx::query_as::<_, TaskNotificationRow>(
             r#"

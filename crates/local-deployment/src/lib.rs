@@ -138,6 +138,7 @@ impl Deployment for LocalDeployment {
         // Create shared components for EventService
         let events_msg_store = Arc::new(MsgStore::new());
         let events_entry_count = Arc::new(RwLock::new(0));
+        let task_transition_state = Arc::new(RwLock::new(HashMap::new()));
 
         // Create DB with event hooks
         let db = {
@@ -145,6 +146,7 @@ impl Deployment for LocalDeployment {
                 events_msg_store.clone(),
                 events_entry_count.clone(),
                 DBService::new().await?, // Temporary DB service for the hook
+                task_transition_state,
             );
             DBService::new_with_after_connect(hook).await?
         };

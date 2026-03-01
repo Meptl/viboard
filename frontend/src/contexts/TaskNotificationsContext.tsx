@@ -10,7 +10,6 @@ import {
 } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowRight, CheckCircle, XCircle } from 'lucide-react';
-import type { TaskWithAttemptStatus } from 'shared/types';
 import {
   taskNotificationsApi,
   type TaskNotificationOutcome,
@@ -18,6 +17,7 @@ import {
 } from '@/lib/api';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { paths } from '@/lib/paths';
+import { useJsonPatchWsStream } from '@/hooks/useJsonPatchWsStream';
 
 export interface TaskNotification {
   id: string;
@@ -28,14 +28,8 @@ export interface TaskNotification {
   createdAt: number;
 }
 
-type TaskSnapshot = Pick<
-  TaskWithAttemptStatus,
-  'id' | 'title' | 'has_in_progress_attempt' | 'has_merged_attempt' | 'last_attempt_failed'
->;
-
 interface TaskNotificationsContextValue {
   notifications: TaskNotification[];
-  ingestProjectTasks: (projectId: string, tasks: TaskWithAttemptStatus[]) => void;
   clearTaskNotifications: (projectId: string, taskId: string) => void;
   clearProjectNotifications: (projectId: string) => void;
   clearAllNotifications: () => void;
@@ -49,23 +43,12 @@ interface InAppToast {
   outcome: TaskNotificationOutcome;
 }
 
+interface TaskNotificationsStreamState {
+  task_notifications: Record<string, TaskNotificationRecord>;
+}
+
 const TaskNotificationsContext =
   createContext<TaskNotificationsContextValue | null>(null);
-
-function toTaskSnapshot(task: TaskWithAttemptStatus): TaskSnapshot {
-  return {
-    id: task.id,
-    title: task.title,
-    has_in_progress_attempt: task.has_in_progress_attempt,
-    has_merged_attempt: task.has_merged_attempt,
-    last_attempt_failed: task.last_attempt_failed,
-  };
-}
-
-function getOutcome(task: TaskSnapshot): TaskNotificationOutcome {
-  if (task.last_attempt_failed) return 'failed';
-  return 'completed';
-}
 
 function normalizeOutcome(outcome: TaskNotificationOutcome): TaskNotificationOutcome {
   return outcome === 'failed' ? 'failed' : 'completed';
@@ -100,40 +83,45 @@ export function TaskNotificationsProvider({
   const navigate = useNavigate();
   const { config } = useUserSystem();
   const location = useLocation();
-  const [notifications, setNotifications] = useState<TaskNotification[]>([]);
+  const [notificationsById, setNotificationsById] = useState<
+    Record<string, TaskNotification>
+  >({});
   const [toasts, setToasts] = useState<InAppToast[]>([]);
   const toastTimersRef = useRef<Record<string, number>>({});
-  const previousTasksByProjectRef = useRef<Record<string, Record<string, TaskSnapshot>>>(
-    {}
-  );
+  const seenNotificationIdsRef = useRef<Set<string>>(new Set());
+  const didHydrateRef = useRef(false);
   const currentTaskRoute = useMemo(() => {
     const match = location.pathname.match(/^\/projects\/([^/]+)\/tasks\/([^/]+)/);
     if (!match) return null;
     return { projectId: match[1], taskId: match[2] };
   }, [location.pathname]);
 
+  const { data: streamData } = useJsonPatchWsStream<TaskNotificationsStreamState>(
+    '/api/task-notifications/stream/ws',
+    true,
+    () => ({ task_notifications: {} })
+  );
+
   useEffect(() => {
-    let cancelled = false;
+    if (!streamData) return;
 
-    void (async () => {
-      try {
-        const records = await taskNotificationsApi.list();
-        if (cancelled) return;
-        setNotifications(records.map(fromServerNotification));
-      } catch (error) {
-        console.error('Failed to load task notifications', error);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    const nextNotificationsById: Record<string, TaskNotification> = {};
+    for (const [id, record] of Object.entries(streamData.task_notifications ?? {})) {
+      nextNotificationsById[id] = fromServerNotification(record);
+    }
+    setNotificationsById(nextNotificationsById);
+  }, [streamData]);
 
   const clearTaskNotifications = useCallback((projectId: string, taskId: string) => {
-    setNotifications((prev) =>
-      prev.filter((n) => !(n.projectId === projectId && n.taskId === taskId))
-    );
+    setNotificationsById((prev) => {
+      const next = { ...prev };
+      for (const [id, notification] of Object.entries(prev)) {
+        if (notification.projectId === projectId && notification.taskId === taskId) {
+          delete next[id];
+        }
+      }
+      return next;
+    });
 
     void taskNotificationsApi.clearTask(projectId, taskId).catch((error) => {
       console.error('Failed to clear task notifications', error);
@@ -141,9 +129,15 @@ export function TaskNotificationsProvider({
   }, []);
 
   const clearProjectNotifications = useCallback((projectId: string) => {
-    setNotifications((prev) =>
-      prev.filter((n) => n.projectId !== projectId)
-    );
+    setNotificationsById((prev) => {
+      const next = { ...prev };
+      for (const [id, notification] of Object.entries(prev)) {
+        if (notification.projectId === projectId) {
+          delete next[id];
+        }
+      }
+      return next;
+    });
 
     void taskNotificationsApi.clearProject(projectId).catch((error) => {
       console.error('Failed to clear project notifications', error);
@@ -151,7 +145,7 @@ export function TaskNotificationsProvider({
   }, []);
 
   const clearAllNotifications = useCallback(() => {
-    setNotifications([]);
+    setNotificationsById({});
 
     void taskNotificationsApi.clearAll().catch((error) => {
       console.error('Failed to clear all notifications', error);
@@ -167,19 +161,22 @@ export function TaskNotificationsProvider({
     }
   }, []);
 
-  const showInAppToast = useCallback((notification: TaskNotification) => {
-    const toast: InAppToast = {
-      id: notification.id,
-      projectId: notification.projectId,
-      taskId: notification.taskId,
-      title: notification.taskTitle,
-      outcome: notification.outcome,
-    };
+  const showInAppToast = useCallback(
+    (notification: TaskNotification) => {
+      const toast: InAppToast = {
+        id: notification.id,
+        projectId: notification.projectId,
+        taskId: notification.taskId,
+        title: notification.taskTitle,
+        outcome: notification.outcome,
+      };
 
-    setToasts((prev) => [toast, ...prev.slice(0, 4)]);
-    const timerId = window.setTimeout(() => removeToast(toast.id), 5000);
-    toastTimersRef.current[toast.id] = timerId;
-  }, [removeToast]);
+      setToasts((prev) => [toast, ...prev.slice(0, 4)]);
+      const timerId = window.setTimeout(() => removeToast(toast.id), 5000);
+      toastTimersRef.current[toast.id] = timerId;
+    },
+    [removeToast]
+  );
 
   const showBrowserNotification = useCallback(
     async (notification: TaskNotification) => {
@@ -219,118 +216,74 @@ export function TaskNotificationsProvider({
     };
   }, []);
 
-  const ingestProjectTasks = useCallback(
-    (projectId: string, tasks: TaskWithAttemptStatus[]) => {
-      if (!projectId) return;
+  useEffect(() => {
+    const notifications = Object.values(notificationsById);
 
-      const currentSnapshots: Record<string, TaskSnapshot> = {};
-      for (const task of tasks) {
-        currentSnapshots[task.id] = toTaskSnapshot(task);
+    if (!didHydrateRef.current) {
+      for (const notification of notifications) {
+        seenNotificationIdsRef.current.add(notification.id);
+      }
+      didHydrateRef.current = true;
+      return;
+    }
+
+    const newlyAdded = notifications.filter(
+      (notification) => !seenNotificationIdsRef.current.has(notification.id)
+    );
+
+    if (!newlyAdded.length) return;
+
+    for (const notification of newlyAdded) {
+      seenNotificationIdsRef.current.add(notification.id);
+
+      const isCurrentTask =
+        currentTaskRoute &&
+        currentTaskRoute.projectId === notification.projectId &&
+        currentTaskRoute.taskId === notification.taskId;
+
+      if (isCurrentTask) {
+        clearTaskNotifications(notification.projectId, notification.taskId);
+        continue;
       }
 
-      const prevSnapshots = previousTasksByProjectRef.current[projectId];
-      if (!prevSnapshots) {
-        previousTasksByProjectRef.current[projectId] = currentSnapshots;
-        return;
-      }
-
-      const nextNotifications: TaskNotification[] = [];
-      for (const task of tasks) {
-        const prevTask = prevSnapshots[task.id];
-        if (!prevTask) continue;
-
-        const attemptJustFinished =
-          prevTask.has_in_progress_attempt && !task.has_in_progress_attempt;
-        if (!attemptJustFinished) continue;
-
-        if (
-          currentTaskRoute &&
-          currentTaskRoute.projectId === projectId &&
-          currentTaskRoute.taskId === task.id
-        ) {
-          continue;
+      if (isAppFocused()) {
+        if (config?.notifications.toast_enabled) {
+          showInAppToast(notification);
         }
-
-        const now = Date.now();
-
-        nextNotifications.push({
-          id: `${projectId}:${task.id}:${now}:${nextNotifications.length}`,
-          projectId,
-          taskId: task.id,
-          taskTitle: task.title || 'Untitled task',
-          outcome: getOutcome(toTaskSnapshot(task)),
-          createdAt: now,
-        });
+      } else if (config?.notifications.system_enabled) {
+        void showBrowserNotification(notification);
       }
-
-      previousTasksByProjectRef.current[projectId] = currentSnapshots;
-
-      if (!nextNotifications.length) return;
-
-      setNotifications((prev) => {
-        const deduped = prev.filter(
-          (existing) =>
-            !nextNotifications.some(
-              (added) =>
-                added.projectId === existing.projectId &&
-                added.taskId === existing.taskId &&
-                existing.createdAt >= added.createdAt - 500
-            )
-        );
-        return [...nextNotifications, ...deduped];
-      });
-
-      for (const notification of nextNotifications) {
-        if (isAppFocused()) {
-          if (config?.notifications.toast_enabled) {
-            showInAppToast(notification);
-          }
-          continue;
-        }
-
-        if (config?.notifications.system_enabled) {
-          void showBrowserNotification(notification);
-        }
-      }
-
-      for (const notification of nextNotifications) {
-        void taskNotificationsApi
-          .create({
-            project_id: notification.projectId,
-            task_id: notification.taskId,
-            task_title: notification.taskTitle,
-            outcome: normalizeOutcome(notification.outcome),
-          })
-          .catch((error) => {
-            console.error('Failed to persist task notification', error);
-          });
-      }
-    },
-    [
-      config?.notifications.system_enabled,
-      config?.notifications.toast_enabled,
-      currentTaskRoute,
-      showBrowserNotification,
-      showInAppToast,
-    ]
-  );
+    }
+  }, [
+    notificationsById,
+    currentTaskRoute,
+    clearTaskNotifications,
+    config?.notifications.system_enabled,
+    config?.notifications.toast_enabled,
+    showBrowserNotification,
+    showInAppToast,
+  ]);
 
   useEffect(() => {
     if (!currentTaskRoute) return;
     clearTaskNotifications(currentTaskRoute.projectId, currentTaskRoute.taskId);
   }, [currentTaskRoute, clearTaskNotifications]);
 
+  const notifications = useMemo(
+    () =>
+      Object.values(notificationsById).sort((a, b) => b.createdAt - a.createdAt),
+    [notificationsById]
+  );
+
   const value = useMemo(
     () => ({
       notifications,
-      ingestProjectTasks,
       clearTaskNotifications,
       clearProjectNotifications,
       clearAllNotifications,
     }),
     [
       notifications,
-      ingestProjectTasks,
       clearTaskNotifications,
       clearProjectNotifications,
       clearAllNotifications,

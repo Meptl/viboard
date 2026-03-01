@@ -1,5 +1,6 @@
 use db::models::{
-    execution_process::ExecutionProcess, task::TaskWithAttemptStatus, task_attempt::TaskAttempt,
+    execution_process::ExecutionProcess, task::TaskWithAttemptStatus,
+    task_attempt::TaskAttempt, task_notification::TaskNotification,
 };
 use json_patch::{AddOperation, Patch, PatchOperation, RemoveOperation, ReplaceOperation};
 use uuid::Uuid;
@@ -43,6 +44,49 @@ pub mod task_patch {
             path: task_path(task_id)
                 .try_into()
                 .expect("Task path should be valid"),
+        })])
+    }
+}
+
+/// Helper functions for creating task notification-specific patches
+pub mod task_notification_patch {
+    use super::*;
+
+    fn notification_path(notification_id: Uuid) -> String {
+        format!(
+            "/task_notifications/{}",
+            escape_pointer_segment(&notification_id.to_string())
+        )
+    }
+
+    /// Create patch for adding a new task notification
+    pub fn add(notification: &TaskNotification) -> Patch {
+        Patch(vec![PatchOperation::Add(AddOperation {
+            path: notification_path(notification.id)
+                .try_into()
+                .expect("Task notification path should be valid"),
+            value: serde_json::to_value(notification)
+                .expect("Task notification serialization should not fail"),
+        })])
+    }
+
+    /// Create patch for updating an existing task notification
+    pub fn replace(notification: &TaskNotification) -> Patch {
+        Patch(vec![PatchOperation::Replace(ReplaceOperation {
+            path: notification_path(notification.id)
+                .try_into()
+                .expect("Task notification path should be valid"),
+            value: serde_json::to_value(notification)
+                .expect("Task notification serialization should not fail"),
+        })])
+    }
+
+    /// Create patch for removing a task notification
+    pub fn remove(notification_id: Uuid) -> Patch {
+        Patch(vec![PatchOperation::Remove(RemoveOperation {
+            path: notification_path(notification_id)
+                .try_into()
+                .expect("Task notification path should be valid"),
         })])
     }
 }

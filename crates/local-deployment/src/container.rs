@@ -385,6 +385,7 @@ impl LocalContainerService {
                     ctx.execution_process.status,
                     ExecutionProcessStatus::Running
                 );
+                let mut finalized = false;
 
                 if success || cleanup_done {
                     // Commit changes (if any) and get feedback about whether changes were made
@@ -419,6 +420,7 @@ impl LocalContainerService {
 
                         // Manually finalize task since we're bypassing normal execution flow
                         container.finalize_task(&ctx).await;
+                        finalized = true;
                     }
                 }
 
@@ -447,7 +449,9 @@ impl LocalContainerService {
                             {
                                 tracing::error!("Failed to start queued follow-up: {}", e);
                                 // Fall back to finalization if follow-up fails
-                                container.finalize_task(&ctx).await;
+                                if !finalized {
+                                    container.finalize_task(&ctx).await;
+                                }
                             }
                         } else {
                             // Execution failed or was killed - discard the queued message and finalize
@@ -456,10 +460,14 @@ impl LocalContainerService {
                                 ctx.task_attempt.id,
                                 ctx.execution_process.status
                             );
-                            container.finalize_task(&ctx).await;
+                            if !finalized {
+                                container.finalize_task(&ctx).await;
+                            }
                         }
                     } else {
-                        container.finalize_task(&ctx).await;
+                        if !finalized {
+                            container.finalize_task(&ctx).await;
+                        }
                     }
                 }
             }

@@ -41,6 +41,74 @@ pub struct SearchQuery {
     pub mode: SearchMode,
 }
 
+fn subsequence_match_span(haystack: &str, needle: &str) -> Option<(usize, usize)> {
+    if needle.is_empty() {
+        return Some((0, 0));
+    }
+
+    let haystack_bytes = haystack.as_bytes();
+    let needle_bytes = needle.as_bytes();
+    let mut needle_idx = 0usize;
+    let mut start = None;
+
+    for (idx, byte) in haystack_bytes.iter().enumerate() {
+        if *byte == needle_bytes[needle_idx] {
+            if start.is_none() {
+                start = Some(idx);
+            }
+            needle_idx += 1;
+            if needle_idx == needle_bytes.len() {
+                return Some((start.unwrap_or(0), idx));
+            }
+        }
+    }
+
+    None
+}
+
+fn fuzzy_settings_score(path_lower: &str, query_lower: &str) -> Option<(i32, SearchMatchType)> {
+    let file_name = path_lower.rsplit('/').next().unwrap_or(path_lower);
+    let (span_start, span_end) = subsequence_match_span(path_lower, query_lower)?;
+    let span_len = (span_end.saturating_sub(span_start) + 1) as i32;
+    let query_len = query_lower.len() as i32;
+
+    let mut score = 0i32;
+    let match_type = if file_name.contains(query_lower) {
+        SearchMatchType::FileName
+    } else if path_lower
+        .rsplit_once('/')
+        .map(|(parent, _)| parent.rsplit('/').next().unwrap_or(parent))
+        .unwrap_or("")
+        .contains(query_lower)
+    {
+        SearchMatchType::DirectoryName
+    } else {
+        SearchMatchType::FullPath
+    };
+
+    if file_name == query_lower {
+        score += 220;
+    }
+    if file_name.starts_with(query_lower) {
+        score += 160;
+    } else if file_name.contains(query_lower) {
+        score += 120;
+    }
+
+    if path_lower.starts_with(query_lower) {
+        score += 80;
+    } else if path_lower.contains(query_lower) {
+        score += 40;
+    }
+
+    // Prefer compact subsequence matches.
+    score += (query_len * 20) - (span_len - query_len).max(0);
+    // Slightly penalize deep/long paths.
+    score -= (path_lower.len() as i32 / 24).min(20);
+
+    Some((score, match_type))
+}
+
 /// FST-indexed file search result
 #[derive(Clone, Debug)]
 pub struct IndexedFile {
@@ -225,21 +293,37 @@ impl FileSearchCache {
         let query_lower = query.to_lowercase();
         let mut results = Vec::new();
 
+        if matches!(mode, SearchMode::Settings) {
+            let mut scored_results = Vec::new();
+            for indexed_file in &cached.indexed_files {
+                if let Some((score, match_type)) =
+                    fuzzy_settings_score(&indexed_file.path_lowercase, &query_lower)
+                {
+                    scored_results.push((
+                        score,
+                        SearchResult {
+                            path: indexed_file.path.clone(),
+                            is_file: indexed_file.is_file,
+                            match_type,
+                        },
+                    ));
+                }
+            }
+
+            scored_results.sort_by(|a, b| b.0.cmp(&a.0).then_with(|| a.1.path.cmp(&b.1.path)));
+            scored_results.truncate(50);
+            return scored_results
+                .into_iter()
+                .map(|(_, result)| result)
+                .collect();
+        }
+
         // Search through indexed files with mode-based filtering
         for indexed_file in &cached.indexed_files {
             if indexed_file.path_lowercase.contains(&query_lower) {
-                // Apply mode-based filtering
-                match mode {
-                    SearchMode::TaskForm => {
-                        // Exclude ignored files for task forms
-                        if indexed_file.is_ignored {
-                            continue;
-                        }
-                    }
-                    SearchMode::Settings => {
-                        // Include all files (including ignored) for project settings
-                        // No filtering needed
-                    }
+                // Exclude ignored files for task forms
+                if indexed_file.is_ignored {
+                    continue;
                 }
 
                 results.push(SearchResult {

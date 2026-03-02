@@ -46,16 +46,16 @@ export function MultiFileSearchTextarea({
   const searchCacheRef = useRef<Map<string, FileSearchResult[]>>(new Map());
   const itemRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
-  // Search for files when query changes
+  // Search for files when query changes. Backend handles fuzzy filtering.
   useEffect(() => {
-    if (!searchQuery || !projectId || searchQuery.length < 2) {
+    if (!searchQuery || !projectId || searchQuery.length < 1) {
       setSearchResults([]);
       setShowDropdown(false);
       return;
     }
 
-    // Check cache first
-    const cached = searchCacheRef.current.get(searchQuery);
+    const cacheKey = `${projectId}::${searchQuery}`;
+    const cached = searchCacheRef.current.get(cacheKey);
     if (cached) {
       setSearchResults(cached);
       setShowDropdown(cached.length > 0);
@@ -66,7 +66,6 @@ export function MultiFileSearchTextarea({
     const searchFiles = async () => {
       setIsLoading(true);
 
-      // Cancel previous request
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
@@ -84,16 +83,13 @@ export function MultiFileSearchTextarea({
           }
         );
 
-        // Only process if this request wasn't aborted
         if (!abortController.signal.aborted) {
           const fileResults: FileSearchResult[] = result.map((item) => ({
             ...item,
             name: item.path.split('/').pop() || item.path,
           }));
 
-          // Cache the results
-          searchCacheRef.current.set(searchQuery, fileResults);
-
+          searchCacheRef.current.set(cacheKey, fileResults);
           setSearchResults(fileResults);
           setShowDropdown(fileResults.length > 0);
           setSelectedIndex(-1);
@@ -109,7 +105,7 @@ export function MultiFileSearchTextarea({
       }
     };
 
-    const debounceTimer = setTimeout(searchFiles, 350);
+    const debounceTimer = setTimeout(searchFiles, 250);
     return () => {
       clearTimeout(debounceTimer);
       if (abortControllerRef.current) {
@@ -163,8 +159,8 @@ export function MultiFileSearchTextarea({
     setCurrentTokenStart(start);
     setCurrentTokenEnd(end);
 
-    // Show search results if token has 2+ characters
-    if (token.length >= 2) {
+    // Show search results as soon as token has content.
+    if (token.length >= 1) {
       setSearchQuery(token);
     } else {
       setSearchQuery('');

@@ -23,6 +23,9 @@ use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError, middleware::load_project_middleware};
 
+const SETTINGS_MAX_RESULTS: usize = 20;
+const SETTINGS_FUZZY_SCORE_THRESHOLD: i32 = 35;
+
 pub async fn get_projects(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<Vec<Project>>>, ApiError> {
@@ -419,6 +422,9 @@ async fn search_files_in_repo(
             if let Some((score, match_type)) =
                 fuzzy_settings_score(&relative_path_str, &file_name, &query_lower)
             {
+                if score < SETTINGS_FUZZY_SCORE_THRESHOLD {
+                    continue;
+                }
                 scored_results.push((
                     score,
                     SearchResult {
@@ -464,7 +470,7 @@ async fn search_files_in_repo(
         scored_results.sort_by(|a, b| b.0.cmp(&a.0).then_with(|| a.1.path.cmp(&b.1.path)));
         return Ok(scored_results
             .into_iter()
-            .take(50)
+            .take(SETTINGS_MAX_RESULTS)
             .map(|(_, result)| result)
             .collect());
     }

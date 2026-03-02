@@ -23,6 +23,9 @@ use super::{
     git::GitService,
 };
 
+const SETTINGS_MAX_RESULTS: usize = 20;
+const SETTINGS_FUZZY_SCORE_THRESHOLD: i32 = 35;
+
 /// Search mode for different use cases
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "lowercase")]
@@ -299,6 +302,9 @@ impl FileSearchCache {
                 if let Some((score, match_type)) =
                     fuzzy_settings_score(&indexed_file.path_lowercase, &query_lower)
                 {
+                    if score < SETTINGS_FUZZY_SCORE_THRESHOLD {
+                        continue;
+                    }
                     scored_results.push((
                         score,
                         SearchResult {
@@ -311,7 +317,7 @@ impl FileSearchCache {
             }
 
             scored_results.sort_by(|a, b| b.0.cmp(&a.0).then_with(|| a.1.path.cmp(&b.1.path)));
-            scored_results.truncate(50);
+            scored_results.truncate(SETTINGS_MAX_RESULTS);
             return scored_results
                 .into_iter()
                 .map(|(_, result)| result)

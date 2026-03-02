@@ -3,9 +3,7 @@ use std::{str::FromStr, sync::Arc};
 use db::{
     DBService,
     models::{
-        execution_process::ExecutionProcess,
-        task::Task,
-        task_attempt::TaskAttempt,
+        execution_process::ExecutionProcess, task::Task, task_attempt::TaskAttempt,
         task_notification::TaskNotification,
     },
 };
@@ -37,11 +35,7 @@ pub struct EventService {
 
 impl EventService {
     /// Creates a new EventService that will work with a DBService configured with hooks
-    pub fn new(
-        db: DBService,
-        msg_store: Arc<MsgStore>,
-        entry_count: Arc<RwLock<usize>>,
-    ) -> Self {
+    pub fn new(db: DBService, msg_store: Arc<MsgStore>, entry_count: Arc<RwLock<usize>>) -> Self {
         Self {
             msg_store,
             db,
@@ -412,5 +406,4 @@ impl EventService {
     pub fn msg_store(&self) -> &Arc<MsgStore> {
         &self.msg_store
     }
-
 }

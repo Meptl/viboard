@@ -1,6 +1,6 @@
 use db::models::{
-    execution_process::ExecutionProcess, task::TaskWithAttemptStatus,
-    task_attempt::TaskAttempt, task_notification::TaskNotification,
+    execution_process::ExecutionProcess, task::TaskWithAttemptStatus, task_attempt::TaskAttempt,
+    task_notification::TaskNotification,
 };
 use json_patch::{AddOperation, Patch, PatchOperation, RemoveOperation, ReplaceOperation};
 use uuid::Uuid;

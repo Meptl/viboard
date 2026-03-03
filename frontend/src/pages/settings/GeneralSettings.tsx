@@ -171,11 +171,6 @@ export function GeneralSettings() {
     updateAndSaveConfig({ disclaimer_acknowledged: false });
   };
 
-  const resetOnboarding = async () => {
-    if (!config) return;
-    updateAndSaveConfig({ onboarding_acknowledged: false });
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -602,19 +597,6 @@ export function GeneralSettings() {
             </div>
             <Button variant="outline" onClick={resetDisclaimer}>
               {t('settings.general.safety.disclaimer.button')}
-            </Button>
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">
-                {t('settings.general.safety.onboarding.title')}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {t('settings.general.safety.onboarding.description')}
-              </p>
-            </div>
-            <Button variant="outline" onClick={resetOnboarding}>
-              {t('settings.general.safety.onboarding.button')}
             </Button>
           </div>
           <div className="flex items-center space-x-2">

@@ -31,7 +31,6 @@ import { ThemeMode } from 'shared/types';
 import { Loader } from '@/components/ui/loader';
 
 import { DisclaimerDialog } from '@/components/dialogs/global/DisclaimerDialog';
-import { OnboardingDialog } from '@/components/dialogs/global/OnboardingDialog';
 import { ClickedElementsProvider } from './contexts/ClickedElementsProvider';
 import NiceModal from '@ebay/nice-modal-react';
 import { TaskNotificationsProvider } from '@/contexts/TaskNotificationsContext';
@@ -66,20 +65,6 @@ function AppContent() {
           await updateAndSaveConfig({ disclaimer_acknowledged: true });
         }
         DisclaimerDialog.hide();
-        return;
-      }
-
-      // 2) Onboarding - configure executor and editor
-      if (!config.onboarding_acknowledged) {
-        const result = await OnboardingDialog.show();
-        if (!cancelled) {
-          await updateAndSaveConfig({
-            onboarding_acknowledged: true,
-            executor_profile: result.profile,
-            editor: result.editor,
-          });
-        }
-        OnboardingDialog.hide();
         return;
       }
 

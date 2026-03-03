@@ -1,9 +1,5 @@
 // Global app dialogs
 export { DisclaimerDialog } from './global/DisclaimerDialog';
-export {
-  OnboardingDialog,
-  type OnboardingResult,
-} from './global/OnboardingDialog';
 
 export {
   ProjectEditorSelectionDialog,

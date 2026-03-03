@@ -247,22 +247,29 @@ pub async fn delete_task_with_cleanup(
     task: Task,
     deployment: DeploymentImpl,
 ) -> Result<(), ApiError> {
-    // Validate no running execution processes
-    if deployment
-        .container()
-        .has_running_processes(task.id)
-        .await?
-    {
-        return Err(ApiError::Conflict("Task has running execution processes. Please wait for them to complete or stop them first.".to_string()));
-    }
-
-    // Gather task attempts data needed for background cleanup
+    // Gather task attempts data needed for stopping running processes and background cleanup
     let attempts = TaskAttempt::fetch_all(&deployment.db().pool, Some(task.id))
         .await
         .map_err(|e| {
             tracing::error!("Failed to fetch task attempts for task {}: {}", task.id, e);
             ApiError::TaskAttempt(e)
         })?;
+
+    // Try to stop all running processes (including dev servers) before deletion.
+    for attempt in &attempts {
+        deployment.container().try_stop(attempt, true).await;
+    }
+
+    // Validate no running execution processes remain after stop attempt.
+    if deployment
+        .container()
+        .has_running_processes(task.id)
+        .await?
+    {
+        return Err(ApiError::Conflict(
+            "Task still has running execution processes and could not be deleted.".to_string(),
+        ));
+    }
 
     // Gather cleanup data before deletion
     let project = task

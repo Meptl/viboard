@@ -58,6 +58,13 @@ const DeleteTaskConfirmationDialogImpl =
             <DialogDescription>
               Are you sure you want to delete{' '}
               <span className="font-semibold">"{task.title}"</span>?
+              {task.has_in_progress_attempt && (
+                <>
+                  <br />
+                  Any running agent execution for this task will be stopped
+                  automatically.
+                </>
+              )}
             </DialogDescription>
           </DialogHeader>
 

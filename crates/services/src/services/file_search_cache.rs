@@ -27,7 +27,7 @@ use super::{
 
 pub const SETTINGS_MAX_RESULTS: usize = 20;
 pub const SETTINGS_FUZZY_SCORE_THRESHOLD: i32 = 35;
-pub const TASK_FORM_MAX_RESULTS: usize = 10;
+pub const TASK_FORM_MAX_RESULTS: usize = 4;
 pub const TASK_FORM_FUZZY_SCORE_THRESHOLD: i32 = 20;
 
 /// Search mode for different use cases

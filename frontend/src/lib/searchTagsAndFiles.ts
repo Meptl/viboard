@@ -2,6 +2,9 @@ import { projectsApi, tagsApi, tasksApi } from '@/lib/api';
 import { Fzf } from 'fzf';
 import type { SearchResult, Tag, TaskWithAttemptStatus } from 'shared/types';
 
+const MAX_FILE_RESULTS = 4;
+const MAX_TASK_RESULTS = 4;
+
 interface FileSearchResult extends SearchResult {
   name: string;
 }
@@ -91,10 +94,12 @@ export async function searchTagsAndFiles(
   // Fetch files (if projectId is available and query has content)
   if (projectId && trimmedQuery.length > 0) {
     const searchedFiles = await projectsApi.searchFiles(projectId, trimmedQuery);
-    const fileSearchResults: FileSearchResult[] = searchedFiles.map((item) => ({
-      ...item,
-      name: item.path.split('/').pop() || item.path,
-    }));
+    const fileSearchResults: FileSearchResult[] = searchedFiles
+      .map((item) => ({
+        ...item,
+        name: item.path.split('/').pop() || item.path,
+      }))
+      .slice(0, MAX_FILE_RESULTS);
     const fileMentionResults = fileSearchResults.map((file) => ({
       type: 'file' as const,
       file,
@@ -102,7 +107,10 @@ export async function searchTagsAndFiles(
 
     if (options?.includeTasks) {
       const tasks = options.taskSnapshot ?? (await tasksApi.list(projectId));
-      const matchedTasks = rankTasksWithFzf(tasks, trimmedQuery);
+      const matchedTasks = rankTasksWithFzf(tasks, trimmedQuery).slice(
+        0,
+        MAX_TASK_RESULTS
+      );
       const taskResults = matchedTasks.map((task) => ({
         type: 'task' as const,
         task,
@@ -116,7 +124,10 @@ export async function searchTagsAndFiles(
 
   if (projectId && options?.includeTasks) {
     const tasks = options.taskSnapshot ?? (await tasksApi.list(projectId));
-    const matchedTasks = rankTasksWithFzf(tasks, trimmedQuery);
+    const matchedTasks = rankTasksWithFzf(tasks, trimmedQuery).slice(
+      0,
+      MAX_TASK_RESULTS
+    );
     const taskResults = matchedTasks.map((task) => ({
       type: 'task' as const,
       task,

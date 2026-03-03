@@ -861,12 +861,18 @@ export function ProjectTasks() {
       const newStatus = over.id as Task['status'];
       const task = tasksById[draggedTaskId];
       if (!task || task.status === newStatus) return;
+      const shouldStopAgent =
+        task.status === 'inprogress' &&
+        newStatus !== 'inprogress' &&
+        task.has_in_progress_attempt;
 
       try {
-        const shouldStopAgent =
-          task.status === 'inprogress' &&
-          newStatus !== 'inprogress' &&
-          task.has_in_progress_attempt;
+        if (shouldStopAgent) {
+          setStopInFlightByTaskId((prev) => ({
+            ...prev,
+            [draggedTaskId]: true,
+          }));
+        }
 
         const shouldAutoStartAttempt =
           newStatus === 'inprogress' && !!projectId && !!config?.executor_profile;
@@ -951,10 +957,6 @@ export function ProjectTasks() {
         await updateTaskStatus();
 
         if (shouldStopAgent) {
-          setStopInFlightByTaskId((prev) => ({
-            ...prev,
-            [draggedTaskId]: true,
-          }));
           void (async () => {
             try {
               const attempts = await attemptsApi.getAll(task.id);
@@ -1046,6 +1048,13 @@ export function ProjectTasks() {
           }
         );
       } catch (err) {
+        if (shouldStopAgent) {
+          setStopInFlightByTaskId((prev) => {
+            const next = { ...prev };
+            delete next[draggedTaskId];
+            return next;
+          });
+        }
         setOptimisticStatusByTaskId((prev) => {
           const next = { ...prev };
           delete next[draggedTaskId];

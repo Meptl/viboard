@@ -30,7 +30,7 @@ type Props = {
   isFocused: boolean;
   fetchProjects: () => void;
   setError: (error: string) => void;
-  onEdit: (project: Project) => void;
+  onEdit: () => void;
 };
 
 function ProjectCard({
@@ -69,8 +69,8 @@ function ProjectCard({
     }
   };
 
-  const handleEdit = (project: Project) => {
-    onEdit(project);
+  const handleEdit = () => {
+    onEdit();
   };
 
   const handleOpenInIDE = () => {
@@ -107,7 +107,7 @@ function ProjectCard({
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleEdit(project);
+                    handleEdit();
                   }}
                 >
                   <Edit className="mr-2 h-4 w-4" />

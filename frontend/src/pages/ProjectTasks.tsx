@@ -19,6 +19,7 @@ import type { GitBranch } from 'shared/types';
 import { openTaskForm } from '@/lib/openTaskForm';
 import { FeatureShowcaseDialog } from '@/components/dialogs/global/FeatureShowcaseDialog';
 import { ConfirmDialog } from '@/components/dialogs/shared/ConfirmDialog';
+import { DoneCleanupDialog } from '@/components/dialogs/tasks/DoneCleanupDialog';
 import { showcases } from '@/config/showcases';
 import { useUserSystem } from '@/components/ConfigProvider';
 
@@ -71,7 +72,11 @@ import { useTaskNotifications } from '@/contexts/TaskNotificationsContext';
 import { ProjectTasksSnapshotProvider } from '@/contexts/ProjectTasksSnapshotContext';
 import type { GitOperationsInputs } from '@/components/tasks/Toolbar/GitOperations';
 
-import type { TaskAttempt, TaskWithAttemptStatus, TaskStatus } from 'shared/types';
+import type {
+  TaskAttempt,
+  TaskWithAttemptStatus,
+  TaskStatus,
+} from 'shared/types';
 
 type Task = TaskWithAttemptStatus;
 type DropPreview = {
@@ -333,6 +338,10 @@ export function ProjectTasks() {
   const isTaskView = !!taskId && !effectiveAttemptId;
   const { data: attempt } = useTaskAttempt(effectiveAttemptId);
   const taskRouteResolutionRef = useRef<string | null>(null);
+  const doneCleanupDays = Math.max(
+    1,
+    config?.done_task_cleanup_days ?? 1
+  );
 
   const { data: branchStatus } = useBranchStatus(attempt?.id);
   const [branches, setBranches] = useState<GitBranch[]>([]);
@@ -454,6 +463,11 @@ export function ProjectTasks() {
 
     return columns;
   }, [hasSearch, normalizedSearch, tasks]);
+
+  const doneTasks = useMemo(
+    () => tasks.filter((task) => normalizeStatus(task.status) === 'done'),
+    [tasks]
+  );
 
   const visibleTasksByStatus = useMemo(() => {
     const map: Record<TaskStatus, Task[]> = {
@@ -642,6 +656,52 @@ export function ProjectTasks() {
       }
     })();
   }, [isTaskView, navigate, navigateToAttemptDiffs, projectId, selectedTask]);
+
+  const handleDoneCleanup = useCallback(async () => {
+    const result = await DoneCleanupDialog.show({
+      defaultDays: doneCleanupDays,
+      doneTasks: doneTasks.map((task) => ({
+        id: task.id,
+        updated_at: task.updated_at,
+      })),
+    }).finally(() => {
+      DoneCleanupDialog.hide();
+    });
+
+    if (result.status !== 'confirmed') {
+      return;
+    }
+
+    const cleanupDays = Math.max(1, Math.floor(result.olderThanDays));
+    const currentDoneCleanupDays = config?.done_task_cleanup_days;
+    if (currentDoneCleanupDays !== cleanupDays) {
+      void updateAndSaveConfig({
+        done_task_cleanup_days: cleanupDays,
+      });
+    }
+
+    const cutoffTime = Date.now() - cleanupDays * 24 * 60 * 60 * 1000;
+    const tasksToDelete = doneTasks.filter(
+      (task) => new Date(task.updated_at).getTime() <= cutoffTime
+    );
+
+    if (tasksToDelete.length === 0) {
+      return;
+    }
+
+    const results = await Promise.allSettled(
+      tasksToDelete.map((task) => tasksApi.delete(task.id))
+    );
+
+    const failedCount = results.filter(
+      (resultItem) => resultItem.status === 'rejected'
+    ).length;
+    if (failedCount > 0) {
+      console.error(
+        `Done cleanup deleted ${tasksToDelete.length - failedCount}/${tasksToDelete.length} tasks`
+      );
+    }
+  }, [config, doneCleanupDays, doneTasks, updateAndSaveConfig]);
 
   const selectNextTask = useCallback(() => {
     if (selectedTask) {
@@ -1060,6 +1120,8 @@ export function ProjectTasks() {
           onViewTaskDetails={handleViewTaskDetails}
           selectedTaskId={selectedTask?.id}
           onCreateTask={handleCreateNewTask}
+          onDoneCleanup={handleDoneCleanup}
+          disableDoneCleanup={doneTasks.length === 0}
           projectId={projectId!}
           dropPreview={dropPreview}
         />

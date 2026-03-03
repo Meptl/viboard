@@ -6,7 +6,15 @@
     "noSearchResults": "No tasks match your search."
   },
   "actions": {
-    "addTask": "Add task"
+    "addTask": "Add task",
+    "cleanupDone": "Clean up done tasks"
+  },
+  "doneCleanup": {
+    "title": "Clean up done tasks",
+    "daysLabel": "Older than (days)",
+    "eligibleCount": "{{count}} of {{total}} done tasks will be deleted.",
+    "cancel": "Cancel",
+    "confirm": "Delete tasks"
   },
   "rebase": {
     "common": {

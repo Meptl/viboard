@@ -18,6 +18,10 @@ fn default_show_new_attempt_drag_warning() -> bool {
     true
 }
 
+fn default_done_task_cleanup_days() -> u32 {
+    1
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, TS)]
 pub struct NotificationConfig {
     pub sound_enabled: bool,
@@ -60,6 +64,8 @@ pub struct Config {
     pub git_branch_prefix: String,
     #[serde(default)]
     pub showcases: ShowcaseState,
+    #[serde(default = "default_done_task_cleanup_days")]
+    pub done_task_cleanup_days: u32,
 }
 
 impl Config {
@@ -83,6 +89,7 @@ impl Config {
             language: old_config.language,
             git_branch_prefix: old_config.git_branch_prefix,
             showcases: old_config.showcases,
+            done_task_cleanup_days: default_done_task_cleanup_days(),
         }
     }
 
@@ -128,6 +135,7 @@ impl Default for Config {
             language: UiLanguage::default(),
             git_branch_prefix: super::default_git_branch_prefix(),
             showcases: ShowcaseState::default(),
+            done_task_cleanup_days: default_done_task_cleanup_days(),
         }
     }
 }

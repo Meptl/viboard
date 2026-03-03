@@ -1,5 +1,5 @@
 import { Fragment, memo } from 'react';
-import { Trash2 } from 'lucide-react';
+import { Paintbrush, Trash2 } from 'lucide-react';
 import {
   type DragCancelEvent,
   type DragEndEvent,
@@ -10,9 +10,17 @@ import {
   KanbanHeader,
   KanbanProvider,
 } from '@/components/ui/shadcn-io/kanban';
+import { Button } from '@/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { TaskCard } from './TaskCard';
 import type { TaskStatus, TaskWithAttemptStatus } from 'shared/types';
 import { statusBoardColors, statusLabels } from '@/utils/statusLabels';
+import { useTranslation } from 'react-i18next';
 
 export type KanbanColumnItem = {
   type: 'task';
@@ -31,6 +39,8 @@ interface TaskKanbanBoardProps {
   selectedTaskId?: string;
   onCreateTask?: () => void;
   projectId: string;
+  onDoneCleanup?: () => void;
+  disableDoneCleanup?: boolean;
   dropPreview?: {
     status: TaskStatus;
     index: number;
@@ -48,8 +58,12 @@ function TaskKanbanBoard({
   selectedTaskId,
   onCreateTask,
   projectId,
+  onDoneCleanup,
+  disableDoneCleanup,
   dropPreview,
 }: TaskKanbanBoardProps) {
+  const { t } = useTranslation('tasks');
+
   const renderDropPlaceholder = (statusKey: TaskStatus, index: number) => {
     if (
       !dropPreview ||
@@ -95,6 +109,28 @@ function TaskKanbanBoard({
               }
               color={statusBoardColors[statusKey]}
               onAddTask={statusKey === 'todo' ? onCreateTask : undefined}
+              actions={
+                statusKey === 'done' && onDoneCleanup ? (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          className="m-0 p-0 h-0 text-foreground/50 hover:text-foreground disabled:text-foreground/30"
+                          onClick={onDoneCleanup}
+                          aria-label={t('actions.cleanupDone')}
+                          disabled={disableDoneCleanup}
+                        >
+                          <Paintbrush className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        {t('actions.cleanupDone')}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                ) : undefined
+              }
               leadingIcon={
                 statusKey === 'cancelled' ? (
                   <Trash2

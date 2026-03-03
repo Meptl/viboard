@@ -166,6 +166,7 @@ export type KanbanHeaderProps =
       onAddTask?: () => void;
       leadingIcon?: ReactNode;
       hideAddTask?: boolean;
+      actions?: ReactNode;
     };
 
 export const KanbanHeader = (props: KanbanHeaderProps) => {
@@ -196,23 +197,26 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
 
         <div className="m-0 text-sm">{props.name}</div>
       </span>
-      {!props.hideAddTask && (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                className="m-0 p-0 h-0 text-foreground/50 hover:text-foreground"
-                onClick={props.onAddTask}
-                aria-label={t('actions.addTask')}
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="top">{t('actions.addTask')}</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      )}
+      <span className="flex items-center gap-0.5">
+        {props.actions}
+        {!props.hideAddTask && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="m-0 p-0 h-0 text-foreground/50 hover:text-foreground"
+                  onClick={props.onAddTask}
+                  aria-label={t('actions.addTask')}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">{t('actions.addTask')}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+      </span>
     </Card>
   );
 };

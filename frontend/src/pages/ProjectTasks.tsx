@@ -405,8 +405,6 @@ export function ProjectTasks() {
     () => {
       if (isPanelOpen) {
         handleClosePanel();
-      } else {
-        navigate('/projects');
       }
     },
     {

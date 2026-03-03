@@ -6,8 +6,7 @@ Rough changes include:
 - General UI/UX improvements
 - In app notifications
 - Automatic vk MCP integration with agents
-- Additional MCP features
-- Fixed features
+- Features
 
 
 <p align="center">
@@ -27,10 +26,6 @@ Rough changes include:
   <a href="https://deepwiki.com/BloopAI/vibe-kanban"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
 </p>
 
-<h1 align="center">
-  <a href="https://jobs.polymer.co/vibe-kanban?source=github"><strong>We're hiring!</strong></a>
-</h1>
-
 ![](frontend/public/vibe-kanban-screenshot-overview.png)
 
 ## Overview
@@ -48,15 +43,11 @@ You can watch a video overview [here](https://youtu.be/TFT3KnZOOAk).
 
 ## Installation
 
-Make sure you have authenticated with your favourite coding agent. A full list of supported coding agents can be found in the [docs](https://vibekanban.com/docs). Then in your terminal run:
+Make sure you have authenticated with your favourite coding agent. Then in your terminal run:
 
 ```bash
 npx vibe-kanban
 ```
-
-## Documentation
-
-Please head to the [website](https://vibekanban.com/docs) for the latest documentation and user guides.
 
 ## Support
 
@@ -111,14 +102,12 @@ pnpm build
 
 ### Environment Variables
 
-The following environment variables can be configured at build time or runtime:
+The following environment variables can be configured at runtime:
 
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `PORT` | Runtime | Auto-assign | **Production**: Server port. **Dev**: Frontend port (backend uses PORT+1) |
-| `BACKEND_PORT` | Runtime | `0` (auto-assign) | Backend server port (dev mode only, overrides PORT+1) |
-| `FRONTEND_PORT` | Runtime | `3000` | Frontend dev server port (dev mode only, overrides PORT) |
-| `HOST` | Runtime | `127.0.0.1` | Backend server host |
-| `DISABLE_WORKTREE_ORPHAN_CLEANUP` | Runtime | Not set | Disable git worktree cleanup (for debugging) |
-
-**Build-time variables** must be set when running `pnpm run build`. **Runtime variables** are read when the application starts.
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | Auto-assign | **Production**: Server port. **Dev**: Frontend port (backend uses PORT+1) |
+| `BACKEND_PORT` | `0` (auto-assign) | Backend server port (dev mode only, overrides PORT+1) |
+| `FRONTEND_PORT` | `3000` | Frontend dev server port (dev mode only, overrides PORT) |
+| `HOST` | `127.0.0.1` | Backend server host |
+| `DISABLE_WORKTREE_ORPHAN_CLEANUP` | Not set | Disable git worktree cleanup (for debugging) |

@@ -376,6 +376,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   useKeyExit(handleContinueEditing, {
     scope: Scope.CONFIRMATION,
     when: () => modal.visible && showDiscardWarning,
+    enableOnFormTags: true,
   });
 
   const loading = branchesLoading || userSystemLoading;

@@ -17,6 +17,7 @@ import {
   searchTagsAndFiles,
   type SearchResultItem,
 } from '@/lib/searchTagsAndFiles';
+import { useProjectTasksSnapshot } from '@/contexts/ProjectTasksSnapshotContext';
 
 const MAX_DIALOG_HEIGHT = 320;
 const VIEWPORT_MARGIN = 8;
@@ -116,6 +117,11 @@ export function PlainTextTagTextarea({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const itemRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
   const requestIdRef = useRef(0);
+  const projectTasksSnapshot = useProjectTasksSnapshot();
+  const taskSnapshot =
+    projectTasksSnapshot && projectId === projectTasksSnapshot.projectId
+      ? projectTasksSnapshot.tasks
+      : undefined;
 
   const [activeQuery, setActiveQuery] = useState<ActiveQuery | null>(null);
   const [options, setOptions] = useState<SearchResultItem[]>([]);
@@ -142,6 +148,7 @@ export function PlainTextTagTextarea({
       try {
         const results = await searchTagsAndFiles(activeQuery.query, projectId, {
           includeTasks: true,
+          taskSnapshot,
         });
         if (requestIdRef.current !== currentRequestId) return;
         setOptions(results);
@@ -157,7 +164,7 @@ export function PlainTextTagTextarea({
     }, 150);
 
     return () => clearTimeout(timer);
-  }, [activeQuery, projectId]);
+  }, [activeQuery, projectId, taskSnapshot]);
 
   useEffect(() => {
     if (!isOpen || selectedIndex < 0) return;

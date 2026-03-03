@@ -76,7 +76,7 @@ export interface SearchResultItem {
 export async function searchTagsAndFiles(
   query: string,
   projectId?: string,
-  options?: { includeTasks?: boolean }
+  options?: { includeTasks?: boolean; taskSnapshot?: TaskWithAttemptStatus[] }
 ): Promise<SearchResultItem[]> {
   const trimmedQuery = query.trim();
 
@@ -101,7 +101,7 @@ export async function searchTagsAndFiles(
     }));
 
     if (options?.includeTasks) {
-      const tasks = await tasksApi.list(projectId);
+      const tasks = options.taskSnapshot ?? (await tasksApi.list(projectId));
       const matchedTasks = rankTasksWithFzf(tasks, trimmedQuery);
       const taskResults = matchedTasks.map((task) => ({
         type: 'task' as const,
@@ -115,7 +115,7 @@ export async function searchTagsAndFiles(
   }
 
   if (projectId && options?.includeTasks) {
-    const tasks = await tasksApi.list(projectId);
+    const tasks = options.taskSnapshot ?? (await tasksApi.list(projectId));
     const matchedTasks = rankTasksWithFzf(tasks, trimmedQuery);
     const taskResults = matchedTasks.map((task) => ({
       type: 'task' as const,

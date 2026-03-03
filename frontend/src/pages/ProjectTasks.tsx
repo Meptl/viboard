@@ -68,6 +68,7 @@ import TodoPanel from '@/components/tasks/TodoPanel';
 import { NewCard, NewCardHeader } from '@/components/ui/new-card';
 import { AttemptHeaderActions } from '@/components/panels/AttemptHeaderActions';
 import { useTaskNotifications } from '@/contexts/TaskNotificationsContext';
+import { ProjectTasksSnapshotProvider } from '@/contexts/ProjectTasksSnapshotContext';
 import type { GitOperationsInputs } from '@/components/tasks/Toolbar/GitOperations';
 
 import type { TaskAttempt, TaskWithAttemptStatus, TaskStatus } from 'shared/types';
@@ -1196,8 +1197,10 @@ export function ProjectTasks() {
   );
 
   return (
-    <div className="min-h-full h-full flex flex-col">
-      <div className="flex-1 min-h-0">{attemptArea}</div>
-    </div>
+    <ProjectTasksSnapshotProvider value={{ projectId, tasks }}>
+      <div className="min-h-full h-full flex flex-col">
+        <div className="flex-1 min-h-0">{attemptArea}</div>
+      </div>
+    </ProjectTasksSnapshotProvider>
   );
 }

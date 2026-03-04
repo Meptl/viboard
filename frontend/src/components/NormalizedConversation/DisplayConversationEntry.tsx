@@ -201,6 +201,12 @@ const getContentClassName = (entryType: NormalizedEntryType) => {
 
 type CardVariant = 'system' | 'error';
 
+const hasActiveTextSelection = () => {
+  if (typeof window === 'undefined') return false;
+  const selection = window.getSelection();
+  return !!selection && !selection.isCollapsed;
+};
+
 const MessageCard: React.FC<{
   children: React.ReactNode;
   variant: CardVariant;
@@ -212,13 +218,18 @@ const MessageCard: React.FC<{
   const systemTheme = 'border-400/40 text-zinc-500';
   const errorTheme =
     'border-red-400/40 bg-red-50 dark:bg-[hsl(var(--card))] text-[hsl(var(--foreground))]';
+  const handleCardClick = () => {
+    // Ignore click toggles that come from drag-to-select interactions.
+    if (hasActiveTextSelection()) return;
+    onToggle?.();
+  };
 
   return (
     <div
       className={`${frameBase} ${
         variant === 'system' ? systemTheme : errorTheme
       }`}
-      onClick={onToggle}
+      onClick={handleCardClick}
     >
       <div className="flex items-center gap-1.5">
         <div className="min-w-0 flex-1">{children}</div>
@@ -252,7 +263,10 @@ const ExpandChevron: React.FC<{
 
   return (
     <ChevronDown
-      onClick={onClick}
+      onClick={(event) => {
+        event.stopPropagation();
+        onClick();
+      }}
       className={`h-4 w-4 cursor-pointer transition-transform ${color} ${
         expanded ? '' : '-rotate-90'
       }`}

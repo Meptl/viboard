@@ -33,6 +33,7 @@ interface TaskNotificationsContextValue {
   clearTaskNotifications: (projectId: string, taskId: string) => void;
   clearProjectNotifications: (projectId: string) => void;
   clearAllNotifications: () => void;
+  resolveNextNotification: () => boolean;
 }
 
 interface InAppToast {
@@ -156,6 +157,25 @@ export function TaskNotificationsProvider({
       console.error('Failed to clear all notifications', error);
     });
   }, []);
+
+  const resolveNextNotification = useCallback(() => {
+    const notifications = Object.values(notificationsById);
+    if (notifications.length === 0) return false;
+
+    const oldestNotification = notifications.reduce((oldest, current) =>
+      current.createdAt < oldest.createdAt ? current : oldest
+    );
+
+    clearTaskNotifications(oldestNotification.projectId, oldestNotification.taskId);
+    navigate(
+      paths.attempt(
+        oldestNotification.projectId,
+        oldestNotification.taskId,
+        'latest'
+      )
+    );
+    return true;
+  }, [clearTaskNotifications, navigate, notificationsById]);
 
   const removeToast = useCallback((toastId: string) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== toastId));
@@ -291,12 +311,14 @@ export function TaskNotificationsProvider({
       clearTaskNotifications,
       clearProjectNotifications,
       clearAllNotifications,
+      resolveNextNotification,
     }),
     [
       notifications,
       clearTaskNotifications,
       clearProjectNotifications,
       clearAllNotifications,
+      resolveNextNotification,
     ]
   );
 

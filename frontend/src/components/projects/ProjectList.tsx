@@ -10,9 +10,10 @@ import { FolderPickerDialog } from '@/components/dialogs/shared/FolderPickerDial
 import { projectsApi } from '@/lib/api';
 import { AlertCircle, Loader2, Plus } from 'lucide-react';
 import ProjectCard from '@/components/projects/ProjectCard.tsx';
-import { useKeyCreate, Scope } from '@/keyboard';
+import { useKeyCreate, useKeyNextNotification, Scope } from '@/keyboard';
 import { generateProjectNameFromPath } from '@/utils/string';
 import { useProjects } from '@/hooks/useProjects';
+import { useTaskNotifications } from '@/contexts/TaskNotificationsContext';
 
 export function ProjectList() {
   const navigate = useNavigate();
@@ -27,6 +28,7 @@ export function ProjectList() {
   } = useProjects();
   const [mutationError, setMutationError] = useState('');
   const [focusedProjectId, setFocusedProjectId] = useState<string | null>(null);
+  const { resolveNextNotification } = useTaskNotifications();
 
   const errorMessage = useMemo(() => {
     if (mutationError) return mutationError;
@@ -67,6 +69,15 @@ export function ProjectList() {
 
   // Semantic keyboard shortcut for creating new project
   useKeyCreate(handleCreateProject, { scope: Scope.PROJECTS });
+  useKeyNextNotification(
+    () => {
+      resolveNextNotification();
+    },
+    {
+      scope: Scope.PROJECTS,
+      preventDefault: true,
+    }
+  );
 
   const handleEditProject = (projectId: string) => {
     navigate(`/settings/projects?projectId=${projectId}`, {

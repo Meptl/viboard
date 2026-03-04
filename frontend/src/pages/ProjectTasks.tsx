@@ -38,6 +38,7 @@ import {
 } from '@/contexts/GitOperationsContext';
 import {
   useKeyCreate,
+  useKeyNextNotification,
   useKeyExit,
   useKeyFocusSearch,
   Scope,
@@ -180,7 +181,8 @@ export function ProjectTasks() {
     isLoading,
     isConnected,
   } = useProjectTasks(projectId || '');
-  const { clearTaskNotifications } = useTaskNotifications();
+  const { clearTaskNotifications, resolveNextNotification } =
+    useTaskNotifications();
 
   const tasksById = useMemo(() => {
     if (Object.keys(optimisticStatusByTaskId).length === 0) {
@@ -444,6 +446,16 @@ export function ProjectTasks() {
     scope: Scope.KANBAN,
     preventDefault: true,
   });
+
+  useKeyNextNotification(
+    () => {
+      resolveNextNotification();
+    },
+    {
+      scope: Scope.KANBAN,
+      preventDefault: true,
+    }
+  );
 
   useKeyFocusSearch(
     () => {

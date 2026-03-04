@@ -88,3 +88,14 @@ export const useKeySubmitComment = createSemanticHook(Action.SUBMIT_COMMENT);
 export const useKeyCycleViewBackward = createSemanticHook(
   Action.CYCLE_VIEW_BACKWARD
 );
+
+/**
+ * Next notification action - typically 'n'
+ * Open and clear the oldest task notification
+ *
+ * @example
+ * useKeyNextNotification(() => resolveNextNotification(), { scope: Scope.KANBAN });
+ */
+export const useKeyNextNotification = createSemanticHook(
+  Action.NEXT_NOTIFICATION
+);

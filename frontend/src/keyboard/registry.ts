@@ -20,6 +20,7 @@ export enum Action {
   SUBMIT_TASK = 'submit_task',
   SUBMIT_COMMENT = 'submit_comment',
   CYCLE_VIEW_BACKWARD = 'cycle_view_backward',
+  NEXT_NOTIFICATION = 'next_notification',
 }
 
 export interface KeyBinding {
@@ -106,6 +107,13 @@ export const keyBindings: KeyBinding[] = [
     keys: ['meta+shift+enter', 'ctrl+shift+enter'],
     scopes: [Scope.KANBAN],
     description: 'Cycle views backward (diffs → preview → attempt)',
+    group: 'Navigation',
+  },
+  {
+    action: Action.NEXT_NOTIFICATION,
+    keys: 'n',
+    scopes: [Scope.KANBAN, Scope.PROJECTS],
+    description: 'Open and clear oldest notification',
     group: 'Navigation',
   },
 

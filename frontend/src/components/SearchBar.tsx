@@ -18,6 +18,16 @@ export const SearchBar = React.forwardRef<HTMLInputElement, SearchBarProps>(
     { className, value = '', onChange, disabled = false, onClear, project },
     ref
   ) => {
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key !== 'Escape' || !value || !onClear) {
+        return;
+      }
+
+      e.preventDefault();
+      e.stopPropagation();
+      onClear();
+    };
+
     if (disabled) {
       return null;
     }
@@ -29,6 +39,7 @@ export const SearchBar = React.forwardRef<HTMLInputElement, SearchBarProps>(
           ref={ref}
           value={value}
           onChange={(e) => onChange?.(e.target.value)}
+          onKeyDown={handleKeyDown}
           disabled={disabled}
           placeholder={project ? `Search ${project.name}...` : 'Search...'}
           className="h-8 bg-muted pl-8 pr-8"

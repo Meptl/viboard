@@ -4,6 +4,7 @@ import type { SearchResult, Tag, TaskWithAttemptStatus } from 'shared/types';
 
 const MAX_FILE_RESULTS = 4;
 const MAX_TASK_RESULTS = 4;
+const TASK_FZF_SCORE_THRESHOLD = 20;
 
 interface FileSearchResult extends SearchResult {
   name: string;
@@ -48,17 +49,7 @@ function rankTagsWithFzf(tags: Tag[], query: string): Tag[] {
 function rankTasksWithFzf(tasks: TaskWithAttemptStatus[], query: string) {
   if (tasks.length === 0) return tasks;
   if (query.length === 0) return tasks;
-  const filteredTasks = tasks.filter((task) => {
-    const taskAlias = normalizeTaskSearchText(task.title);
-    return (
-      isSubsequenceMatch(task.title, query) ||
-      isSubsequenceMatch(taskAlias, query) ||
-      isSubsequenceMatch(task.id, query)
-    );
-  });
-  if (filteredTasks.length === 0) return [];
-
-  const fzf = new Fzf(filteredTasks, {
+  const fzf = new Fzf(tasks, {
     selector: (task) => {
       const taskAlias = normalizeTaskSearchText(task.title);
       return `${task.title}\n${taskAlias}\n${task.id}`;
@@ -66,7 +57,10 @@ function rankTasksWithFzf(tasks: TaskWithAttemptStatus[], query: string) {
     forward: false,
   });
 
-  return fzf.find(query).map((result) => result.item);
+  return fzf
+    .find(query)
+    .filter((result) => result.score >= TASK_FZF_SCORE_THRESHOLD)
+    .map((result) => result.item);
 }
 
 export interface SearchResultItem {

@@ -26,7 +26,6 @@ function spawnBackend() {
   const env = {
     ...process.env,
     HOST: process.env.HOST || '127.0.0.1',
-    BACKEND_PORT: process.env.BACKEND_PORT || '0',
     DISABLE_BROWSER_OPEN: '1',
   };
 

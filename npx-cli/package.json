@@ -9,7 +9,7 @@
   "keywords": [],
   "author": "bloop",
   "license": "",
-  "description": "NPX wrapper around vibe-kanban and vibe-kanban-mcp",
+  "description": "NPX wrapper around vibe-kanban",
   "dependencies": {
     "adm-zip": "^0.5.16"
   },

@@ -218,13 +218,11 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           cargo zigbuild --release --target ${{ matrix.target }} -p server
-          cargo zigbuild --release --target ${{ matrix.target }} --bin mcp_task_server
 
       - name: Build backend (non-Linux)
         if: runner.os != 'Linux'
         run: |
           cargo build --release --target ${{ matrix.target }} -p server
-          cargo build --release --target ${{ matrix.target }} --bin mcp_task_server
 
       - name: Prepare binaries (non-macOS)
         if: runner.os != 'macOS'
@@ -233,10 +231,8 @@ jobs:
           mkdir -p dist
           if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
             cp target/${{ matrix.target }}/release/server.exe dist/vibe-kanban-${{ matrix.name }}.exe
-            cp target/${{ matrix.target }}/release/mcp_task_server.exe dist/vibe-kanban-mcp-${{ matrix.name }}.exe
           else
             cp target/${{ matrix.target }}/release/server dist/vibe-kanban-${{ matrix.name }}
-            cp target/${{ matrix.target }}/release/mcp_task_server dist/vibe-kanban-mcp-${{ matrix.name }}
           fi
 
       # Code signing for macOS only
@@ -276,46 +272,18 @@ jobs:
           notarize: true
           app_store_connect_api_key_json_file: app_store_key.json
 
-      - name: Sign MCP binary (macOS)
-        if: runner.os == 'macOS' && env.HAS_APPLE_CERT == 'true'
-        uses: indygreg/apple-code-sign-action@v1
-        with:
-          input_path: target/${{ matrix.target }}/release/mcp_task_server
-          output_path: vibe-kanban-mcp
-          p12_file: certificate.p12
-          p12_password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          sign: true
-          sign_args: "--code-signature-flags=runtime"
-
-      - name: Package MCP binary (macOS)
-        if: runner.os == 'macOS' && env.HAS_APPLE_CERT == 'true'
-        run: zip vibe-kanban-mcp.zip vibe-kanban-mcp
-
-      - name: Notarize signed MCP binary (macOS)
-        if: runner.os == 'macOS' && env.HAS_APPLE_CERT == 'true' && env.HAS_APP_STORE_KEY == 'true'
-        uses: indygreg/apple-code-sign-action@v1
-        continue-on-error: true
-        with:
-          input_path: vibe-kanban-mcp.zip
-          sign: false
-          notarize: true
-          app_store_connect_api_key_json_file: app_store_key.json
-
       - name: Prepare signed binaries (macOS)
         if: runner.os == 'macOS' && env.HAS_APPLE_CERT == 'true'
         run: |
           mkdir -p dist
           cp vibe-kanban.zip dist/vibe-kanban-${{ matrix.name }}.zip
-          cp vibe-kanban-mcp.zip dist/vibe-kanban-mcp-${{ matrix.name }}.zip
 
       - name: Prepare unsigned binaries (macOS)
         if: runner.os == 'macOS' && env.HAS_APPLE_CERT != 'true'
         run: |
           mkdir -p dist
           cp target/${{ matrix.target }}/release/server vibe-kanban
-          cp target/${{ matrix.target }}/release/mcp_task_server vibe-kanban-mcp
           zip dist/vibe-kanban-${{ matrix.name }}.zip vibe-kanban
-          zip dist/vibe-kanban-mcp-${{ matrix.name }}.zip vibe-kanban-mcp
 
       - name: Clean up certificates (macOS)
         if: runner.os == 'macOS' && env.HAS_APPLE_CERT == 'true'
@@ -341,27 +309,21 @@ jobs:
           - target: x86_64-unknown-linux-musl
             name: linux-x64
             binary: vibe-kanban
-            mcp_binary: vibe-kanban-mcp
           - target: x86_64-pc-windows-msvc
             name: windows-x64
             binary: vibe-kanban.exe
-            mcp_binary: vibe-kanban-mcp.exe
           - target: x86_64-apple-darwin
             name: macos-x64
             binary: vibe-kanban
-            mcp_binary: vibe-kanban-mcp
           - target: aarch64-apple-darwin
             name: macos-arm64
             binary: vibe-kanban
-            mcp_binary: vibe-kanban-mcp
           - target: aarch64-pc-windows-msvc
             name: windows-arm64
             binary: vibe-kanban.exe
-            mcp_binary: vibe-kanban-mcp.exe
           - target: aarch64-unknown-linux-musl
             name: linux-arm64
             binary: vibe-kanban
-            mcp_binary: vibe-kanban-mcp
     steps:
       - uses: actions/checkout@v4
         with:
@@ -389,13 +351,10 @@ jobs:
         run: |
           mkdir -p npx-cli/dist/${{ matrix.name }}
           mkdir vibe-kanban-${{ matrix.name }}
-          mkdir vibe-kanban-mcp-${{ matrix.name }}
 
           cp dist/vibe-kanban-${{ matrix.name }}* vibe-kanban-${{ matrix.name }}/${{ matrix.binary }}
-          cp dist/vibe-kanban-mcp-${{ matrix.name }}* vibe-kanban-mcp-${{ matrix.name }}/${{ matrix.mcp_binary }}
 
           zip -j npx-cli/dist/${{ matrix.name }}/vibe-kanban.zip vibe-kanban-${{ matrix.name }}/${{ matrix.binary }}
-          zip -j npx-cli/dist/${{ matrix.name }}/vibe-kanban-mcp.zip vibe-kanban-mcp-${{ matrix.name }}/${{ matrix.mcp_binary }}
 
       - name: Create platform package (macOS)
         if: matrix.name == 'macos-arm64' || matrix.name == 'macos-x64'
@@ -403,7 +362,6 @@ jobs:
           mkdir -p npx-cli/dist/${{ matrix.name }}
           mkdir vibe-kanban-${{ matrix.name }}
           cp dist/vibe-kanban-${{ matrix.name }}* npx-cli/dist/${{ matrix.name }}/vibe-kanban.zip
-          cp dist/vibe-kanban-mcp-${{ matrix.name }}* npx-cli/dist/${{ matrix.name }}/vibe-kanban-mcp.zip
 
       - name: Upload platform package artifact
         uses: actions/upload-artifact@v4
@@ -539,7 +497,6 @@ jobs:
           mkdir -p release-assets
           for platform in linux-x64 linux-arm64 windows-x64 windows-arm64 macos-x64 macos-arm64; do
             cp "binaries/$platform/vibe-kanban.zip" "release-assets/vibe-kanban-$platform.zip"
-            cp "binaries/$platform/vibe-kanban-mcp.zip" "release-assets/vibe-kanban-mcp-$platform.zip"
           done
           find electron-binaries -maxdepth 1 -type f -exec cp {} release-assets/ \;
 

@@ -43,12 +43,13 @@ Add the following configuration to your agent's MCP servers configuration:
 {
   "mcpServers": {
     "vibe_kanban": {
-      "command": "npx",
-      "args": ["-y", "vibe-kanban@latest", "--mcp"]
+      "url": "http://127.0.0.1:3001/mcp"
     }
   }
 }
 ```
+
+Make sure Vibe Kanban is already running locally before connecting your MCP client.
 
 ## Available MCP Tools
 

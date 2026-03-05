@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const { execSync, spawn } = require("child_process");
+const { execSync } = require("child_process");
 const AdmZip = require("adm-zip");
 const path = require("path");
 const fs = require("fs");
@@ -144,32 +144,14 @@ async function main() {
   const versionCacheDir = path.join(CACHE_DIR, releaseTag, platformDir);
   fs.mkdirSync(versionCacheDir, { recursive: true });
 
-  const args = process.argv.slice(2);
-  const isMcpMode = args.includes("--mcp");
-
-  if (isMcpMode) {
-    await extractAndRun("vibe-kanban-mcp", releaseTag, (bin) => {
-      const proc = spawn(bin, [], { stdio: "inherit" });
-      proc.on("exit", (c) => process.exit(c || 0));
-      proc.on("error", (e) => {
-        console.error("MCP server error:", e.message);
-        process.exit(1);
-      });
-      process.on("SIGINT", () => {
-        proc.kill("SIGINT");
-      });
-      process.on("SIGTERM", () => proc.kill("SIGTERM"));
-    });
-  } else {
-    console.log(`Starting vibe-kanban v${CLI_VERSION} (${releaseTag})...`);
-    await extractAndRun("vibe-kanban", releaseTag, (bin) => {
-      if (platform === "win32") {
-        execSync(`"${bin}"`, { stdio: "inherit" });
-      } else {
-        execSync(`"${bin}"`, { stdio: "inherit" });
-      }
-    });
-  }
+  console.log(`Starting vibe-kanban v${CLI_VERSION} (${releaseTag})...`);
+  await extractAndRun("vibe-kanban", releaseTag, (bin) => {
+    if (platform === "win32") {
+      execSync(`"${bin}"`, { stdio: "inherit" });
+    } else {
+      execSync(`"${bin}"`, { stdio: "inherit" });
+    }
+  });
 }
 
 main().catch((err) => {

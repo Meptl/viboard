@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import type { CreateProject } from 'shared/types';
 import { FolderPickerDialog } from '@/components/dialogs/shared/FolderPickerDialog';
 import { projectsApi } from '@/lib/api';
-import { Loader2, Plus } from 'lucide-react';
+import { Loader2, Plus, RefreshCw } from 'lucide-react';
 import ProjectCard from '@/components/projects/ProjectCard.tsx';
 import { useKeyCreate, useKeyNextNotification, Scope } from '@/keyboard';
 import { generateProjectNameFromPath } from '@/utils/string';
@@ -124,6 +124,7 @@ export function ProjectList() {
                 onClick={() => void refetch()}
                 disabled={isFetching}
               >
+                <RefreshCw className="mr-2 h-4 w-4" />
                 {t('common:buttons.retry')}
               </Button>
               {isFetching ? (
@@ -146,6 +147,7 @@ export function ProjectList() {
             <p className="text-sm text-destructive">{t('errors.fetchFailed')}</p>
             <div className="mt-4 flex items-center justify-center gap-3">
               <Button type="button" size="sm" onClick={() => void refetch()}>
+                <RefreshCw className="mr-2 h-4 w-4" />
                 {t('common:buttons.retry')}
               </Button>
             </div>

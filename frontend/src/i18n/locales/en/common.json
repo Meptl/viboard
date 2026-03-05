@@ -12,6 +12,7 @@
     "connect": "Connect",
     "disconnect": "Disconnect",
     "close": "Close",
+    "retry": "Retry",
     "replay": "Replay"
   },
   "states": {

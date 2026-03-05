@@ -12,6 +12,7 @@
     "connect": "连接",
     "disconnect": "断开连接",
     "close": "关闭",
+    "retry": "重试",
     "replay": "重播"
   },
   "states": {

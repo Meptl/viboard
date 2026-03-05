@@ -27,14 +27,7 @@ zip -q vibe-kanban-mcp.zip vibe-kanban-mcp
 rm -f vibe-kanban-mcp
 mv vibe-kanban-mcp.zip npx-cli/dist/macos-arm64/vibe-kanban-mcp.zip
 
-# Copy the Review CLI binary
-cp target/release/review vibe-kanban-review
-zip -q vibe-kanban-review.zip vibe-kanban-review
-rm -f vibe-kanban-review
-mv vibe-kanban-review.zip npx-cli/dist/macos-arm64/vibe-kanban-review.zip
-
 echo "✅ NPM package ready!"
 echo "📁 Files created:"
 echo "   - npx-cli/dist/macos-arm64/vibe-kanban.zip"
 echo "   - npx-cli/dist/macos-arm64/vibe-kanban-mcp.zip"
-echo "   - npx-cli/dist/macos-arm64/vibe-kanban-review.zip"

@@ -146,7 +146,6 @@ async function main() {
 
   const args = process.argv.slice(2);
   const isMcpMode = args.includes("--mcp");
-  const isReviewMode = args[0] === "review";
 
   if (isMcpMode) {
     await extractAndRun("vibe-kanban-mcp", releaseTag, (bin) => {
@@ -160,16 +159,6 @@ async function main() {
         proc.kill("SIGINT");
       });
       process.on("SIGTERM", () => proc.kill("SIGTERM"));
-    });
-  } else if (isReviewMode) {
-    await extractAndRun("vibe-kanban-review", releaseTag, (bin) => {
-      const reviewArgs = args.slice(1);
-      const proc = spawn(bin, reviewArgs, { stdio: "inherit" });
-      proc.on("exit", (c) => process.exit(c || 0));
-      proc.on("error", (e) => {
-        console.error("Review CLI error:", e.message);
-        process.exit(1);
-      });
     });
   } else {
     console.log(`Starting vibe-kanban v${CLI_VERSION} (${releaseTag})...`);

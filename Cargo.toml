@@ -6,8 +6,7 @@ members = [
     "crates/executors",
     "crates/services",
     "crates/utils",
-    "crates/local-deployment",
-    "crates/review"
+    "crates/local-deployment"
 ]
 
 [workspace.dependencies]

@@ -523,5 +523,5 @@ jobs:
           generate_release_notes: true
           files: |
             vibe-kanban-${{ needs.bump-version.outputs.new_tag }}.zip
-            release-assets/*.zip
+            release-assets/*
             npx-cli/vibe-kanban-*.tgz

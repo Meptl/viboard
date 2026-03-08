@@ -38,6 +38,7 @@ import {
 } from '@/contexts/GitOperationsContext';
 import {
   useKeyCreate,
+  useKeyEditTask,
   useKeyNextNotification,
   useKeyExit,
   useKeyFocusSearch,
@@ -441,8 +442,21 @@ export function ProjectTasks() {
     handleCreateTask();
   }, [handleCreateTask]);
 
+  const handleEditSelectedTask = useCallback(() => {
+    if (!projectId || !selectedTask) return;
+    if (!taskId) return;
+
+    openTaskForm({ mode: 'edit', projectId, task: selectedTask });
+  }, [projectId, selectedTask, taskId]);
+
   useKeyCreate(handleCreateNewTask, {
     scope: Scope.KANBAN,
+    preventDefault: true,
+  });
+
+  useKeyEditTask(handleEditSelectedTask, {
+    scope: Scope.KANBAN,
+    when: Boolean(taskId && selectedTask),
     preventDefault: true,
   });
 

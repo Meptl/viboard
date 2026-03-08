@@ -13,6 +13,7 @@ export enum Scope {
 export enum Action {
   EXIT = 'exit',
   CREATE = 'create',
+  EDIT_TASK = 'edit_task',
   FOCUS_SEARCH = 'focus_search',
   SUBMIT_AGENT_CHAT = 'submit_agent_chat',
   SUBMIT_TASK = 'submit_task',
@@ -80,6 +81,13 @@ export const keyBindings: KeyBinding[] = [
     scopes: [Scope.PROJECTS],
     description: 'Create new project',
     group: 'Projects',
+  },
+  {
+    action: Action.EDIT_TASK,
+    keys: 'e',
+    scopes: [Scope.KANBAN],
+    description: 'Edit selected task',
+    group: 'Kanban',
   },
 
   // Navigation actions

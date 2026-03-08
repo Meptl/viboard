@@ -35,6 +35,14 @@ export const useKeyExit = createSemanticHook(Action.EXIT);
 export const useKeyCreate = createSemanticHook(Action.CREATE);
 
 /**
+ * Edit task action - typically 'e' key
+ *
+ * @example
+ * useKeyEditTask(() => openTaskForm({ mode: 'edit', projectId, task }), { scope: Scope.KANBAN });
+ */
+export const useKeyEditTask = createSemanticHook(Action.EDIT_TASK);
+
+/**
  * Focus search action - typically '/' key
  *
  * @example

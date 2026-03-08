@@ -3,6 +3,7 @@ import VirtualizedList from '@/components/logs/VirtualizedList';
 import { TaskFollowUpSection } from '@/components/tasks/TaskFollowUpSection';
 import { EntriesProvider } from '@/contexts/EntriesContext';
 import { RetryUiProvider } from '@/contexts/RetryUiContext';
+import { Loader } from '@/components/ui/loader';
 import type { ReactNode } from 'react';
 
 interface TaskAttemptPanelProps {
@@ -17,11 +18,11 @@ const TaskAttemptPanel = ({
   children,
 }: TaskAttemptPanelProps) => {
   if (!attempt) {
-    return <div className="p-6 text-muted-foreground">Loading attempt...</div>;
-  }
-
-  if (!task) {
-    return <div className="p-6 text-muted-foreground">Loading task...</div>;
+    return (
+      <div className="h-full flex items-center justify-center p-6">
+        <Loader message="Loading attempt..." />
+      </div>
+    );
   }
 
   return (
@@ -29,8 +30,10 @@ const TaskAttemptPanel = ({
       <RetryUiProvider attemptId={attempt.id}>
         {children({
           logs: <VirtualizedList key={attempt.id} attempt={attempt} />,
-          followUp: (
+          followUp: task ? (
             <TaskFollowUpSection task={task} selectedAttemptId={attempt.id} />
+          ) : (
+            <div className="p-6 text-sm text-muted-foreground">Loading task...</div>
           ),
         })}
       </RetryUiProvider>

@@ -260,7 +260,7 @@ export function ProjectTasks() {
     clearTaskNotifications(projectId, selectedTask.id);
   }, [projectId, selectedTask, clearTaskNotifications]);
 
-  const isPanelOpen = Boolean(taskId && selectedTask && attemptId);
+  const isPanelOpen = Boolean(taskId && attemptId);
 
   const { config, updateAndSaveConfig, loading } = useUserSystem();
 
@@ -392,7 +392,8 @@ export function ProjectTasks() {
   ]);
 
   const isTaskView = !!taskId && !effectiveAttemptId;
-  const { data: attempt } = useTaskAttempt(effectiveAttemptId);
+  const { data: attempt, isLoading: isAttemptLoading } =
+    useTaskAttempt(effectiveAttemptId);
   const taskRouteResolutionRef = useRef<string | null>(null);
   const doneCleanupDays = Math.max(0, config?.done_task_cleanup_days ?? 0);
 
@@ -1132,39 +1133,51 @@ export function ProjectTasks() {
     ) : null;
 
   const attemptContent =
-    selectedTask && attempt ? (
+    taskId && attemptId ? (
       <NewCard className="h-full min-h-0 flex flex-col bg-diagonal-lines bg-muted border-0">
-        <TaskAttemptPanel attempt={attempt} task={selectedTask}>
-          {({ logs, followUp }) => (
-            <>
-              <GitErrorBanner />
-              <div className="flex-1 min-h-0 flex flex-col">
-                <div className="flex-1 min-h-0 flex flex-col">{logs}</div>
+        {isAttemptLoading && !attempt ? (
+          <div className="h-full flex items-center justify-center p-6">
+            <Loader message={t('common:states.loading')} />
+          </div>
+        ) : (
+          <TaskAttemptPanel attempt={attempt} task={selectedTask}>
+            {({ logs, followUp }) => (
+              <>
+                <GitErrorBanner />
+                <div className="flex-1 min-h-0 flex flex-col">
+                  <div className="flex-1 min-h-0 flex flex-col">{logs}</div>
 
-                <div className="shrink-0 border-t">
-                  <div className="mx-auto w-full max-w-[50rem]">
-                    <TodoPanel />
+                  <div className="shrink-0 border-t">
+                    <div className="mx-auto w-full max-w-[50rem]">
+                      <TodoPanel />
+                    </div>
+                  </div>
+
+                  <div className="min-h-0 max-h-[50%] border-t overflow-hidden bg-background">
+                    <div className="mx-auto w-full max-w-[50rem] h-full min-h-0">
+                      {followUp}
+                    </div>
                   </div>
                 </div>
-
-                <div className="min-h-0 max-h-[50%] border-t overflow-hidden bg-background">
-                  <div className="mx-auto w-full max-w-[50rem] h-full min-h-0">
-                    {followUp}
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-        </TaskAttemptPanel>
+              </>
+            )}
+          </TaskAttemptPanel>
+        )}
       </NewCard>
     ) : null;
 
   const auxContent =
-    selectedTask && attempt ? (
+    taskId && attemptId ? (
       <div className="relative h-full w-full">
-        {effectiveMode === 'preview' && <PreviewPanel />}
-        {effectiveMode === 'diffs' && (
-          <DiffsPanel selectedAttempt={attempt} />
+        {!attempt ? (
+          <div className="h-full flex items-center justify-center p-6">
+            <Loader message={t('common:states.loading')} />
+          </div>
+        ) : (
+          <>
+            {effectiveMode === 'preview' && <PreviewPanel />}
+            {effectiveMode === 'diffs' && <DiffsPanel selectedAttempt={attempt} />}
+          </>
         )}
       </div>
     ) : (

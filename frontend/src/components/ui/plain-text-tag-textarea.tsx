@@ -298,6 +298,37 @@ export function PlainTextTagTextarea({
         return;
       }
 
+      if (
+        e.key === 'Tab' &&
+        !e.shiftKey &&
+        !e.altKey &&
+        !e.metaKey &&
+        !e.ctrlKey
+      ) {
+        e.preventDefault();
+
+        const target = e.currentTarget;
+        const start = target.selectionStart ?? 0;
+        const end = target.selectionEnd ?? start;
+        const nextValue = `${target.value.slice(0, start)}\t${target.value.slice(end)}`;
+        onChange(nextValue);
+
+        setIsOpen(false);
+        setActiveQuery(null);
+        setOptions([]);
+        setSelectedIndex(-1);
+
+        requestAnimationFrame(() => {
+          const textarea = textareaRef.current;
+          if (!textarea) return;
+          const nextCursor = start + 1;
+          textarea.focus();
+          textarea.setSelectionRange(nextCursor, nextCursor);
+        });
+
+        return;
+      }
+
       onKeyDown?.(e);
     },
     [
@@ -305,6 +336,7 @@ export function PlainTextTagTextarea({
       insertSelection,
       isOpen,
       onCmdEnter,
+      onChange,
       onKeyDown,
       onShiftCmdEnter,
       options,

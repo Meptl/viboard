@@ -394,10 +394,7 @@ export function ProjectTasks() {
   const isTaskView = !!taskId && !effectiveAttemptId;
   const { data: attempt } = useTaskAttempt(effectiveAttemptId);
   const taskRouteResolutionRef = useRef<string | null>(null);
-  const doneCleanupDays = Math.max(
-    1,
-    config?.done_task_cleanup_days ?? 1
-  );
+  const doneCleanupDays = Math.max(0, config?.done_task_cleanup_days ?? 0);
 
   const { data: branchStatus } = useBranchStatus(attempt?.id);
   const [branches, setBranches] = useState<GitBranch[]>([]);
@@ -650,7 +647,7 @@ export function ProjectTasks() {
       return;
     }
 
-    const cleanupDays = Math.max(1, Math.floor(result.olderThanDays));
+    const cleanupDays = Math.max(0, Math.floor(result.olderThanDays));
     const currentDoneCleanupDays = config?.done_task_cleanup_days;
     if (currentDoneCleanupDays !== cleanupDays) {
       void updateAndSaveConfig({

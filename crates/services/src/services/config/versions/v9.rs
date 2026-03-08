@@ -19,7 +19,7 @@ fn default_show_new_attempt_drag_warning() -> bool {
 }
 
 fn default_done_task_cleanup_days() -> u32 {
-    1
+    0
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, TS)]

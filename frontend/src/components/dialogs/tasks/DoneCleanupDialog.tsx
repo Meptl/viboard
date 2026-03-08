@@ -30,8 +30,8 @@ export type DoneCleanupDialogResult =
   | { status: 'canceled' };
 
 const normalizeDays = (value: number): number => {
-  if (!Number.isFinite(value)) return 1;
-  return Math.max(1, Math.floor(value));
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.floor(value));
 };
 
 const DoneCleanupDialogImpl = NiceModal.create<DoneCleanupDialogProps>(
@@ -89,7 +89,7 @@ const DoneCleanupDialogImpl = NiceModal.create<DoneCleanupDialogProps>(
               <Input
                 id="done-cleanup-days"
                 type="number"
-                min={1}
+                min={0}
                 step={1}
                 value={daysInput}
                 onChange={(event) => setDaysInput(event.target.value)}

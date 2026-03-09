@@ -53,7 +53,8 @@ export function PreviewPanel() {
   const [showHelp, setShowHelp] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [showLogs, setShowLogs] = useState(false);
-  const [currentPreviewUrl, setCurrentPreviewUrl] = useState<string>();
+  const [iframeSrcUrl, setIframeSrcUrl] = useState<string>();
+  const [previewDisplayUrl, setPreviewDisplayUrl] = useState<string>();
   const listenerRef = useRef<ClickToComponentListener | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const hasAttemptedAutoStartRef = useRef(false);
@@ -85,19 +86,21 @@ export function PreviewPanel() {
   });
 
   useEffect(() => {
-    setCurrentPreviewUrl(previewState.url);
+    setIframeSrcUrl(previewState.url);
+    setPreviewDisplayUrl(previewState.url);
   }, [previewState.url]);
 
-  const effectivePreviewUrl = currentPreviewUrl ?? previewState.url;
+  const effectiveIframeSrcUrl = iframeSrcUrl ?? previewState.url;
+  const effectivePreviewUrl = previewDisplayUrl ?? effectiveIframeSrcUrl;
 
   useEffect(() => {
-    if (!effectivePreviewUrl) {
+    if (!effectiveIframeSrcUrl) {
       return;
     }
 
     let expectedOrigin: string | undefined;
     try {
-      expectedOrigin = new URL(effectivePreviewUrl).origin;
+      expectedOrigin = new URL(effectiveIframeSrcUrl).origin;
     } catch {
       expectedOrigin = undefined;
     }
@@ -128,12 +131,12 @@ export function PreviewPanel() {
       }
 
       const normalized = parsedUrl.toString();
-      setCurrentPreviewUrl((prev) => (prev === normalized ? prev : normalized));
+      setPreviewDisplayUrl((prev) => (prev === normalized ? prev : normalized));
     };
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [effectivePreviewUrl]);
+  }, [effectiveIframeSrcUrl]);
 
   const handleRefresh = () => {
     setIframeError(false);
@@ -157,11 +160,13 @@ export function PreviewPanel() {
       return;
     }
     setIframeError(false);
-    setCurrentPreviewUrl(nextUrl);
+    setIframeSrcUrl(nextUrl);
+    setPreviewDisplayUrl(nextUrl);
   };
 
   const handleIframeLoad = (loadedUrl: string) => {
-    setCurrentPreviewUrl((prev) => (prev === loadedUrl ? prev : loadedUrl));
+    setIframeSrcUrl((prev) => (prev === loadedUrl ? prev : loadedUrl));
+    setPreviewDisplayUrl((prev) => (prev === loadedUrl ? prev : loadedUrl));
   };
   const handleIframeRef = useCallback((node: HTMLIFrameElement | null) => {
     iframeRef.current = node;
@@ -218,7 +223,7 @@ export function PreviewPanel() {
 
   const isPreviewReady =
     previewState.status === 'ready' &&
-    Boolean(effectivePreviewUrl) &&
+    Boolean(effectiveIframeSrcUrl) &&
     !iframeError;
   const mode = iframeError
     ? 'error'
@@ -289,8 +294,8 @@ export function PreviewPanel() {
               isStopping={isStoppingDevServer}
             />
             <ReadyContent
-              url={effectivePreviewUrl}
-              iframeKey={`${effectivePreviewUrl}-${refreshKey}`}
+              url={effectiveIframeSrcUrl}
+              iframeKey={`${refreshKey}`}
               iframeRef={handleIframeRef}
               onIframeError={handleIframeError}
               onIframeLoad={handleIframeLoad}

@@ -1,13 +1,15 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { DraftFollowUpData } from 'shared/types';
 import { draftApi } from '@/lib/api';
 
 export function useFollowUpDraftStorage(attemptId?: string) {
   const [draft, setDraft] = useState<DraftFollowUpData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const mutationSeqRef = useRef(0);
 
   useEffect(() => {
     let mounted = true;
+    const seqAtLoadStart = mutationSeqRef.current;
 
     if (!attemptId) {
       setDraft(null);
@@ -19,7 +21,8 @@ export function useFollowUpDraftStorage(attemptId?: string) {
     draftApi
       .get(attemptId)
       .then((nextDraft) => {
-        if (mounted) {
+        // Ignore stale loads that started before a newer save/clear.
+        if (mounted && seqAtLoadStart === mutationSeqRef.current) {
           setDraft(nextDraft);
         }
       })
@@ -43,9 +46,13 @@ export function useFollowUpDraftStorage(attemptId?: string) {
   const saveDraft = useCallback(
     async (nextDraft: DraftFollowUpData) => {
       if (!attemptId) return;
+      const seq = ++mutationSeqRef.current;
       try {
         await draftApi.save(attemptId, nextDraft);
-        setDraft(nextDraft);
+        // Ignore out-of-order save completions.
+        if (seq === mutationSeqRef.current) {
+          setDraft(nextDraft);
+        }
       } catch (error) {
         console.error('Failed to save follow-up draft', error);
       }
@@ -54,8 +61,11 @@ export function useFollowUpDraftStorage(attemptId?: string) {
   );
 
   const clearDraft = useCallback(async () => {
+    const seq = ++mutationSeqRef.current;
+    // Clear immediately in UI; server clear runs in background.
+    setDraft(null);
+
     if (!attemptId) {
-      setDraft(null);
       return;
     }
 
@@ -64,7 +74,9 @@ export function useFollowUpDraftStorage(attemptId?: string) {
     } catch (error) {
       console.error('Failed to clear follow-up draft', error);
     }
-    setDraft(null);
+    if (seq === mutationSeqRef.current) {
+      setDraft(null);
+    }
   }, [attemptId]);
 
   return {

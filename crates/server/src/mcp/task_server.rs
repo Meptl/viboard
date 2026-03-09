@@ -330,7 +330,6 @@ pub struct GetTaskAttemptDiffResponse {
 pub struct TaskServer {
     client: reqwest::Client,
     base_url: String,
-    tool_router: ToolRouter<TaskServer>,
     context: Option<McpContext>,
 }
 
@@ -356,7 +355,6 @@ impl TaskServer {
         Self {
             client: reqwest::Client::new(),
             base_url: base_url.to_string(),
-            tool_router: Self::tool_router(),
             context: None,
         }
     }
@@ -365,29 +363,32 @@ impl TaskServer {
         let context = self.fetch_context_at_startup().await;
 
         if context.is_none() {
-            self.tool_router.map.remove("get_context");
             tracing::debug!("VK context not available, get_context tool will not be registered");
         } else {
             tracing::info!("VK context loaded, get_context tool available");
         }
 
         self.context = context;
-        let guidance = self.load_task_creation_guidance_from_config().await;
-        self.apply_task_creation_guidance_to_create_tool(guidance);
         self
     }
 
-    async fn load_task_creation_guidance_from_config(&self) -> TaskCreationGuidance {
+    fn load_task_creation_guidance_from_config(&self) -> TaskCreationGuidance {
         let path = utils::assets::config_path();
-        let config = services::services::config::load_config_from_file(&path).await;
+        let config = match std::fs::read_to_string(path) {
+            Ok(raw_config) => services::services::config::Config::from(raw_config),
+            Err(_) => services::services::config::Config::default(),
+        };
         TaskCreationGuidance {
             title_prompt: config.task_title_prompt.and_then(trimmed_non_empty),
             description_prompt: config.task_description_prompt.and_then(trimmed_non_empty),
         }
     }
 
-    fn apply_task_creation_guidance_to_create_tool(&mut self, guidance: TaskCreationGuidance) {
-        let Some(create_task_route) = self.tool_router.map.get_mut("create_task") else {
+    fn apply_task_creation_guidance_to_create_tool(
+        tool_router: &mut ToolRouter<TaskServer>,
+        guidance: TaskCreationGuidance,
+    ) {
+        let Some(create_task_route) = tool_router.map.get_mut("create_task") else {
             return;
         };
 
@@ -426,6 +427,16 @@ impl TaskServer {
             }
         }
         create_task_route.attr.input_schema = std::sync::Arc::new(schema);
+    }
+
+    fn tool_router_with_latest_guidance(&self) -> ToolRouter<TaskServer> {
+        let mut tool_router = Self::tool_router();
+        if self.context.is_none() {
+            tool_router.map.remove("get_context");
+        }
+        let guidance = self.load_task_creation_guidance_from_config();
+        Self::apply_task_creation_guidance_to_create_tool(&mut tool_router, guidance);
+        tool_router
     }
 
     async fn fetch_context_at_startup(&self) -> Option<McpContext> {
@@ -960,7 +971,7 @@ impl TaskServer {
     }
 }
 
-#[tool_handler]
+#[tool_handler(router = self.tool_router_with_latest_guidance())]
 impl ServerHandler for TaskServer {
     fn get_info(&self) -> ServerInfo {
         let mut instruction = "A task and project management server. If you need to create or update tickets or tasks then use these tools. Most of them absolutely require that you pass the `project_id` of the project that you are currently working on. You can get project ids by using `list projects`. Call `list_tasks` to fetch the `task_ids` of all the tasks in a project`.. TOOLS: 'list_projects', 'list_tasks', 'create_task', 'create_attempt', 'list_attempts', 'get_task_merges', 'get_task', 'get_attempt_diff', 'update_task', 'delete_task'. Make sure to pass `project_id` or `task_id`/`attempt_id` where required. You can use list tools to get the available ids.".to_string();

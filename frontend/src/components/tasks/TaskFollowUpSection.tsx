@@ -5,7 +5,7 @@ import {
   AlertCircle,
   Clock,
   X,
-  Paperclip,
+  ImageIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -675,7 +675,7 @@ export function TaskFollowUpSection({
             title="Attach image"
             aria-label="Attach image"
           >
-            <Paperclip className="h-4 w-4" />
+            <ImageIcon className="h-4 w-4" />
           </Button>
 
           {isAttemptRunning ? (

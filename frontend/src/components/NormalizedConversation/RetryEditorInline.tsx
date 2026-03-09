@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { VariantSelector } from '@/components/tasks/VariantSelector';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Loader2, Paperclip, Send, X } from 'lucide-react';
+import { AlertCircle, ImageIcon, Loader2, Send, X } from 'lucide-react';
 import { imagesApi } from '@/lib/api';
 import type { TaskAttempt } from 'shared/types';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
@@ -172,7 +172,7 @@ export function RetryEditorInline({
             title="Attach image"
             aria-label="Attach image"
           >
-            <Paperclip className="h-3 w-3" />
+            <ImageIcon className="h-3 w-3" />
           </Button>
           <Button variant="outline" onClick={onCancel} disabled={isSending}>
             <X className="h-3 w-3 mr-1" />{' '}

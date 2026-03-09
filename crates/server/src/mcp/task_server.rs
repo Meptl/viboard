@@ -27,11 +27,11 @@ const CREATE_TASK_TOOL_DESCRIPTION: &str = "Create a new task/ticket in a projec
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct CreateTaskRequest {
-    #[schemars(description = "The ID of the project to create the task in. This is required!")]
+    #[schemars(description = "ID of the project to create the task in")]
     pub project_id: Uuid,
-    #[schemars(description = "The title of the task")]
+    #[schemars(description = "Title of the task")]
     pub title: String,
-    #[schemars(description = "Optional description of the task")]
+    #[schemars(description = "Description of the task")]
     pub description: Option<String>,
 }
 
@@ -42,17 +42,17 @@ pub struct CreateTaskResponse {
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 pub struct ProjectSummary {
-    #[schemars(description = "The unique identifier of the project")]
+    #[schemars(description = "Unique identifier of the project")]
     pub id: String,
-    #[schemars(description = "The name of the project")]
+    #[schemars(description = "Name of the project")]
     pub name: String,
-    #[schemars(description = "The path to the git repository")]
+    #[schemars(description = "Path to the git repository")]
     pub git_repo_path: PathBuf,
-    #[schemars(description = "Optional setup script for the project")]
+    #[schemars(description = "Setup script for the project")]
     pub setup_script: Option<String>,
-    #[schemars(description = "Optional cleanup script for the project")]
+    #[schemars(description = "Cleanup script for the project")]
     pub cleanup_script: Option<String>,
-    #[schemars(description = "Optional development script for the project")]
+    #[schemars(description = "Development script for the project")]
     pub dev_script: Option<String>,
     #[schemars(description = "When the project was created")]
     pub created_at: String,

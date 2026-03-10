@@ -74,6 +74,10 @@ export function KeyboardShortcutsHelp() {
       description: 'Submit',
       keys: ['Cmd + Enter', 'Ctrl + Enter'],
     });
+    addBinding({
+      description: 'Find on page',
+      keys: ['Cmd + F', 'Ctrl + F'],
+    });
 
     keyBindings.forEach((binding) => {
       if (binding.action === Action.EXIT || binding.action === Action.CREATE) {

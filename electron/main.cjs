@@ -16,6 +16,11 @@ function focusMainWindow() {
   mainWindow.focus();
 }
 
+const findState = {
+  text: '',
+  requestId: null,
+};
+
 function backendBinaryName() {
   return process.platform === 'win32' ? 'server.exe' : 'server';
 }
@@ -48,7 +53,10 @@ function spawnBackend() {
   backendProcess.on('exit', (code, signal) => {
     if (app.isReady() && !app.isQuitting) {
       const reason = signal ? `signal ${signal}` : `exit code ${code}`;
-      dialog.showErrorBox('Vibe Kanban backend stopped', `The backend process exited with ${reason}.`);
+      dialog.showErrorBox(
+        'Vibe Kanban backend stopped',
+        `The backend process exited with ${reason}.`
+      );
       app.quit();
     }
   });
@@ -81,6 +89,80 @@ function spawnBackend() {
   });
 }
 
+function stopFindInPage(action = 'keepSelection') {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return;
+  }
+
+  mainWindow.webContents.stopFindInPage(action);
+  findState.requestId = null;
+}
+
+function performFindInPage(text, { forward } = { forward: true }) {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return;
+  }
+
+  const query = text.trim();
+  if (!query) {
+    findState.text = '';
+    stopFindInPage('clearSelection');
+    return;
+  }
+
+  const isSameQuery = findState.text === query;
+  if (!isSameQuery) {
+    stopFindInPage('keepSelection');
+  }
+
+  findState.text = query;
+  findState.requestId = mainWindow.webContents.findInPage(query, {
+    findNext: isSameQuery,
+    forward,
+  });
+}
+
+async function promptFindText() {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return;
+  }
+
+  const selectedText = await mainWindow.webContents.executeJavaScript(
+    `(() => window.getSelection?.()?.toString() ?? '')()`,
+    true
+  );
+
+  const prefillText = selectedText || findState.text || '';
+  const promptScript = `(() => {
+    const value = window.prompt('Find on page', ${JSON.stringify(prefillText)});
+    return value === null ? null : String(value);
+  })()`;
+
+  const query = await mainWindow.webContents.executeJavaScript(promptScript, true);
+  if (query === null) {
+    return;
+  }
+
+  performFindInPage(query, { forward: true });
+}
+
+function wireFindShortcuts(window) {
+  window.webContents.on('before-input-event', (event, input) => {
+    const key = (input.key || '').toLowerCase();
+    const hasMainModifier = process.platform === 'darwin' ? input.meta : input.control;
+
+    if (hasMainModifier && key === 'f' && input.type === 'keyDown') {
+      event.preventDefault();
+      void promptFindText();
+    }
+  });
+
+  window.webContents.on('did-start-navigation', () => {
+    findState.text = '';
+    findState.requestId = null;
+  });
+}
+
 function createWindow(url) {
   Menu.setApplicationMenu(null);
 
@@ -98,6 +180,8 @@ function createWindow(url) {
       preload: path.join(__dirname, 'preload.cjs'),
     },
   });
+
+  wireFindShortcuts(mainWindow);
 
   mainWindow.loadURL(url);
   mainWindow.setMenuBarVisibility(false);

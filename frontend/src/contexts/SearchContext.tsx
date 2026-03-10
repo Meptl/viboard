@@ -32,6 +32,10 @@ export function SearchProvider({ children }: SearchProviderProps) {
 
   // Check if we're on a tasks route
   const isTasksRoute = /^\/projects\/[^/]+\/tasks/.test(location.pathname);
+  const isTaskDetailRoute = /^\/projects\/[^/]+\/tasks\/[^/]+(?:\/.*)?$/.test(
+    location.pathname
+  );
+  const isSearchActiveRoute = isTasksRoute && !isTaskDetailRoute;
 
   // Clear search when leaving tasks pages
   useEffect(() => {
@@ -48,7 +52,7 @@ export function SearchProvider({ children }: SearchProviderProps) {
   const clear = () => setQuery('');
 
   const focusInput = () => {
-    if (inputRef.current && isTasksRoute) {
+    if (inputRef.current && isSearchActiveRoute) {
       inputRef.current.focus();
     }
   };
@@ -60,7 +64,7 @@ export function SearchProvider({ children }: SearchProviderProps) {
   const value: SearchState = {
     query,
     setQuery,
-    active: isTasksRoute,
+    active: isSearchActiveRoute,
     clear,
     focusInput,
     registerInputRef,

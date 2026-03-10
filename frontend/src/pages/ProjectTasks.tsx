@@ -474,6 +474,7 @@ export function ProjectTasks() {
     },
     {
       scope: Scope.KANBAN,
+      when: !isPanelOpen,
       preventDefault: true,
     }
   );

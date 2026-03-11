@@ -57,7 +57,7 @@ export function NoServerContent({
     },
   });
 
-  const { createAndStart } = useTaskMutations(project?.id);
+  const { createAndStart } = useTaskMutations();
 
   // Create strategy-based placeholders
   const placeholders = system.environment

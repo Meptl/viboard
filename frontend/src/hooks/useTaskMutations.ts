@@ -1,7 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigateWithSearch } from '@/hooks';
 import { tasksApi } from '@/lib/api';
-import { paths } from '@/lib/paths';
 import { taskRelationshipsKeys } from '@/hooks/useTaskRelationships';
 import type {
   CreateTask,
@@ -12,9 +10,8 @@ import type {
 } from 'shared/types';
 import { taskKeys } from './useTask';
 
-export function useTaskMutations(projectId?: string) {
+export function useTaskMutations() {
   const queryClient = useQueryClient();
-  const navigate = useNavigateWithSearch();
 
   const invalidateQueries = (taskId?: string) => {
     queryClient.invalidateQueries({ queryKey: taskKeys.all });
@@ -34,9 +31,6 @@ export function useTaskMutations(projectId?: string) {
             createdTask.parent_task_attempt
           ),
         });
-      }
-      if (projectId) {
-        navigate(`${paths.task(projectId, createdTask.id)}/attempts/latest`);
       }
     },
     onError: (err) => {

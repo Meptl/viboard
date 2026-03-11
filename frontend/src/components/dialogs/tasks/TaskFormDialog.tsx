@@ -79,8 +79,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation(['tasks', 'common']);
-  const { createTask, createAndStart, updateTask } =
-    useTaskMutations(projectId);
+  const { createTask, createAndStart, updateTask } = useTaskMutations();
   const { createAttempt } = useAttemptCreation({
     taskId: editMode ? props.task.id : '',
   });

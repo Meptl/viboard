@@ -7,15 +7,13 @@ use std::{
 
 use async_trait::async_trait;
 use codex_app_server_protocol::{
-    ApplyPatchApprovalResponse, ApprovalDecision, ClientNotification, ClientRequest,
-    CommandExecutionRequestApprovalResponse, ExecCommandApprovalResponse,
+    ApprovalDecision, ClientNotification, ClientRequest, CommandExecutionRequestApprovalResponse,
     FileChangeRequestApprovalResponse, GetAuthStatusParams, GetAuthStatusResponse,
     InitializeResponse, JSONRPCError, JSONRPCNotification, JSONRPCRequest, JSONRPCResponse,
     RequestId, ServerNotification, ServerRequest, ThreadResumeParams,
     ThreadResumeResponse, ThreadStartParams, ThreadStartResponse, TurnStartParams,
     TurnStartResponse, UserInput,
 };
-use codex_protocol::protocol::ReviewDecision;
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::{self, Value, json};
 use tokio::{
@@ -153,40 +151,6 @@ impl AppServerClient {
         request: ServerRequest,
     ) -> Result<(), ExecutorError> {
         match request {
-            ServerRequest::ApplyPatchApproval { request_id, params } => {
-                let input = serde_json::to_value(&params)
-                    .map_err(|err| ExecutorError::Io(io::Error::other(err.to_string())))?;
-                let status = match self
-                    .request_tool_approval("edit", input, &params.call_id)
-                    .await
-                {
-                    Ok(status) => status,
-                    Err(err) => {
-                        tracing::error!("failed to request patch approval: {err}");
-                        ApprovalStatus::Denied {
-                            reason: Some("approval service error".to_string()),
-                        }
-                    }
-                };
-                self.log_writer
-                    .log_raw(
-                        &Approval::approval_response(
-                            params.call_id,
-                            "codex.apply_patch".to_string(),
-                            status.clone(),
-                        )
-                        .raw(),
-                    )
-                    .await?;
-                let (decision, feedback) = self.review_decision(&status).await?;
-                let response = ApplyPatchApprovalResponse { decision };
-                send_server_response(peer, request_id, response).await?;
-                if let Some(message) = feedback {
-                    tracing::debug!("queueing patch denial feedback: {message}");
-                    self.enqueue_feedback(message).await;
-                }
-                Ok(())
-            }
             ServerRequest::FileChangeRequestApproval { request_id, params } => {
                 let input = serde_json::to_value(&params)
                     .map_err(|err| ExecutorError::Io(io::Error::other(err.to_string())))?;
@@ -217,41 +181,6 @@ impl AppServerClient {
                 send_server_response(peer, request_id, response).await?;
                 if let Some(message) = feedback {
                     tracing::debug!("queueing patch denial feedback: {message}");
-                    self.enqueue_feedback(message).await;
-                }
-                Ok(())
-            }
-            ServerRequest::ExecCommandApproval { request_id, params } => {
-                let input = serde_json::to_value(&params)
-                    .map_err(|err| ExecutorError::Io(io::Error::other(err.to_string())))?;
-                let status = match self
-                    .request_tool_approval("bash", input, &params.call_id)
-                    .await
-                {
-                    Ok(status) => status,
-                    Err(err) => {
-                        tracing::error!("failed to request command approval: {err}");
-                        ApprovalStatus::Denied {
-                            reason: Some("approval service error".to_string()),
-                        }
-                    }
-                };
-                self.log_writer
-                    .log_raw(
-                        &Approval::approval_response(
-                            params.call_id,
-                            "codex.exec_command".to_string(),
-                            status.clone(),
-                        )
-                        .raw(),
-                    )
-                    .await?;
-
-                let (decision, feedback) = self.review_decision(&status).await?;
-                let response = ExecCommandApprovalResponse { decision };
-                send_server_response(peer, request_id, response).await?;
-                if let Some(message) = feedback {
-                    tracing::debug!("queueing exec denial feedback: {message}");
                     self.enqueue_feedback(message).await;
                 }
                 Ok(())
@@ -290,6 +219,16 @@ impl AppServerClient {
                     self.enqueue_feedback(message).await;
                 }
                 Ok(())
+            }
+            ServerRequest::ApplyPatchApproval { request_id, .. }
+            | ServerRequest::ExecCommandApproval { request_id, .. } => {
+                send_server_error(
+                    peer,
+                    request_id,
+                    -32601,
+                    "deprecated v1 approval request is not supported",
+                )
+                .await
             }
         }
     }
@@ -338,34 +277,6 @@ impl AppServerClient {
 
     fn next_request_id(&self) -> RequestId {
         self.rpc().next_request_id()
-    }
-
-    async fn review_decision(
-        &self,
-        status: &ApprovalStatus,
-    ) -> Result<(ReviewDecision, Option<String>), ExecutorError> {
-        if self.auto_approve {
-            return Ok((ReviewDecision::ApprovedForSession, None));
-        }
-
-        let outcome = match status {
-            ApprovalStatus::Approved => (ReviewDecision::Approved, None),
-            ApprovalStatus::Denied { reason } => {
-                let feedback = reason
-                    .as_ref()
-                    .map(|s| s.trim())
-                    .filter(|s| !s.is_empty())
-                    .map(|s| s.to_string());
-                if feedback.is_some() {
-                    (ReviewDecision::Abort, feedback)
-                } else {
-                    (ReviewDecision::Denied, None)
-                }
-            }
-            ApprovalStatus::TimedOut => (ReviewDecision::Denied, None),
-            ApprovalStatus::Pending => (ReviewDecision::Denied, None),
-        };
-        Ok(outcome)
     }
 
     async fn review_decision_v2(
@@ -515,23 +426,12 @@ impl JsonRpcCallbacks for AppServerClient {
                 Cow::Borrowed(raw)
             };
         self.log_writer.log_raw(&raw).await?;
-
-        let method = notification.method.as_str();
-        if !method.starts_with("codex/event") {
-            return Ok(method == "turn/completed");
-        }
-
-        if method.ends_with("turn_aborted") {
+        if notification.method == "turn/aborted" {
             tracing::debug!("codex turn aborted; flushing feedback queue");
             self.flush_pending_feedback().await;
             return Ok(false);
         }
-
-        let has_finished = method
-            .strip_prefix("codex/event/")
-            .is_some_and(|suffix| suffix == "task_complete");
-
-        Ok(has_finished)
+        Ok(notification.method == "turn/completed")
     }
 
     async fn on_non_json(&self, raw: &str) -> Result<(), ExecutorError> {
@@ -557,17 +457,30 @@ where
     peer.send(&payload).await
 }
 
+async fn send_server_error(
+    peer: &JsonRpcPeer,
+    request_id: RequestId,
+    code: i64,
+    message: &str,
+) -> Result<(), ExecutorError> {
+    let payload = JSONRPCError {
+        id: request_id,
+        error: codex_app_server_protocol::JSONRPCErrorError {
+            code,
+            data: None,
+            message: message.to_string(),
+        },
+    };
+    peer.send(&payload).await
+}
+
 fn request_id(request: &ClientRequest) -> RequestId {
     match request {
         ClientRequest::Initialize { request_id, .. }
         | ClientRequest::ThreadStart { request_id, .. }
         | ClientRequest::ThreadResume { request_id, .. }
         | ClientRequest::TurnStart { request_id, .. }
-        | ClientRequest::NewConversation { request_id, .. }
-        | ClientRequest::GetAuthStatus { request_id, .. }
-        | ClientRequest::ResumeConversation { request_id, .. }
-        | ClientRequest::AddConversationListener { request_id, .. }
-        | ClientRequest::SendUserMessage { request_id, .. } => request_id.clone(),
+        | ClientRequest::GetAuthStatus { request_id, .. } => request_id.clone(),
         _ => unreachable!("request_id called for unsupported request variant"),
     }
 }

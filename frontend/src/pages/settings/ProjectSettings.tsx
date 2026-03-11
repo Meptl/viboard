@@ -9,7 +9,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import {
   Select,
   SelectContent,
@@ -17,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -65,18 +65,6 @@ function normalizeProjectFormState(state: ProjectFormState): ProjectFormState {
   };
 }
 
-function stripManualProjectFields(
-  state: ProjectFormState
-): Omit<ProjectFormState, 'name' | 'git_repo_path'> {
-  return {
-    setup_script: state.setup_script,
-    parallel_setup_script: state.parallel_setup_script,
-    dev_script: state.dev_script,
-    cleanup_script: state.cleanup_script,
-    copy_files: state.copy_files,
-  };
-}
-
 export function ProjectSettings() {
   const [searchParams, setSearchParams] = useSearchParams();
   const projectIdParam = searchParams.get('projectId') ?? '';
@@ -110,24 +98,6 @@ export function ProjectSettings() {
   const hasUnsavedChanges = useMemo(() => {
     if (!draft || !selectedProject) return false;
     return !isEqual(draft, projectToFormState(selectedProject));
-  }, [draft, selectedProject]);
-
-  const hasManualNamePathChanges = useMemo(() => {
-    if (!draft || !selectedProject) return false;
-    const current = projectToFormState(selectedProject);
-    return (
-      draft.name.trim() !== current.name ||
-      draft.git_repo_path.trim() !== current.git_repo_path
-    );
-  }, [draft, selectedProject]);
-
-  const hasImmediateChanges = useMemo(() => {
-    if (!draft || !selectedProject) return false;
-    const current = projectToFormState(selectedProject);
-    return !isEqual(
-      stripManualProjectFields(normalizeProjectFormState(draft)),
-      stripManualProjectFields(current)
-    );
   }, [draft, selectedProject]);
 
   // Handle project selection from dropdown
@@ -251,29 +221,63 @@ export function ProjectSettings() {
     [t, updateProject]
   );
 
-  const handleSaveNamePath = async () => {
-    if (!draft || !selectedProject) return;
-    if (!draft.name.trim() || !draft.git_repo_path.trim()) return;
-    const saveSnapshot = cloneDeep(draft);
-    const saveSeq = ++saveSeqRef.current;
-    await saveProjectSnapshot(saveSnapshot, selectedProject.id, saveSeq);
-  };
+  const triggerSave = useCallback(
+    async (snapshot?: ProjectFormState) => {
+      if (!selectedProject) return;
+      const saveSnapshot = cloneDeep(snapshot ?? latestDraftRef.current);
+      if (!saveSnapshot) return;
 
-  useEffect(() => {
-    if (!draft || !selectedProject) return;
-    if (!hasImmediateChanges) return;
-    if (!draft.name.trim() || !draft.git_repo_path.trim()) return;
+      const normalizedSnapshot = normalizeProjectFormState(saveSnapshot);
+      const current = normalizeProjectFormState(projectToFormState(selectedProject));
+      if (isEqual(normalizedSnapshot, current)) return;
+      if (!normalizedSnapshot.name || !normalizedSnapshot.git_repo_path) return;
 
-    const saveSnapshot = cloneDeep(draft);
-    const projectId = selectedProject.id;
-    const saveSeq = ++saveSeqRef.current;
+      const saveSeq = ++saveSeqRef.current;
+      await saveProjectSnapshot(saveSnapshot, selectedProject.id, saveSeq);
+    },
+    [saveProjectSnapshot, selectedProject]
+  );
 
-    const timer = window.setTimeout(async () => {
-      await saveProjectSnapshot(saveSnapshot, projectId, saveSeq);
-    }, 500);
+  const handleImmediateToggleChange = useCallback(
+    (checked: boolean) => {
+      if (!draft) return;
+      const nextSnapshot = {
+        ...draft,
+        parallel_setup_script: checked,
+      };
+      updateDraft({ parallel_setup_script: checked });
+      void triggerSave(nextSnapshot);
+    },
+    [draft, triggerSave]
+  );
 
-    return () => window.clearTimeout(timer);
-  }, [draft, hasImmediateChanges, saveProjectSnapshot, selectedProject]);
+  const handleRepoPathPicked = useCallback(
+    async (selectedPath: string) => {
+      if (!draft) return;
+      const nextSnapshot = {
+        ...draft,
+        git_repo_path: selectedPath,
+      };
+      updateDraft({ git_repo_path: selectedPath });
+      await triggerSave(nextSnapshot);
+    },
+    [draft, triggerSave]
+  );
+
+  const handleTextFieldBlur = useCallback(() => {
+    void triggerSave();
+  }, [triggerSave]);
+
+  const handleCopyFilesChange = useCallback(
+    (value: string) => {
+      updateDraft({ copy_files: value });
+    },
+    []
+  );
+
+  const handleCopyFilesBlur = useCallback(() => {
+    void triggerSave();
+  }, [triggerSave]);
 
   if (projectsLoading) {
     return (
@@ -346,28 +350,10 @@ export function ProjectSettings() {
         <>
           <Card>
             <CardHeader>
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <CardTitle>{t('settings.projects.general.title')}</CardTitle>
-                  <CardDescription>
-                    {t('settings.projects.general.description')}
-                  </CardDescription>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleSaveNamePath}
-                  disabled={
-                    saving ||
-                    !hasManualNamePathChanges ||
-                    !draft.name.trim() ||
-                    !draft.git_repo_path.trim()
-                  }
-                >
-                  {t('settings.projects.save.button')}
-                </Button>
-              </div>
+              <CardTitle>{t('settings.projects.general.title')}</CardTitle>
+              <CardDescription>
+                {t('settings.projects.general.description')}
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -379,6 +365,7 @@ export function ProjectSettings() {
                   type="text"
                   value={draft.name}
                   onChange={(e) => updateDraft({ name: e.target.value })}
+                  onBlur={handleTextFieldBlur}
                   placeholder={t('settings.projects.general.name.placeholder')}
                   required
                 />
@@ -396,6 +383,7 @@ export function ProjectSettings() {
                     onChange={(e) =>
                       updateDraft({ git_repo_path: e.target.value })
                     }
+                    onBlur={handleTextFieldBlur}
                     placeholder={t(
                       'settings.projects.general.repoPath.placeholder'
                     )}
@@ -412,7 +400,7 @@ export function ProjectSettings() {
                         value: draft.git_repo_path,
                       });
                       if (selectedPath) {
-                        updateDraft({ git_repo_path: selectedPath });
+                        await handleRepoPathPicked(selectedPath);
                       }
                     }}
                   >
@@ -441,6 +429,7 @@ export function ProjectSettings() {
                   onChange={(e) =>
                     updateDraft({ setup_script: e.target.value })
                   }
+                  onBlur={handleTextFieldBlur}
                   placeholder={placeholders.setup}
                   maxRows={12}
                   className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring font-mono"
@@ -454,7 +443,7 @@ export function ProjectSettings() {
                     id="parallel-setup-script"
                     checked={draft.parallel_setup_script}
                     onCheckedChange={(checked) =>
-                      updateDraft({ parallel_setup_script: checked === true })
+                      handleImmediateToggleChange(checked === true)
                     }
                     disabled={!draft.setup_script.trim()}
                   />
@@ -478,6 +467,7 @@ export function ProjectSettings() {
                   id="dev-script"
                   value={draft.dev_script}
                   onChange={(e) => updateDraft({ dev_script: e.target.value })}
+                  onBlur={handleTextFieldBlur}
                   placeholder={placeholders.dev}
                   maxRows={12}
                   className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring font-mono"
@@ -497,6 +487,7 @@ export function ProjectSettings() {
                   onChange={(e) =>
                     updateDraft({ cleanup_script: e.target.value })
                   }
+                  onBlur={handleTextFieldBlur}
                   placeholder={placeholders.cleanup}
                   maxRows={12}
                   className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring font-mono"
@@ -510,7 +501,8 @@ export function ProjectSettings() {
                 <Label>{t('settings.projects.scripts.copyFiles.label')}</Label>
                 <CopyFilesField
                   value={draft.copy_files}
-                  onChange={(value) => updateDraft({ copy_files: value })}
+                  onChange={handleCopyFilesChange}
+                  onBlur={handleCopyFilesBlur}
                   projectId={selectedProject.id}
                 />
                 <p className="text-sm text-muted-foreground">

@@ -12,6 +12,7 @@ interface FileSearchResult extends SearchResult {
 interface MultiFileSearchTextareaProps {
   value: string;
   onChange: (value: string) => void;
+  onBlur?: (e: React.FocusEvent<HTMLTextAreaElement>) => void;
   placeholder?: string;
   rows?: number;
   disabled?: boolean;
@@ -24,6 +25,7 @@ interface MultiFileSearchTextareaProps {
 export function MultiFileSearchTextarea({
   value,
   onChange,
+  onBlur,
   placeholder = 'Start typing a file path...',
   rows = 3,
   disabled = false,
@@ -326,6 +328,7 @@ export function MultiFileSearchTextarea({
         ref={textareaRef}
         value={value}
         onChange={handleChange}
+        onBlur={onBlur}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         rows={rows}

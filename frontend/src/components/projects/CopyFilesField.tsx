@@ -1,9 +1,11 @@
+import type { FocusEventHandler } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MultiFileSearchTextarea } from '@/components/ui/multi-file-search-textarea';
 
 interface CopyFilesFieldProps {
   value: string;
   onChange: (value: string) => void;
+  onBlur?: FocusEventHandler<HTMLTextAreaElement>;
   projectId: string;
   disabled?: boolean;
 }
@@ -11,6 +13,7 @@ interface CopyFilesFieldProps {
 export function CopyFilesField({
   value,
   onChange,
+  onBlur,
   projectId,
   disabled = false,
 }: CopyFilesFieldProps) {
@@ -20,6 +23,7 @@ export function CopyFilesField({
     <MultiFileSearchTextarea
       value={value}
       onChange={onChange}
+      onBlur={onBlur}
       placeholder={t('copyFilesPlaceholderWithSearch')}
       rows={3}
       disabled={disabled}

@@ -24,7 +24,6 @@ import { useEffect, useRef } from 'react';
 import { useOpenProjectInEditor } from '@/hooks/useOpenProjectInEditor';
 import { projectsApi } from '@/lib/api';
 import { useTranslation } from 'react-i18next';
-import { Badge } from '@/components/ui/badge';
 
 type RepositoryStatus = 'checking' | 'detected' | 'missing' | 'unknown';
 
@@ -96,9 +95,6 @@ function ProjectCard({
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2">
             <CardTitle className="text-lg">{project.name}</CardTitle>
-            {repositoryStatus === 'missing' ? (
-              <Badge variant="destructive">Repo missing</Badge>
-            ) : null}
             {repositoryStatus === 'checking' || isOpening ? (
               <RefreshCw className="h-3 w-3 animate-spin text-muted-foreground" />
             ) : null}

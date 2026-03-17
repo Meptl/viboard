@@ -48,8 +48,7 @@ function normalizePreviewNavigationTarget(
 
 export function PreviewPanel() {
   const [iframeError, setIframeError] = useState(false);
-  const [isReady, setIsReady] = useState(false);
-  const [loadingTimeFinished, setLoadingTimeFinished] = useState(false);
+  const [hasIframeLoaded, setHasIframeLoaded] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [showLogs, setShowLogs] = useState(false);
@@ -86,6 +85,9 @@ export function PreviewPanel() {
   });
 
   useEffect(() => {
+    setHasIframeLoaded(false);
+    setShowHelp(false);
+    setIframeError(false);
     setIframeSrcUrl(previewState.url);
     setPreviewDisplayUrl(previewState.url);
   }, [previewState.url]);
@@ -140,10 +142,12 @@ export function PreviewPanel() {
 
   const handleRefresh = () => {
     setIframeError(false);
+    setHasIframeLoaded(false);
     setRefreshKey((prev) => prev + 1);
   };
   const handleIframeError = () => {
     setIframeError(true);
+    setHasIframeLoaded(false);
   };
 
   const { addElement } = useClickedElements();
@@ -160,11 +164,14 @@ export function PreviewPanel() {
       return;
     }
     setIframeError(false);
+    setHasIframeLoaded(false);
     setIframeSrcUrl(nextUrl);
     setPreviewDisplayUrl(nextUrl);
   };
 
   const handleIframeLoad = (loadedUrl: string) => {
+    setHasIframeLoaded(true);
+    setShowHelp(false);
     setIframeSrcUrl((prev) => (prev === loadedUrl ? prev : loadedUrl));
     setPreviewDisplayUrl((prev) => (prev === loadedUrl ? prev : loadedUrl));
   };
@@ -182,7 +189,6 @@ export function PreviewPanel() {
         addElement(payload);
       },
       onReady: () => {
-        setIsReady(true);
         setShowLogs(false);
         setShowHelp(false);
       },
@@ -197,29 +203,27 @@ export function PreviewPanel() {
     };
   }, [previewState.status, previewState.url, addElement]);
 
-  const startTimer = useCallback(() => {
-    setLoadingTimeFinished(false);
-    setTimeout(() => {
-      setLoadingTimeFinished(true);
-    }, 5000);
-  }, []);
-
   useEffect(() => {
-    startTimer();
-  }, [startTimer]);
+    if (!runningDevServer || !latestDevServerProcess) {
+      return;
+    }
 
-  useEffect(() => {
-    if (
-      loadingTimeFinished &&
-      !isReady &&
-      latestDevServerProcess &&
-      runningDevServer
-    ) {
+    if (hasIframeLoaded || iframeError) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
       setShowHelp(true);
       setShowLogs(true);
-      setLoadingTimeFinished(false);
-    }
-  }, [loadingTimeFinished, isReady, latestDevServerProcess, runningDevServer]);
+    }, 5000);
+
+    return () => window.clearTimeout(timer);
+  }, [
+    hasIframeLoaded,
+    iframeError,
+    latestDevServerProcess,
+    runningDevServer,
+  ]);
 
   const isPreviewReady =
     previewState.status === 'ready' &&
@@ -237,12 +241,10 @@ export function PreviewPanel() {
   };
 
   const handleStartDevServer = useCallback(() => {
-    setLoadingTimeFinished(false);
+    setHasIframeLoaded(false);
     startDevServer();
-    startTimer();
     setShowHelp(false);
-    setIsReady(false);
-  }, [startDevServer, startTimer]);
+  }, [startDevServer]);
 
   const handleStopAndEdit = () => {
     stopDevServer(undefined, {

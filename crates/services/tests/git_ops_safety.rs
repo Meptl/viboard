@@ -506,9 +506,13 @@ fn merge_does_not_overwrite_main_repo_untracked_files() {
         "merge should refuse due to untracked conflict"
     );
 
-    // Untracked file remains untouched
+    // File content should still include the local untracked data. Since merge now
+    // proceeds after auto-commit, conflicting content may include conflict markers.
     let content = std::fs::read_to_string(repo_path.join("danger.txt")).unwrap();
-    assert_eq!(content, "my untracked data\n");
+    assert!(
+        content.contains("my untracked data\n"),
+        "local content should be preserved in conflict output: {content}"
+    );
 }
 
 #[test]
@@ -583,6 +587,38 @@ fn merge_auto_commits_staged_changes_on_base() {
     assert!(
         s.is_worktree_clean(&repo_path).unwrap(),
         "base worktree tracked changes should be committed before merge"
+    );
+}
+
+#[test]
+fn merge_auto_commits_untracked_changes_on_base() {
+    let td = TempDir::new().unwrap();
+    let (repo_path, worktree_path) = setup_repo_with_worktree(&td);
+    let s = GitService::new();
+
+    // ensure main is checked out
+    let repo = Repository::open(&repo_path).unwrap();
+    checkout_branch(&repo, "main");
+
+    // feature adds change and commits
+    write_file(&worktree_path, "m-untracked.txt", "feature\n");
+    let wt_repo = Repository::open(&worktree_path).unwrap();
+    commit_all(&wt_repo, "feat change");
+
+    // main has an untracked file; merge should not be blocked by this
+    write_file(&repo_path, "local-note.txt", "untracked note\n");
+
+    let res = s.merge_changes(&repo_path, &worktree_path, "feature", "main", "squash");
+    assert!(
+        res.is_ok(),
+        "merge should auto-commit untracked changes: {res:?}"
+    );
+
+    let note = std::fs::read_to_string(repo_path.join("local-note.txt")).unwrap();
+    assert_eq!(note, "untracked note\n");
+    assert!(
+        s.is_worktree_clean(&repo_path).unwrap(),
+        "base worktree changes should be committed before merge"
     );
 }
 

@@ -122,6 +122,21 @@ function GitOperations({
     [branchStatus?.commits_behind, branchStatus?.is_rebase_in_progress]
   );
 
+  const hasMergeableChanges = useMemo(() => {
+    if (!branchStatus) return false;
+    const hasCommittedAhead = (branchStatus.commits_ahead ?? 0) > 0;
+    const hasUncommitted =
+      Boolean(branchStatus.has_uncommitted_changes) ||
+      (branchStatus.uncommitted_count ?? 0) > 0 ||
+      (branchStatus.untracked_count ?? 0) > 0;
+    return hasCommittedAhead || hasUncommitted;
+  }, [
+    branchStatus?.commits_ahead,
+    branchStatus?.has_uncommitted_changes,
+    branchStatus?.uncommitted_count,
+    branchStatus?.untracked_count,
+  ]);
+
   const handleMergeClick = async () => {
     // Directly perform merge without checking branch status
     await performMerge();
@@ -174,9 +189,7 @@ function GitOperations({
           : merging ||
             hasConflictsCalculated ||
             isAttemptRunning ||
-            (branchStatus != null &&
-              (branchStatus.commits_ahead ?? 0) === 0 &&
-              !mergeSuccess)
+            (branchStatus != null && !hasMergeableChanges && !mergeSuccess)
       }
       variant="outline"
       size="xs"

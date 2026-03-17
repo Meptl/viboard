@@ -37,7 +37,7 @@ jobs:
       branch_suffix: ${{ steps.branch.outputs.suffix }}
     steps:
       - name: Cache cargo-edit
-        uses: actions/cache@v3
+        uses: actions/cache@v5
         id: cache-cargo-edit
         with:
           path: ~/.cargo/bin/cargo-set-version
@@ -47,7 +47,7 @@ jobs:
         if: steps.cache-cargo-edit.outputs.cache-hit != 'true'
         run: cargo install cargo-edit
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -122,7 +122,7 @@ jobs:
     env:
       VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY: ${{ secrets.PUBLIC_REACT_VIRTUOSO_LICENSE_KEY }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ needs.bump-version.outputs.new_tag }}
 
@@ -174,7 +174,7 @@ jobs:
             os: macos-14
             name: macos-arm64
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ needs.bump-version.outputs.new_tag }}
 
@@ -312,7 +312,7 @@ jobs:
             name: macos-arm64
             binary: vibe-kanban
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ needs.bump-version.outputs.new_tag }}
 
@@ -379,7 +379,7 @@ jobs:
             platform_dir: macos-arm64
             builder_args: --mac --arm64
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ needs.bump-version.outputs.new_tag }}
 
@@ -387,7 +387,7 @@ jobs:
         uses: ./.github/actions/setup-node
 
       - name: Cache electron-builder downloads
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cache/electron
@@ -445,7 +445,7 @@ jobs:
     needs: [bump-version, build-frontend, package-npx-cli, package-electron]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ needs.bump-version.outputs.new_tag }}
 

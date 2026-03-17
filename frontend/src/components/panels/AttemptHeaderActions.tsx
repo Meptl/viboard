@@ -11,7 +11,6 @@ import {
 import type { LayoutMode } from '../layout/TasksLayout';
 import type { TaskAttempt, TaskWithAttemptStatus } from 'shared/types';
 import { ActionsDropdown } from '../ui/actions-dropdown';
-import { useMediaQuery } from '@/hooks/useMediaQuery';
 import GitOperations, {
   type GitOperationsInputs,
 } from '@/components/tasks/Toolbar/GitOperations.tsx';
@@ -36,14 +35,13 @@ export const AttemptHeaderActions = ({
   attemptSwitcher,
 }: AttemptHeaderActionsProps) => {
   const { t } = useTranslation('tasks');
-  const isXL = useMediaQuery('(min-width: 1280px)');
   const isPreviewMode = mode !== 'diffs';
   const isDiffMode = mode === 'diffs';
   const nextMode: LayoutMode = isPreviewMode ? 'diffs' : 'preview';
 
   return (
     <>
-      {typeof mode !== 'undefined' && onModeChange && isXL && (
+      {typeof mode !== 'undefined' && onModeChange && (
         <div className="inline-flex items-center gap-4">
           <TooltipProvider>
             <Tooltip>
@@ -78,10 +76,9 @@ export const AttemptHeaderActions = ({
           {attemptSwitcher}
         </div>
       )}
-      {typeof mode !== 'undefined' && onModeChange && isXL && (
+      {typeof mode !== 'undefined' && onModeChange && (
         <div className="h-4 w-px bg-border" />
       )}
-      {!isXL && attemptSwitcher}
       <ActionsDropdown task={task} attempt={attempt} />
       <Button variant="icon" aria-label="Close" onClick={onClose}>
         <X size={16} />

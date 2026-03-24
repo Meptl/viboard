@@ -101,6 +101,7 @@ const FolderPickerDialogImpl = NiceModal.create<FolderPickerDialogProps>(
     const loadDirectory = async (path?: string) => {
       setLoading(true);
       setError('');
+      setSearchTerm('');
 
       try {
         const result: DirectoryListResponse = await fileSystemApi.list(path);

@@ -643,7 +643,7 @@ export function TaskFollowUpSection({
       {/* Always-visible action bar */}
       <div className="p-4">
         <div className="flex flex-row gap-2 items-center">
-          <div className="flex-1 flex gap-2">
+          <div className="flex items-center gap-2">
             <VariantSelector
               currentProfile={currentProfile}
               selectedVariant={selectedVariant}
@@ -674,67 +674,67 @@ export function TaskFollowUpSection({
             <ImageIcon className="h-4 w-4" />
           </Button>
 
-          {isAttemptRunning ? (
-            <div className="flex items-center gap-2">
-              {/* Queue/Cancel Queue button when running */}
-              {isQueued ? (
-                <Button
-                  onClick={handleCancelQueue}
-                  disabled={isQueueLoading}
-                  size="sm"
-                  variant="outline"
-                >
-                  {isQueueLoading ? (
-                    <Loader2 className="animate-spin h-4 w-4 mr-2" />
-                  ) : (
-                    <>
-                      <X className="h-4 w-4 mr-2" />
-                      {t('followUp.cancelQueue', 'Cancel Queue')}
-                    </>
-                  )}
-                </Button>
-              ) : (
-                <Button
-                  onClick={handleQueueMessage}
-                  disabled={
-                    isQueueLoading ||
-                    (!localMessage.trim() &&
-                      !conflictResolutionInstructions &&
-                      !reviewMarkdown &&
-                      !clickedMarkdown)
-                  }
-                  size="sm"
-                >
-                  {isQueueLoading ? (
-                    <Loader2 className="animate-spin h-4 w-4 mr-2" />
-                  ) : (
-                    <>
-                      <Clock className="h-4 w-4 mr-2" />
-                      {t('followUp.queue', 'Queue')}
-                    </>
-                  )}
-                </Button>
-              )}
-              <Button
-                onClick={stopExecution}
-                disabled={isStopping}
-                size="sm"
-                variant={isQueued ? 'default' : 'destructive'}
-              >
-                {isStopping ? (
-                  <Loader2 className="animate-spin h-4 w-4 mr-2" />
+          <div className="ml-auto flex items-center gap-2">
+            {isAttemptRunning ? (
+              <div className="flex items-center gap-2">
+                {/* Queue/Cancel Queue button when running */}
+                {isQueued ? (
+                  <Button
+                    onClick={handleCancelQueue}
+                    disabled={isQueueLoading}
+                    size="sm"
+                    variant="outline"
+                  >
+                    {isQueueLoading ? (
+                      <Loader2 className="animate-spin h-4 w-4 mr-2" />
+                    ) : (
+                      <>
+                        <X className="h-4 w-4 mr-2" />
+                        {t('followUp.cancelQueue', 'Cancel Queue')}
+                      </>
+                    )}
+                  </Button>
                 ) : (
-                  <>
-                    <StopCircle className="h-4 w-4 mr-2" />
-                    {isQueued
-                      ? t('followUp.steer', 'Steer')
-                      : t('followUp.stop')}
-                  </>
+                  <Button
+                    onClick={handleQueueMessage}
+                    disabled={
+                      isQueueLoading ||
+                      (!localMessage.trim() &&
+                        !conflictResolutionInstructions &&
+                        !reviewMarkdown &&
+                        !clickedMarkdown)
+                    }
+                    size="sm"
+                  >
+                    {isQueueLoading ? (
+                      <Loader2 className="animate-spin h-4 w-4 mr-2" />
+                    ) : (
+                      <>
+                        <Clock className="h-4 w-4 mr-2" />
+                        {t('followUp.queue', 'Queue')}
+                      </>
+                    )}
+                  </Button>
                 )}
-              </Button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
+                <Button
+                  onClick={stopExecution}
+                  disabled={isStopping}
+                  size="sm"
+                  variant={isQueued ? 'default' : 'destructive'}
+                >
+                  {isStopping ? (
+                    <Loader2 className="animate-spin h-4 w-4 mr-2" />
+                  ) : (
+                    <>
+                      <StopCircle className="h-4 w-4 mr-2" />
+                      {isQueued
+                        ? t('followUp.steer', 'Steer')
+                        : t('followUp.stop')}
+                    </>
+                  )}
+                </Button>
+              </div>
+            ) : (
               <Button
                 onClick={onSendFollowUp}
                 disabled={!canSendFollowUp || !isEditable}
@@ -751,8 +751,8 @@ export function TaskFollowUpSection({
                   </>
                 )}
               </Button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </div>

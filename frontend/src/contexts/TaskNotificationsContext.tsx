@@ -272,7 +272,7 @@ export function TaskNotificationsProvider({
         currentTaskRoute.projectId === notification.projectId &&
         currentTaskRoute.taskId === notification.taskId;
 
-      if (isCurrentTask) {
+      if (isCurrentTask && isAppFocused()) {
         clearTaskNotifications(notification.projectId, notification.taskId);
         continue;
       }

@@ -10,9 +10,8 @@ use codex_app_server_protocol::{
     ApprovalDecision, ClientNotification, ClientRequest, CommandExecutionRequestApprovalResponse,
     FileChangeRequestApprovalResponse, GetAuthStatusParams, GetAuthStatusResponse,
     InitializeResponse, JSONRPCError, JSONRPCNotification, JSONRPCRequest, JSONRPCResponse,
-    RequestId, ServerNotification, ServerRequest, ThreadResumeParams,
-    ThreadResumeResponse, ThreadStartParams, ThreadStartResponse, TurnStartParams,
-    TurnStartResponse, UserInput,
+    RequestId, ServerNotification, ServerRequest, ThreadResumeParams, ThreadResumeResponse,
+    ThreadStartParams, ThreadStartResponse, TurnStartParams, TurnStartResponse, UserInput,
 };
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::{self, Value, json};

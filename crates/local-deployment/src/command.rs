@@ -1,6 +1,7 @@
 use command_group::AsyncGroupChild;
 #[cfg(unix)]
 use nix::{
+    errno::Errno,
     sys::signal::{Signal, killpg},
     unistd::{Pid, getpgid},
 };
@@ -40,5 +41,25 @@ pub async fn kill_process_group(child: &mut AsyncGroupChild) -> Result<(), Conta
 
     let _ = child.kill().await;
     let _ = child.wait().await;
+    Ok(())
+}
+
+#[cfg(unix)]
+pub async fn kill_process_group_by_id(pgid_raw: i32) -> Result<(), ContainerError> {
+    let pgid = Pid::from_raw(pgid_raw);
+    for sig in [Signal::SIGINT, Signal::SIGTERM, Signal::SIGKILL] {
+        if let Err(e) = killpg(pgid, sig)
+            && e != Errno::ESRCH
+        {
+            tracing::warn!(
+                "Failed to send signal {:?} to process group {}: {}",
+                sig,
+                pgid,
+                e
+            );
+        }
+        tokio::time::sleep(Duration::from_secs(2)).await;
+    }
+
     Ok(())
 }

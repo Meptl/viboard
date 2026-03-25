@@ -1,19 +1,11 @@
-use std::{
-    collections::HashMap,
-    path::Path,
-    sync::Arc,
-};
+use std::{collections::HashMap, path::Path, sync::Arc};
 
 use codex_app_server_protocol::{
-    CommandExecutionStatus, FileUpdateChange, JSONRPCResponse, McpToolCallStatus,
-    PatchApplyStatus, ServerNotification, ThreadItem, ThreadResumeResponse, ThreadStartResponse,
-    TurnPlanStepStatus,
+    CommandExecutionStatus, FileUpdateChange, JSONRPCResponse, McpToolCallStatus, PatchApplyStatus,
+    ServerNotification, ThreadItem, ThreadResumeResponse, ThreadStartResponse, TurnPlanStepStatus,
 };
 use codex_mcp_types::ContentBlock;
-use codex_protocol::{
-    openai_models::ReasoningEffort,
-    protocol::McpInvocation,
-};
+use codex_protocol::{openai_models::ReasoningEffort, protocol::McpInvocation};
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -290,37 +282,33 @@ fn normalize_file_changes(
 ) -> Vec<(String, Vec<FileChange>)> {
     let mut by_path: HashMap<String, Vec<FileChange>> = HashMap::new();
 
-    changes
-        .iter()
-        .for_each(|change| {
-            let relative = make_path_relative(&change.path, worktree_path);
-            let normalized_diff = normalize_unified_diff(&relative, &change.diff);
-            let file_changes = match &change.kind {
-                codex_app_server_protocol::PatchChangeKind::Add => vec![FileChange::Edit {
+    changes.iter().for_each(|change| {
+        let relative = make_path_relative(&change.path, worktree_path);
+        let normalized_diff = normalize_unified_diff(&relative, &change.diff);
+        let file_changes = match &change.kind {
+            codex_app_server_protocol::PatchChangeKind::Add => vec![FileChange::Edit {
+                unified_diff: normalized_diff,
+                has_line_numbers: true,
+            }],
+            codex_app_server_protocol::PatchChangeKind::Delete => vec![FileChange::Delete],
+            codex_app_server_protocol::PatchChangeKind::Update { move_path } => {
+                let mut edits = Vec::new();
+                if let Some(dest) = move_path {
+                    let dest_rel =
+                        make_path_relative(dest.to_string_lossy().as_ref(), worktree_path);
+                    edits.push(FileChange::Rename { new_path: dest_rel });
+                }
+                edits.push(FileChange::Edit {
                     unified_diff: normalized_diff,
                     has_line_numbers: true,
-                }],
-                codex_app_server_protocol::PatchChangeKind::Delete => vec![FileChange::Delete],
-                codex_app_server_protocol::PatchChangeKind::Update { move_path } => {
-                    let mut edits = Vec::new();
-                    if let Some(dest) = move_path {
-                        let dest_rel =
-                            make_path_relative(dest.to_string_lossy().as_ref(), worktree_path);
-                        edits.push(FileChange::Rename { new_path: dest_rel });
-                    }
-                    edits.push(FileChange::Edit {
-                        unified_diff: normalized_diff,
-                        has_line_numbers: true,
-                    });
-                    edits
-                }
-            };
-            by_path.entry(relative).or_default().extend(file_changes);
-        });
+                });
+                edits
+            }
+        };
+        by_path.entry(relative).or_default().extend(file_changes);
+    });
 
-    by_path
-        .into_iter()
-        .collect()
+    by_path.into_iter().collect()
 }
 
 fn format_todo_status(status: &TurnPlanStepStatus) -> String {
@@ -662,7 +650,8 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                                                 .content
                                                 .iter()
                                                 .map(|block| {
-                                                    if let ContentBlock::TextContent(content) = block
+                                                    if let ContentBlock::TextContent(content) =
+                                                        block
                                                     {
                                                         content.text.clone()
                                                     } else {

@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     fs, io,
     path::{Path, PathBuf},
     sync::{Arc, atomic::AtomicUsize},
@@ -42,6 +42,8 @@ use executors::{
     profile::ExecutorProfileId,
 };
 use futures::{FutureExt, StreamExt, TryStreamExt, stream::select};
+#[cfg(unix)]
+use nix::unistd::{Pid, getpgid};
 use services::services::{
     approvals::{Approvals, executor_approvals::ExecutorApprovalBridge},
     config::Config,
@@ -69,6 +71,7 @@ use crate::{DeploymentError, command, copy};
 pub struct LocalContainerService {
     db: DBService,
     child_store: Arc<RwLock<HashMap<Uuid, Arc<RwLock<AsyncGroupChild>>>>>,
+    setup_script_process_groups: Arc<RwLock<HashMap<Uuid, HashSet<i32>>>>,
     interrupt_senders: Arc<RwLock<HashMap<Uuid, InterruptSender>>>,
     msg_stores: Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>>,
     config: Arc<RwLock<Config>>,
@@ -91,12 +94,14 @@ impl LocalContainerService {
         queued_message_service: QueuedMessageService,
     ) -> Self {
         let child_store = Arc::new(RwLock::new(HashMap::new()));
+        let setup_script_process_groups = Arc::new(RwLock::new(HashMap::new()));
         let interrupt_senders = Arc::new(RwLock::new(HashMap::new()));
         let notification_service = NotificationService::new(config.clone());
 
         let container = LocalContainerService {
             db,
             child_store,
+            setup_script_process_groups,
             interrupt_senders,
             msg_stores,
             config,
@@ -130,6 +135,85 @@ impl LocalContainerService {
     async fn add_interrupt_sender(&self, id: Uuid, sender: InterruptSender) {
         let mut map = self.interrupt_senders.write().await;
         map.insert(id, sender);
+    }
+
+    #[cfg(unix)]
+    async fn track_setup_script_process_group(
+        &self,
+        task_attempt_id: Uuid,
+        executor_action: &ExecutorAction,
+        child: &mut AsyncGroupChild,
+    ) {
+        let is_setup_script = matches!(
+            executor_action.typ(),
+            ExecutorActionType::ScriptRequest(script)
+                if script.context == ScriptContext::SetupScript
+        );
+        if !is_setup_script {
+            return;
+        }
+
+        let Some(pid) = child.inner().id() else {
+            return;
+        };
+
+        match getpgid(Some(Pid::from_raw(pid as i32))) {
+            Ok(pgid) => {
+                let mut map = self.setup_script_process_groups.write().await;
+                map.entry(task_attempt_id)
+                    .or_default()
+                    .insert(pgid.as_raw());
+                tracing::debug!(
+                    "Tracking setup script process group {} for task attempt {}",
+                    pgid,
+                    task_attempt_id
+                );
+            }
+            Err(e) => tracing::warn!(
+                "Failed to resolve process group for setup script pid {}: {}",
+                pid,
+                e
+            ),
+        }
+    }
+
+    #[cfg(not(unix))]
+    async fn track_setup_script_process_group(
+        &self,
+        _task_attempt_id: Uuid,
+        _executor_action: &ExecutorAction,
+        _child: &mut AsyncGroupChild,
+    ) {
+    }
+
+    #[cfg(unix)]
+    async fn cleanup_setup_script_process_groups(&self, task_attempt_id: Uuid) {
+        let groups = {
+            let mut map = self.setup_script_process_groups.write().await;
+            map.remove(&task_attempt_id)
+        };
+
+        if let Some(groups) = groups {
+            for pgid in groups {
+                if let Err(e) = command::kill_process_group_by_id(pgid).await {
+                    tracing::warn!(
+                        "Failed to stop lingering setup subprocess group {} for attempt {}: {}",
+                        pgid,
+                        task_attempt_id,
+                        e
+                    );
+                }
+            }
+        }
+    }
+
+    #[cfg(not(unix))]
+    async fn cleanup_setup_script_process_groups(&self, _task_attempt_id: Uuid) {}
+
+    async fn finalize_task_with_setup_cleanup(&self, ctx: &ExecutionContext) {
+        self.finalize_task(ctx).await;
+        self.cleanup_setup_script_process_groups(ctx.task_attempt.id)
+            .await;
     }
 
     async fn take_interrupt_sender(&self, id: &Uuid) -> Option<InterruptSender> {
@@ -420,7 +504,7 @@ impl LocalContainerService {
                         );
 
                         // Manually finalize task since we're bypassing normal execution flow
-                        container.finalize_task(&ctx).await;
+                        container.finalize_task_with_setup_cleanup(&ctx).await;
                         finalized = true;
                     }
                 }
@@ -459,7 +543,7 @@ impl LocalContainerService {
                                 tracing::error!("Failed to start queued follow-up: {}", e);
                                 // Fall back to finalization if follow-up fails
                                 if !finalized {
-                                    container.finalize_task(&ctx).await;
+                                    container.finalize_task_with_setup_cleanup(&ctx).await;
                                 }
                             }
                         } else {
@@ -470,12 +554,12 @@ impl LocalContainerService {
                                 ctx.execution_process.status
                             );
                             if !finalized {
-                                container.finalize_task(&ctx).await;
+                                container.finalize_task_with_setup_cleanup(&ctx).await;
                             }
                         }
                     } else {
                         if !finalized {
-                            container.finalize_task(&ctx).await;
+                            container.finalize_task_with_setup_cleanup(&ctx).await;
                         }
                     }
                 }
@@ -934,6 +1018,9 @@ impl ContainerService for LocalContainerService {
             }
         }
 
+        self.cleanup_setup_script_process_groups(task_attempt.id)
+            .await;
+
         Ok(())
     }
 
@@ -1093,6 +1180,9 @@ impl ContainerService for LocalContainerService {
         })??;
 
         self.track_child_msgs_in_store(execution_process.id, &mut spawned.child)
+            .await;
+
+        self.track_setup_script_process_group(task_attempt.id, executor_action, &mut spawned.child)
             .await;
 
         self.add_child_to_store(execution_process.id, spawned.child)

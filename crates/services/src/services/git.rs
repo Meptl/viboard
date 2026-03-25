@@ -512,10 +512,21 @@ impl GitService {
                     }
                 }
 
-                // If contents are omitted, try to compute line stats via libgit2 Patch
+                // Treat non-text/unrenderable diffs as omitted to avoid misleading +0/-0 stats.
+                if !content_omitted
+                    && old_content.is_none()
+                    && new_content.is_none()
+                    && !matches!(change, DiffChangeKind::PermissionChange)
+                {
+                    content_omitted = true;
+                }
+
+                // If contents are omitted, try to compute line stats via libgit2 Patch.
+                // Keep stats absent when both sides are non-text/unrenderable.
                 let mut additions: Option<usize> = None;
                 let mut deletions: Option<usize> = None;
                 if content_omitted
+                    && !(old_content.is_none() && new_content.is_none())
                     && let Ok(Some(patch)) = git2::Patch::from_diff(&diff, delta_index)
                     && let Ok((_ctx, adds, dels)) = patch.line_stats()
                 {
@@ -725,6 +736,16 @@ impl GitService {
             && old_content == new_content
         {
             change = DiffChangeKind::PermissionChange;
+        }
+
+        // Treat non-text/unrenderable diffs as omitted so UI warning/omission
+        // handling is used instead of displaying +0/-0.
+        if !content_omitted
+            && old_content.is_none()
+            && new_content.is_none()
+            && !matches!(change, DiffChangeKind::PermissionChange)
+        {
+            content_omitted = true;
         }
 
         Diff {

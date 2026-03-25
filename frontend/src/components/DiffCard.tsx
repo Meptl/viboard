@@ -371,7 +371,7 @@ export default function DiffCard({
           style={{ color: 'hsl(var(--muted-foreground) / 0.9)' }}
         >
           {isOmitted
-            ? 'Content omitted due to file size. Open in editor to view.'
+            ? 'Content omitted or not renderable as a text diff. Open in editor to view.'
             : isContentEqual
               ? diff.change === 'renamed'
                 ? 'File renamed with no content changes.'

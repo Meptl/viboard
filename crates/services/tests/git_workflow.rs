@@ -212,6 +212,9 @@ fn diff_added_binary_file_has_no_content() {
         .find(|d| d.new_path.as_deref() == Some("bin.dat"))
         .expect("binary diff present");
     assert!(bin.new_content.is_none());
+    assert!(bin.content_omitted);
+    assert!(bin.additions.is_none());
+    assert!(bin.deletions.is_none());
 }
 
 #[test]

@@ -13,6 +13,7 @@ yarn-error.log*
 /dist
 /build
 /dist-electron
+/.cache/build-electron
 .electron-builder.generated.json
 
 # Environment variables

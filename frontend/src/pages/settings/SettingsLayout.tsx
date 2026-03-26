@@ -60,19 +60,30 @@ export function SettingsLayout() {
   }, [location.state]);
 
   const handleBack = () => {
-    const returnTo = returnToRef.current;
-    if (returnTo && !returnTo.startsWith('/settings')) {
-      navigate(returnTo, { replace: true });
-      return;
+    // Trigger blur-driven autosave handlers before navigating away.
+    const activeElement = document.activeElement;
+    if (activeElement instanceof HTMLElement) {
+      activeElement.blur();
     }
 
-    const projectId = searchParams.get('projectId');
-    if (projectId) {
-      navigate(`/projects/${projectId}/tasks`, { replace: true });
-      return;
-    }
+    const navigateAway = () => {
+      const returnTo = returnToRef.current;
+      if (returnTo && !returnTo.startsWith('/settings')) {
+        navigate(returnTo, { replace: true });
+        return;
+      }
 
-    navigate('/projects', { replace: true });
+      const projectId = searchParams.get('projectId');
+      if (projectId) {
+        navigate(`/projects/${projectId}/tasks`, { replace: true });
+        return;
+      }
+
+      navigate('/projects', { replace: true });
+    };
+
+    // Let blur events flush before route transition unmounts settings content.
+    window.setTimeout(navigateAway, 0);
   };
   // Register ESC keyboard shortcut
   useKeyExit(handleBack, {

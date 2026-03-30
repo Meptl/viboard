@@ -1002,11 +1002,7 @@ impl ContainerService for LocalContainerService {
 
         let (setup_env_diff, setup_env_before, setup_env_after) =
             Self::setup_env_diff_paths(&task_attempt.id);
-        for path in [
-            &setup_env_diff,
-            &setup_env_before,
-            &setup_env_after,
-        ] {
+        for path in [&setup_env_diff, &setup_env_before, &setup_env_after] {
             if let Err(e) = fs::remove_file(path)
                 && e.kind() != std::io::ErrorKind::NotFound
             {
@@ -1145,11 +1141,7 @@ impl ContainerService for LocalContainerService {
                 );
             }
 
-            for path in [
-                &setup_env_diff,
-                &setup_env_before,
-                &setup_env_after,
-            ] {
+            for path in [&setup_env_diff, &setup_env_before, &setup_env_after] {
                 if let Err(e) = fs::remove_file(path)
                     && e.kind() != std::io::ErrorKind::NotFound
                 {
@@ -1465,7 +1457,8 @@ impl ContainerService for LocalContainerService {
     }
 
     async fn cleanup_setup_script_subprocesses(&self, task_attempt_id: Uuid) {
-        self.cleanup_setup_script_process_groups(task_attempt_id).await;
+        self.cleanup_setup_script_process_groups(task_attempt_id)
+            .await;
     }
 }
 fn success_exit_status() -> std::process::ExitStatus {

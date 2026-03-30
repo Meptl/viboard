@@ -1,4 +1,7 @@
-use std::{collections::HashMap, path::Path};
+use std::{
+    collections::{HashMap, HashSet},
+    path::Path,
+};
 
 use chrono::{DateTime, Utc};
 use git2::{
@@ -805,6 +808,13 @@ impl GitService {
             )));
         }
 
+        let task_branch = Self::find_branch(&task_repo, task_branch_name)?;
+        let base_branch = Self::find_branch(&task_repo, base_branch_name)?;
+        let base_commit = base_branch.get().peel_to_commit()?;
+        let task_commit = task_branch.get().peel_to_commit()?;
+        let merge_touched_paths =
+            self.collect_paths_touched_between_commits(&task_repo, &base_commit, &task_commit)?;
+
         // Check where base branch is checked out (if anywhere)
         match self.find_checkout_path_for_branch(base_worktree_path, base_branch_name)? {
             Some(base_checkout_path) => {
@@ -812,9 +822,14 @@ impl GitService {
                 let git_cli = GitCli::new();
 
                 // Commit local edits first so squash merge does not fail on a dirty base worktree.
-                // For merge we include untracked files as well, so uncommitted changes do not
-                // block users from merging.
-                self.auto_commit_changes_if_any(&base_checkout_path, "merge", true)?;
+                // For merge we include untracked files, but only for paths that overlap with
+                // incoming merge changes so unrelated local files are not swept into the chore commit.
+                self.auto_commit_changes_if_any(
+                    &base_checkout_path,
+                    "merge",
+                    true,
+                    Some(&merge_touched_paths),
+                )?;
 
                 // Use CLI merge in base context
                 self.ensure_cli_commit_identity(&base_checkout_path)?;
@@ -841,13 +856,6 @@ impl GitService {
             }
             None => {
                 // base branch not checked out anywhere - use libgit2 pure ref operations
-                let task_branch = Self::find_branch(&task_repo, task_branch_name)?;
-                let base_branch = Self::find_branch(&task_repo, base_branch_name)?;
-
-                // Resolve commits
-                let base_commit = base_branch.get().peel_to_commit()?;
-                let task_commit = task_branch.get().peel_to_commit()?;
-
                 // Create the squash commit in-memory (no checkout) and update the base branch ref
                 let signature = self.signature_with_fallback(&task_repo)?;
                 let squash_commit_id = self.perform_squash_merge(
@@ -966,6 +974,7 @@ impl GitService {
         worktree_path: &Path,
         operation_label: &str,
         include_untracked: bool,
+        changed_paths_filter: Option<&HashSet<String>>,
     ) -> Result<(), GitServiceError> {
         let git = GitCli::new();
         let status = git
@@ -978,8 +987,46 @@ impl GitService {
             return Ok(());
         }
 
+        let mut paths_to_stage = Vec::<Vec<u8>>::new();
+        if let Some(filter_paths) = changed_paths_filter {
+            for entry in &status.entries {
+                if entry.is_untracked && !include_untracked {
+                    continue;
+                }
+                if !entry.is_untracked && entry.staged == ' ' && entry.unstaged == ' ' {
+                    continue;
+                }
+
+                let path_matches = Self::path_bytes_to_lossy(&entry.path)
+                    .as_ref()
+                    .is_some_and(|p| filter_paths.contains(p));
+                let orig_matches = entry
+                    .orig_path
+                    .as_ref()
+                    .and_then(|p| Self::path_bytes_to_lossy(p))
+                    .as_ref()
+                    .is_some_and(|p| filter_paths.contains(p));
+
+                if path_matches || orig_matches {
+                    paths_to_stage.push(entry.path.clone());
+                    if let Some(orig) = &entry.orig_path {
+                        paths_to_stage.push(orig.clone());
+                    }
+                }
+            }
+
+            if paths_to_stage.is_empty() {
+                return Ok(());
+            }
+        }
+
         self.ensure_cli_commit_identity(worktree_path)?;
-        if include_untracked {
+        if changed_paths_filter.is_some() {
+            git.add_all_for_paths(worktree_path, &paths_to_stage)
+                .map_err(|e| {
+                    GitServiceError::InvalidRepository(format!("git add -A failed: {e}"))
+                })?;
+        } else if include_untracked {
             git.add_all(worktree_path).map_err(|e| {
                 GitServiceError::InvalidRepository(format!("git add -A failed: {e}"))
             })?;
@@ -988,12 +1035,62 @@ impl GitService {
                 GitServiceError::InvalidRepository(format!("git add -u failed: {e}"))
             })?;
         }
+        if !git.has_staged_changes(worktree_path).map_err(|e| {
+            GitServiceError::InvalidRepository(format!("git diff --cached failed: {e}"))
+        })? {
+            return Ok(());
+        }
         git.commit(
             worktree_path,
             &format!("chore: auto-commit local changes before {operation_label}"),
         )
         .map_err(|e| GitServiceError::InvalidRepository(format!("git commit failed: {e}")))?;
         Ok(())
+    }
+
+    fn collect_paths_touched_between_commits(
+        &self,
+        repo: &Repository,
+        base_commit: &git2::Commit<'_>,
+        task_commit: &git2::Commit<'_>,
+    ) -> Result<HashSet<String>, GitServiceError> {
+        // For overwrite protection we care about paths changed by the incoming side
+        // since the merge base, not all differences between base and task tips.
+        let merge_base_oid = repo.merge_base(base_commit.id(), task_commit.id())?;
+        let merge_base_commit = repo.find_commit(merge_base_oid)?;
+        let base_tree = merge_base_commit.tree()?;
+        let task_tree = task_commit.tree()?;
+        let mut diff_opts = DiffOptions::new();
+        let mut diff =
+            repo.diff_tree_to_tree(Some(&base_tree), Some(&task_tree), Some(&mut diff_opts))?;
+
+        let mut find_opts = DiffFindOptions::new();
+        find_opts.renames(true);
+        diff.find_similar(Some(&mut find_opts))?;
+
+        let mut touched = HashSet::new();
+        diff.foreach(
+            &mut |delta, _| {
+                if let Some(path) = delta.new_file().path() {
+                    touched.insert(path.to_string_lossy().to_string());
+                }
+                if let Some(path) = delta.old_file().path() {
+                    touched.insert(path.to_string_lossy().to_string());
+                }
+                true
+            },
+            None,
+            None,
+            None,
+        )?;
+        Ok(touched)
+    }
+
+    fn path_bytes_to_lossy(path: &[u8]) -> Option<String> {
+        if path.is_empty() {
+            return None;
+        }
+        Some(String::from_utf8_lossy(path).to_string())
     }
 
     /// Check if the worktree is clean (no uncommitted changes to tracked files)
@@ -1349,7 +1446,7 @@ impl GitService {
 
         // Commit tracked local edits first so rebase can proceed without a dirty-worktree error.
         // Untracked files are still left alone and protected by git CLI semantics.
-        self.auto_commit_changes_if_any(worktree_path, "rebase", false)?;
+        self.auto_commit_changes_if_any(worktree_path, "rebase", false, None)?;
 
         // If a rebase is already in progress, refuse to proceed instead of
         // aborting (which might destroy user changes mid-rebase).

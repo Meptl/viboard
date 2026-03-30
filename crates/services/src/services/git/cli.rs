@@ -268,6 +268,46 @@ impl GitCli {
         Ok(())
     }
 
+    /// Stage changes for a specific path list (tracked/untracked/deletions).
+    ///
+    /// Paths are passed as raw bytes and consumed via `--pathspec-from-file`
+    /// to avoid lossy UTF-8 conversions.
+    pub fn add_all_for_paths(
+        &self,
+        worktree_path: &Path,
+        paths: &[Vec<u8>],
+    ) -> Result<(), GitCliError> {
+        if paths.is_empty() {
+            return Ok(());
+        }
+
+        let mut input = Vec::new();
+        for path in paths {
+            if path.is_empty() {
+                continue;
+            }
+            input.extend_from_slice(path);
+            input.push(0);
+        }
+        input.extend(Self::get_default_pathspec_excludes().iter().flat_map(|s| {
+            let mut bytes = s.as_encoded_bytes().to_vec();
+            bytes.push(0);
+            bytes
+        }));
+        if input.is_empty() {
+            return Ok(());
+        }
+
+        let args = vec![
+            OsString::from("add"),
+            OsString::from("-A"),
+            OsString::from("--pathspec-from-file=-"),
+            OsString::from("--pathspec-file-nul"),
+        ];
+        self.git_with_stdin(worktree_path, args, None, &input)?;
+        Ok(())
+    }
+
     pub fn list_worktrees(&self, repo_path: &Path) -> Result<Vec<WorktreeEntry>, GitCliError> {
         let out = self.git(repo_path, ["worktree", "list", "--porcelain"])?;
         let mut entries = Vec::new();

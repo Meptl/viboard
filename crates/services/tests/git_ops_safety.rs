@@ -74,6 +74,16 @@ fn add_path(repo_path: &Path, path: &str) {
     git.git(repo_path, ["add", path]).unwrap();
 }
 
+fn has_untracked_path(repo_path: &Path, expected: &str) -> bool {
+    let git = GitCli::new();
+    let status = git.get_worktree_status(repo_path).unwrap();
+    status
+        .entries
+        .iter()
+        .filter(|e| e.is_untracked)
+        .any(|e| String::from_utf8_lossy(&e.path) == expected)
+}
+
 use services::services::git::DiffTarget;
 
 // Non-conflicting setup used by several tests
@@ -605,7 +615,7 @@ fn merge_auto_commits_untracked_changes_on_base() {
     let wt_repo = Repository::open(&worktree_path).unwrap();
     commit_all(&wt_repo, "feat change");
 
-    // main has an untracked file; merge should not be blocked by this
+    // main has an unrelated untracked file; merge should not block and should not auto-commit it
     write_file(&repo_path, "local-note.txt", "untracked note\n");
 
     let res = s.merge_changes(&repo_path, &worktree_path, "feature", "main", "squash");
@@ -617,8 +627,101 @@ fn merge_auto_commits_untracked_changes_on_base() {
     let note = std::fs::read_to_string(repo_path.join("local-note.txt")).unwrap();
     assert_eq!(note, "untracked note\n");
     assert!(
-        s.is_worktree_clean(&repo_path).unwrap(),
-        "base worktree changes should be committed before merge"
+        has_untracked_path(&repo_path, "local-note.txt"),
+        "unrelated untracked file should remain untracked"
+    );
+}
+
+#[test]
+fn merge_only_auto_commits_overlapping_untracked_file() {
+    let td = TempDir::new().unwrap();
+    let (repo_path, worktree_path) = setup_repo_with_worktree(&td);
+    let s = GitService::new();
+
+    let repo = Repository::open(&repo_path).unwrap();
+    checkout_branch(&repo, "main");
+
+    // feature introduces danger.txt
+    write_file(&worktree_path, "danger.txt", "feature danger\n");
+    let wt_repo = Repository::open(&worktree_path).unwrap();
+    commit_all(&wt_repo, "feature adds danger");
+
+    // main has conflicting untracked file plus an unrelated untracked file
+    write_file(&repo_path, "danger.txt", "local untracked danger\n");
+    write_file(&repo_path, "notes.txt", "keep me untracked\n");
+
+    let res = s.merge_changes(&repo_path, &worktree_path, "feature", "main", "squash");
+    assert!(
+        res.is_err(),
+        "merge should fail due to content conflict: {res:?}"
+    );
+
+    assert!(
+        has_untracked_path(&repo_path, "notes.txt"),
+        "adjacent unrelated untracked file should remain untracked"
+    );
+    assert!(
+        !has_untracked_path(&repo_path, "danger.txt"),
+        "overlapping untracked file should be promoted before merge"
+    );
+}
+
+#[test]
+fn merge_only_auto_commits_overlapping_tracked_changes() {
+    let td = TempDir::new().unwrap();
+    let (repo_path, worktree_path) = setup_repo_with_worktree(&td);
+    let s = GitService::new();
+
+    let repo = Repository::open(&repo_path).unwrap();
+    checkout_branch(&repo, "main");
+
+    // Add two tracked files on main.
+    write_file(&repo_path, "danger-tracked.txt", "main base\n");
+    write_file(&repo_path, "adjacent-tracked.txt", "main base\n");
+    commit_all(&repo, "add tracked files on main");
+
+    // feature introduces a conflicting change for danger-tracked.txt only.
+    write_file(&worktree_path, "danger-tracked.txt", "feature change\n");
+    let wt_repo = Repository::open(&worktree_path).unwrap();
+    commit_all(&wt_repo, "feature changes danger tracked");
+
+    // Local tracked edits on main: one overlapping and one unrelated.
+    write_file(&repo_path, "danger-tracked.txt", "local tracked danger\n");
+    write_file(
+        &repo_path,
+        "adjacent-tracked.txt",
+        "local tracked adjacent\n",
+    );
+
+    let res = s.merge_changes(&repo_path, &worktree_path, "feature", "main", "squash");
+    assert!(
+        res.is_err(),
+        "merge should fail due to content conflict: {res:?}"
+    );
+
+    let git = GitCli::new();
+    let status = git.get_worktree_status(&repo_path).unwrap();
+    assert!(
+        status.entries.iter().any(|e| {
+            !e.is_untracked
+                && String::from_utf8_lossy(&e.path) == "adjacent-tracked.txt"
+                && (e.staged != ' ' || e.unstaged != ' ')
+        }),
+        "non-overlapping tracked edit should remain uncommitted"
+    );
+    let head_files = git
+        .git(
+            &repo_path,
+            ["show", "--name-only", "--pretty=format:", "HEAD"],
+        )
+        .unwrap();
+    assert!(
+        head_files.lines().any(|l| l == "danger-tracked.txt"),
+        "overlapping tracked edit should be included in chore commit"
+    );
+    assert!(
+        !head_files.lines().any(|l| l == "adjacent-tracked.txt"),
+        "non-overlapping tracked edit should not be included in chore commit"
     );
 }
 

@@ -258,7 +258,15 @@
     "start": "开始"
   },
   "viewProcessesDialog": {
-    "title": "执行进程"
+    "title": "详情",
+    "tabs": {
+      "general": "常规",
+      "processes": "进程"
+    },
+    "general": {
+      "taskId": "任务 ID",
+      "attemptId": "尝试 ID"
+    }
   },
   "viewRelatedTasksDialog": {
     "title": "相关任务",
@@ -279,7 +287,7 @@
   "actionsMenu": {
     "attempt": "尝试",
     "openInIde": "在 IDE 中打开尝试",
-    "viewProcesses": "查看进程",
+    "viewProcesses": "详情",
     "viewRelatedTasks": "查看相关任务",
     "createNewAttempt": "创建新尝试",
     "createSubtask": "创建子任务",

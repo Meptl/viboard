@@ -10,7 +10,7 @@
     "gitActions": "Acciones de Git",
     "openInIde": "Open attempt in IDE",
     "task": "Task",
-    "viewProcesses": "View processes",
+    "viewProcesses": "Details",
     "viewRelatedTasks": "View related tasks"
   },
   "attempt": {
@@ -302,7 +302,15 @@
     "startFirstAttempt": "Start your first attempt to begin working on this task"
   },
   "viewProcessesDialog": {
-    "title": "Execution processes"
+    "title": "Details",
+    "tabs": {
+      "general": "General",
+      "processes": "Processes"
+    },
+    "general": {
+      "taskId": "Task ID",
+      "attemptId": "Attempt ID"
+    }
   },
   "viewRelatedTasksDialog": {
     "title": "Related tasks",

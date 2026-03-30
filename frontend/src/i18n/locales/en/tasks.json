@@ -266,7 +266,15 @@
     "start": "Start"
   },
   "viewProcessesDialog": {
-    "title": "Execution processes"
+    "title": "Details",
+    "tabs": {
+      "general": "General",
+      "processes": "Processes"
+    },
+    "general": {
+      "taskId": "Task ID",
+      "attemptId": "Attempt ID"
+    }
   },
   "viewRelatedTasksDialog": {
     "title": "Related tasks",
@@ -287,7 +295,7 @@
   "actionsMenu": {
     "attempt": "Attempt",
     "openInIde": "Open attempt in IDE",
-    "viewProcesses": "View processes",
+    "viewProcesses": "Details",
     "viewRelatedTasks": "View related tasks",
     "createNewAttempt": "Create new attempt",
     "createSubtask": "Create subtask",

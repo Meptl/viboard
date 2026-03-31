@@ -62,8 +62,13 @@ function spawnBackend() {
   });
 
   let stderrBuffer = '';
+  backendProcess.stdout?.on('data', (chunk) => {
+    process.stdout.write(`[backend] ${chunk.toString()}`);
+  });
   backendProcess.stderr?.on('data', (chunk) => {
-    stderrBuffer += chunk.toString();
+    const text = chunk.toString();
+    stderrBuffer += text;
+    process.stderr.write(`[backend] ${text}`);
   });
 
   return new Promise((resolve, reject) => {

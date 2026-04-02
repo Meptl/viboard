@@ -307,6 +307,8 @@ const GLYPHS = {
   ],
 };
 
+const SHADOW_CHARS = ['═', '║', '╔', '╗', '╚', '╝', '╠', '╣', '╦', '╩', '╬'];
+
 function normalizeGlyph(glyph) {
   const rows = glyph.map((r) => (r || '').trimEnd());
   const width = rows.reduce((max, row) => Math.max(max, row.length), 0);
@@ -497,7 +499,7 @@ function renderBlockText(input, options = {}) {
 
 function printUsage() {
   console.log(
-    'Usage: node scripts/ascii-block-text.js "Your Text" [--gap 1] [--shadow]',
+    'Usage: node scripts/ascii-block-text.js "Your Text" [--gap 1] [--shadow] [--shadow-chars]',
   );
 }
 
@@ -505,6 +507,7 @@ function parseArgs(argv) {
   const args = [...argv];
   let gap = 1;
   let shadow = false;
+  let shadowChars = false;
   const textParts = [];
 
   for (let i = 0; i < args.length; i += 1) {
@@ -529,6 +532,11 @@ function parseArgs(argv) {
       continue;
     }
 
+    if (arg === '--shadow-chars') {
+      shadowChars = true;
+      continue;
+    }
+
     textParts.push(arg);
   }
 
@@ -536,6 +544,7 @@ function parseArgs(argv) {
     help: false,
     gap,
     shadow,
+    shadowChars,
     text: textParts.join(' '),
   };
 }
@@ -551,8 +560,17 @@ function main() {
   }
 
   if (parsed.help || !parsed.text) {
+    if (parsed.shadowChars) {
+      console.log(SHADOW_CHARS.join(' '));
+      process.exit(0);
+    }
     printUsage();
     process.exit(parsed.help ? 0 : 1);
+  }
+
+  if (parsed.shadowChars) {
+    console.log(SHADOW_CHARS.join(' '));
+    process.exit(0);
   }
 
   const output = renderBlockText(parsed.text, {

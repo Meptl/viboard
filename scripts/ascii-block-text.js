@@ -307,7 +307,7 @@ const GLYPHS = {
   ],
 };
 
-const SHADOW_CHARS = ['═', '║', '╔', '╗', '╚', '╝', '╠', '╣', '╦', '╩', '╬'];
+const SHADOW_CHARS = ['═', '║', '╔', '╗', '╚', '╝'];
 
 function normalizeGlyph(glyph) {
   const rows = glyph.map((r) => (r || '').trimEnd());
@@ -393,17 +393,14 @@ function boxCharForConnections(connections) {
     case 'up,left':
       return '╝';
     case 'up,right,down':
-      return '╠';
     case 'up,down,left':
-      return '╣';
+      return '║';
     case 'right,down,left':
-      return '╦';
     case 'up,right,left':
-      return '╩';
     case 'up,right,down,left':
-      return '╬';
+      return '═';
     default:
-      return '╬';
+      return '═';
   }
 }
 

@@ -430,6 +430,7 @@ fn rebase_preserves_untracked_files() {
         "new-base",
         "old-base",
         "feature",
+        None,
     );
     assert!(res.is_ok(), "rebase should succeed: {res:?}");
 
@@ -452,6 +453,7 @@ fn rebase_auto_commits_uncommitted_tracked_changes() {
         "new-base",
         "old-base",
         "feature",
+        None,
     );
     assert!(
         res.is_ok(),
@@ -480,6 +482,7 @@ fn rebase_aborts_if_untracked_would_be_overwritten_by_base() {
         "new-base",
         "old-base",
         "feature",
+        None,
     );
     assert!(
         res.is_err(),
@@ -849,6 +852,7 @@ fn rebase_refuses_to_abort_existing_rebase() {
             "new-base",
             "old-base",
             "feature",
+            None,
         )
         .expect_err("first rebase should error and leave in-progress state");
 
@@ -860,9 +864,82 @@ fn rebase_refuses_to_abort_existing_rebase() {
         "new-base",
         "old-base",
         "feature",
+        None,
     );
     assert!(res.is_err(), "should error because rebase is in progress");
     // Note: We do not auto-abort; user should resolve or abort explicitly
+}
+
+#[test]
+fn abort_rebase_removes_auto_commit_and_restores_local_edits() {
+    let td = TempDir::new().unwrap();
+    let (repo_path, worktree_path) = setup_conflict_repo_with_worktree(&td);
+    let git = GitCli::new();
+    let svc = GitService::new();
+
+    let before_oid = git
+        .git(&worktree_path, ["rev-parse", "HEAD"])
+        .unwrap()
+        .trim()
+        .to_string();
+
+    // Local tracked edit should be auto-committed before rebase, then restored after abort.
+    write_file(
+        &worktree_path,
+        "conflict.txt",
+        "feature version with local edit\n",
+    );
+
+    let rebase_res = svc.rebase_branch(
+        &repo_path,
+        &worktree_path,
+        "new-base",
+        "old-base",
+        "feature",
+        Some("attempt-1"),
+    );
+    assert!(
+        rebase_res.is_err(),
+        "rebase should stop for conflicts: {rebase_res:?}"
+    );
+    assert!(
+        svc.is_rebase_in_progress(&worktree_path).unwrap(),
+        "rebase should be in progress before abort"
+    );
+
+    svc.abort_conflicts(&worktree_path, Some("attempt-1"))
+        .expect("abort conflicts");
+    assert!(
+        !svc.is_rebase_in_progress(&worktree_path).unwrap(),
+        "rebase metadata should be cleaned up"
+    );
+
+    let after_oid = git
+        .git(&worktree_path, ["rev-parse", "HEAD"])
+        .unwrap()
+        .trim()
+        .to_string();
+    assert_eq!(
+        after_oid, before_oid,
+        "abort should drop the synthetic pre-rebase auto-commit"
+    );
+
+    let head_subject = git
+        .git(&worktree_path, ["log", "-1", "--pretty=%s"])
+        .unwrap()
+        .trim()
+        .to_string();
+    assert_ne!(
+        head_subject, "chore: auto-commit local changes before rebase",
+        "synthetic commit should not remain at HEAD"
+    );
+
+    let content = fs::read_to_string(worktree_path.join("conflict.txt")).unwrap();
+    assert_eq!(content, "feature version with local edit\n");
+    assert!(
+        !svc.is_worktree_clean(&worktree_path).unwrap(),
+        "local edit should be restored as uncommitted after abort"
+    );
 }
 
 #[test]
@@ -880,6 +957,7 @@ fn rebase_fast_forwards_when_no_unique_commits() {
             "new-base",
             "old-base",
             "feature",
+            None,
         )
         .expect("rebase should succeed");
     let after_oid = g.get_head_info(&worktree_path).unwrap().oid;
@@ -911,6 +989,7 @@ fn rebase_applies_multiple_commits_onto_ahead_base() {
             "new-base",
             "old-base",
             "feature",
+            None,
         )
         .expect("rebase should succeed");
 
@@ -1056,6 +1135,7 @@ fn rebase_preserves_rename_changes() {
             "new-base",
             "old-base",
             "feature",
+            None,
         )
         .expect("rebase should succeed");
     // after rebase, renamed file present; original absent

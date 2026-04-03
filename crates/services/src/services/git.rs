@@ -48,6 +48,7 @@ pub struct GitService {}
 // Max inline diff size for UI (in bytes). Files larger than this will have
 // their contents omitted from the diff stream to avoid UI crashes.
 const MAX_INLINE_DIFF_BYTES: usize = 2 * 1024 * 1024; // ~2MB
+const AUTO_COMMIT_MESSAGE_PREFIX: &str = "chore: auto-commit local changes before ";
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -829,6 +830,7 @@ impl GitService {
                     "merge",
                     true,
                     Some(&merge_touched_paths),
+                    None,
                 )?;
 
                 // Use CLI merge in base context
@@ -975,6 +977,7 @@ impl GitService {
         operation_label: &str,
         include_untracked: bool,
         changed_paths_filter: Option<&HashSet<String>>,
+        attempt_id: Option<&str>,
     ) -> Result<(), GitServiceError> {
         let git = GitCli::new();
         let status = git
@@ -1040,11 +1043,56 @@ impl GitService {
         })? {
             return Ok(());
         }
-        git.commit(
-            worktree_path,
-            &format!("chore: auto-commit local changes before {operation_label}"),
-        )
-        .map_err(|e| GitServiceError::InvalidRepository(format!("git commit failed: {e}")))?;
+        let mut message = format!("{AUTO_COMMIT_MESSAGE_PREFIX}{operation_label}");
+        if operation_label == "rebase"
+            && let Some(attempt_id) = attempt_id
+        {
+            message.push_str(&format!("\n\nAttempt-id: {attempt_id}"));
+        }
+        git.commit(worktree_path, &message)
+            .map_err(|e| GitServiceError::InvalidRepository(format!("git commit failed: {e}")))?;
+        Ok(())
+    }
+
+    fn rollback_rebase_auto_commit_if_present(
+        &self,
+        worktree_path: &Path,
+        attempt_id: Option<&str>,
+    ) -> Result<(), GitServiceError> {
+        let git = GitCli::new();
+        let head_message = git
+            .git(worktree_path, ["log", "-1", "--pretty=%B"])
+            .map_err(|e| {
+                GitServiceError::InvalidRepository(format!("git log for HEAD failed: {e}"))
+            })?;
+        let mut lines = head_message.lines();
+        let subject = lines.next().unwrap_or("").trim();
+        let expected_subject = format!("{AUTO_COMMIT_MESSAGE_PREFIX}rebase");
+        if subject != expected_subject {
+            return Ok(());
+        }
+        let expected_attempt_line = attempt_id.map(|id| format!("Attempt-id: {id}"));
+        if let Some(expected_attempt_line) = expected_attempt_line
+            && !head_message
+                .lines()
+                .any(|line| line.trim() == expected_attempt_line)
+        {
+            return Ok(());
+        }
+
+        // If there is no parent commit, we cannot drop HEAD safely.
+        if git
+            .git(worktree_path, ["rev-parse", "--verify", "HEAD^"])
+            .is_err()
+        {
+            return Ok(());
+        }
+
+        // Keep local edits in the working tree while removing the synthetic commit.
+        git.git(worktree_path, ["reset", "--mixed", "HEAD^"])
+            .map_err(|e| {
+                GitServiceError::InvalidRepository(format!("git reset --mixed HEAD^ failed: {e}"))
+            })?;
         Ok(())
     }
 
@@ -1440,13 +1488,14 @@ impl GitService {
         new_base_branch: &str,
         old_base_branch: &str,
         task_branch: &str,
+        attempt_id: Option<&str>,
     ) -> Result<String, GitServiceError> {
         let worktree_repo = Repository::open(worktree_path)?;
         let main_repo = self.open_repo(repo_path)?;
 
         // Commit tracked local edits first so rebase can proceed without a dirty-worktree error.
         // Untracked files are still left alone and protected by git CLI semantics.
-        self.auto_commit_changes_if_any(worktree_path, "rebase", false, None)?;
+        self.auto_commit_changes_if_any(worktree_path, "rebase", false, None, attempt_id)?;
 
         // If a rebase is already in progress, refuse to proceed instead of
         // aborting (which might destroy user changes mid-rebase).
@@ -1655,7 +1704,11 @@ impl GitService {
         })
     }
 
-    pub fn abort_conflicts(&self, worktree_path: &Path) -> Result<(), GitServiceError> {
+    pub fn abort_conflicts(
+        &self,
+        worktree_path: &Path,
+        attempt_id: Option<&str>,
+    ) -> Result<(), GitServiceError> {
         let git = GitCli::new();
         if git.is_rebase_in_progress(worktree_path).unwrap_or(false) {
             // If there are no conflicted files, prefer `git rebase --quit` to clean up metadata
@@ -1664,12 +1717,13 @@ impl GitService {
                 .unwrap_or_default()
                 .is_empty();
             if has_conflicts {
-                return self.abort_rebase(worktree_path);
+                self.abort_rebase(worktree_path)?;
             } else {
-                return git.quit_rebase(worktree_path).map_err(|e| {
+                git.quit_rebase(worktree_path).map_err(|e| {
                     GitServiceError::InvalidRepository(format!("git rebase --quit failed: {e}"))
-                });
+                })?;
             }
+            return self.rollback_rebase_auto_commit_if_present(worktree_path, attempt_id);
         }
         if git.is_merge_in_progress(worktree_path).unwrap_or(false) {
             return git.abort_merge(worktree_path).map_err(|e| {

@@ -1037,6 +1037,7 @@ pub async fn rebase_task_attempt(
 
     let worktree_path_buf = ensure_worktree_path(&deployment, &task_attempt).await?;
     let worktree_path = worktree_path_buf.as_path();
+    let attempt_id = task_attempt.id.to_string();
 
     let result = deployment.git().rebase_branch(
         &ctx.project.git_repo_path,
@@ -1044,6 +1045,7 @@ pub async fn rebase_task_attempt(
         &new_base_branch,
         &old_base_branch,
         &task_attempt.branch.clone(),
+        Some(attempt_id.as_str()),
     );
     if let Err(e) = result {
         use services::services::git::GitServiceError;
@@ -1089,7 +1091,10 @@ pub async fn abort_conflicts_task_attempt(
     let worktree_path_buf = ensure_worktree_path(&deployment, &task_attempt).await?;
     let worktree_path = worktree_path_buf.as_path();
 
-    deployment.git().abort_conflicts(worktree_path)?;
+    let attempt_id = task_attempt.id.to_string();
+    deployment
+        .git()
+        .abort_conflicts(worktree_path, Some(attempt_id.as_str()))?;
 
     Ok(ResponseJson(ApiResponse::success(())))
 }

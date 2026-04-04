@@ -486,7 +486,10 @@ export function ProjectTasks() {
     () => {
       if (isPanelOpen) {
         handleClosePanel();
+        return;
       }
+
+      navigate(paths.projects(), { replace: true });
     },
     {
       scope: Scope.KANBAN,

@@ -26,6 +26,7 @@ Timing logs are emitted on backend diff fetch and frontend fetch/parse paths to 
 Viewport observers keep a stable subscription per row while invoking the latest visibility callback, avoiding full observer teardown/recreate cycles on each diff panel render.
 Diff cards short-circuit memo comparison when the diff object reference is unchanged so already-loaded large file contents are not repeatedly compared.
 Collapsed diff cards skip `generateDiffFile` parsing entirely and parse only after expansion, so loading metadata for many files does not precompute hidden diff views.
+Collapsed card headers still show per-file `+/-` totals from streamed/fetched diff metadata, so stats stay visible even when line-level parsing is deferred.
 
 ## Metadata-Only Header Health Signals
 Diff header warnings now rely on streamed metadata flags instead of reparsing every file body, which prevents render-time main-thread spikes on large attempts.

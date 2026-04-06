@@ -176,8 +176,8 @@ function DiffCard({
     diffOptions,
   ]);
 
-  const add = isOmitted ? diff.additions : diffFile?.additionLength;
-  const del = isOmitted ? diff.deletions : diffFile?.deletionLength;
+  const add = diff.additions ?? diffFile?.additionLength;
+  const del = diff.deletions ?? diffFile?.deletionLength;
   const showLineStats = add != null || del != null;
   const showBinaryStatsWarning =
     statsProcessed &&
@@ -441,6 +441,7 @@ function DiffCard({
 function areDiffCardsEqual(prev: Props, next: Props): boolean {
   if (prev.expanded !== next.expanded) return false;
   if (prev.loadingContent !== next.loadingContent) return false;
+  if (prev.statsProcessed !== next.statsProcessed) return false;
   if (prev.selectedAttempt?.id !== next.selectedAttempt?.id) return false;
   if (prev.diff === next.diff) return true;
 

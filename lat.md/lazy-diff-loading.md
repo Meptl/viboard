@@ -27,6 +27,7 @@ Viewport observers keep a stable subscription per row while invoking the latest 
 Diff cards short-circuit memo comparison when the diff object reference is unchanged so already-loaded large file contents are not repeatedly compared.
 Collapsed diff cards skip `generateDiffFile` parsing entirely and parse only after expansion, so loading metadata for many files does not precompute hidden diff views.
 Collapsed card headers still show per-file `+/-` totals from streamed/fetched diff metadata, so stats stay visible even when line-level parsing is deferred.
+Files with more than 400 changed lines (`additions + deletions`) are treated as large-card exceptions: while collapsed, viewport visibility does not auto-fetch their full content.
 
 ## Metadata-Only Header Health Signals
 Diff header warnings now rely on streamed metadata flags instead of reparsing every file body, which prevents render-time main-thread spikes on large attempts.
@@ -38,4 +39,6 @@ Diff panels default to collapsed when more than 100 files are changed, reducing 
 
 The thresholded default is applied in [[frontend/src/components/panels/DiffsPanel.tsx#DiffsPanel]] after the diff stream emits its initial snapshot-complete marker.
 For smaller diffs, cards flagged with `contentOmitted` (for example binary or non-renderable files) also start collapsed so placeholder messages do not dominate the first render.
+For smaller diffs, files with more than 400 changed lines also start collapsed, even when the global file-count rule would otherwise default to expanded cards.
+The `Expand all diffs` control preserves this per-file guard by expanding all eligible cards while keeping over-threshold files collapsed until their individual expand button is clicked.
 Diff cards remain behind the loading state until snapshot completion, so initial card expansion never flashes before the default collapse decision is applied.

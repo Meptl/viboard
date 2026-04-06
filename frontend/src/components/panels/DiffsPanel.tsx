@@ -34,12 +34,19 @@ type LoadedDiffRecord = {
 };
 
 const COLLAPSE_ALL_DEFAULT_THRESHOLD = 100;
+const LARGE_FILE_CHANGE_COLLAPSE_THRESHOLD = 400;
 const DEFAULT_COLLAPSED_CHANGES = new Set([
   'deleted',
   'renamed',
   'copied',
   'permissionChange',
 ]);
+
+function isLargeDiffFile(diff: Diff): boolean {
+  const additions = diff.additions ?? 0;
+  const deletions = diff.deletions ?? 0;
+  return additions + deletions > LARGE_FILE_CHANGE_COLLAPSE_THRESHOLD;
+}
 
 function getDiffId(diff: Diff, idx: number): string {
   return diff.newPath || diff.oldPath || String(idx);
@@ -130,7 +137,9 @@ export function DiffsPanel({ selectedAttempt }: DiffsPanelProps) {
             diffs
               .filter(
                 (d) =>
-                  DEFAULT_COLLAPSED_CHANGES.has(d.change) || d.contentOmitted
+                  DEFAULT_COLLAPSED_CHANGES.has(d.change) ||
+                  d.contentOmitted ||
+                  isLargeDiffFile(d)
               )
               .map((d, i) => getDiffId(d, i))
           );
@@ -171,6 +180,17 @@ export function DiffsPanel({ selectedAttempt }: DiffsPanelProps) {
     return mergedDiffs.map((d, i) => getDiffId(d, i));
   }, [mergedDiffs]);
 
+  const largeDiffIds = useMemo(
+    () =>
+      new Set(
+        mergedDiffs
+          .map((diff, idx) => ({ id: getDiffId(diff, idx), diff }))
+          .filter(({ diff }) => isLargeDiffFile(diff))
+          .map(({ id }) => id)
+      ),
+    [mergedDiffs]
+  );
+
   const toggle = useCallback((id: string) => {
     setHasUserAdjustedCollapse(true);
     setCollapsedIds((prev) => {
@@ -183,8 +203,8 @@ export function DiffsPanel({ selectedAttempt }: DiffsPanelProps) {
   const allCollapsed = collapsedIds.size === mergedDiffs.length;
   const handleCollapseAll = useCallback(() => {
     setHasUserAdjustedCollapse(true);
-    setCollapsedIds(allCollapsed ? new Set() : new Set(ids));
-  }, [allCollapsed, ids]);
+    setCollapsedIds(allCollapsed ? new Set(largeDiffIds) : new Set(ids));
+  }, [allCollapsed, ids, largeDiffIds]);
 
   // @lat: [[lazy-diff-loading#On-Demand File Content Fetch]]
   const ensureDiffContentLoaded = useCallback(
@@ -263,6 +283,7 @@ export function DiffsPanel({ selectedAttempt }: DiffsPanelProps) {
       loadingIds={loadingIds}
       ensureDiffContentLoaded={ensureDiffContentLoaded}
       processedStatsIds={processedStatsIds}
+      largeDiffIds={largeDiffIds}
       t={t}
     />
   );
@@ -282,6 +303,7 @@ interface DiffsPanelContentProps {
   loadingIds: Set<string>;
   ensureDiffContentLoaded: (id: string, diff: Diff) => Promise<void>;
   processedStatsIds: Set<string>;
+  largeDiffIds: Set<string>;
   t: (key: string, params?: Record<string, unknown>) => string;
 }
 
@@ -299,6 +321,7 @@ function DiffsPanelContent({
   loadingIds,
   ensureDiffContentLoaded,
   processedStatsIds,
+  largeDiffIds,
   t,
 }: DiffsPanelContentProps) {
   const listRootRef = useRef<HTMLDivElement>(null);
@@ -398,7 +421,10 @@ function DiffsPanelContent({
                 key={id}
                 id={id}
                 rootRef={listRootRef}
-                onVisible={() => ensureDiffContentLoaded(id, diff)}
+                onVisible={() => {
+                  if (largeDiffIds.has(id) && !isExpanded) return;
+                  void ensureDiffContentLoaded(id, diff);
+                }}
               >
                 <DiffCard
                   diff={diff}

@@ -5,6 +5,7 @@ The diff experience streams file metadata first and loads full file content lazi
 The diff WebSocket now sends only per-file metadata without file bodies, which keeps payloads small and avoids whole-diff content generation on initial load.
 
 The metadata stream is produced by [[crates/services/src/services/diff_stream.rs#create]] and consumed in [[frontend/src/components/panels/DiffsPanel.tsx#DiffsPanel]].
+After initial metadata entries are sent, the stream emits a non-terminal `finished` marker so the UI can treat the snapshot as complete without closing live updates.
 
 ## On-Demand File Content Fetch
 Full text for a file is fetched only when needed through a dedicated per-file API endpoint, so backend diff computation stays scoped to the requested path.
@@ -30,3 +31,9 @@ Collapsed diff cards skip `generateDiffFile` parsing entirely and parse only aft
 Diff header warnings now rely on streamed metadata flags instead of reparsing every file body, which prevents render-time main-thread spikes on large attempts.
 
 The omitted-file indicator in [[frontend/src/components/panels/DiffsPanel.tsx#DiffsPanelContent]] counts `contentOmitted` entries directly so summary rendering stays O(n) over metadata only.
+
+## Large Diff Default Collapse
+Diff panels default to collapsed when more than 100 files are changed, reducing initial rendering pressure and making large reviews easier to navigate.
+
+The thresholded default is applied in [[frontend/src/components/panels/DiffsPanel.tsx#DiffsPanel]] after the diff stream emits its initial snapshot-complete marker.
+Diff cards remain behind the loading state until snapshot completion, so initial card expansion never flashes before the default collapse decision is applied.

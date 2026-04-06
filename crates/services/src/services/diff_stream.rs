@@ -207,6 +207,11 @@ pub async fn create(
         if !send_initial_diffs(&tx_clone, initial_diffs).await {
             return;
         }
+        // Signal initial snapshot completion while keeping the stream alive
+        // for subsequent filesystem-driven updates.
+        if tx_clone.send(Ok(LogMsg::Finished)).await.is_err() {
+            return;
+        }
 
         // Set up filesystem watcher for live updates
         let worktree_for_watcher = worktree_path.clone();

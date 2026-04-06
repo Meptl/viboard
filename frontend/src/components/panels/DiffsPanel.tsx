@@ -33,6 +33,14 @@ type LoadedDiffRecord = {
   signature: string;
 };
 
+const COLLAPSE_ALL_DEFAULT_THRESHOLD = 100;
+const DEFAULT_COLLAPSED_CHANGES = new Set([
+  'deleted',
+  'renamed',
+  'copied',
+  'permissionChange',
+]);
+
 function getDiffId(diff: Diff, idx: number): string {
   return diff.newPath || diff.oldPath || String(idx);
 }
@@ -50,9 +58,9 @@ function getDiffSignature(diff: Diff): string {
 
 export function DiffsPanel({ selectedAttempt }: DiffsPanelProps) {
   const { t } = useTranslation('tasks');
-  const [loading, setLoading] = useState(true);
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
   const [hasInitialized, setHasInitialized] = useState(false);
+  const [hasUserAdjustedCollapse, setHasUserAdjustedCollapse] = useState(false);
   const [loadedDiffs, setLoadedDiffs] = useState<Record<string, LoadedDiffRecord>>(
     {}
   );
@@ -62,7 +70,11 @@ export function DiffsPanel({ selectedAttempt }: DiffsPanelProps) {
   );
 
   // @lat: [[lazy-diff-loading#Metadata-First Diff Stream]]
-  const { diffs, error } = useDiffStream(selectedAttempt?.id ?? null, true);
+  const { diffs, isComplete, error } = useDiffStream(
+    selectedAttempt?.id ?? null,
+    true
+  );
+  const loading = !!selectedAttempt && !isComplete && !error;
 
   const metadataSignatures = useMemo(() => {
     const map = new Map<string, string>();
@@ -100,49 +112,31 @@ export function DiffsPanel({ selectedAttempt }: DiffsPanelProps) {
   }, [mergedDiffs]);
 
   useEffect(() => {
-    setLoading(true);
     setHasInitialized(false);
+    setHasUserAdjustedCollapse(false);
     setLoadedDiffs({});
     setLoadingIds(new Set());
     setProcessedStatsIds(new Set());
   }, [selectedAttempt?.id]);
 
   useEffect(() => {
-    if (diffs.length > 0 && loading) {
-      setLoading(false);
-    }
-  }, [diffs, loading]);
+    if (!isComplete || diffs.length === 0 || hasInitialized || hasUserAdjustedCollapse)
+      return;
 
-  useEffect(() => {
-    if (!loading) return;
-    const timer = setTimeout(() => {
-      if (diffs.length === 0) {
-        setLoading(false);
-      }
-    }, 3000);
-    return () => clearTimeout(timer);
-  }, [loading, diffs.length]);
-
-  useEffect(() => {
-    if (diffs.length === 0 || hasInitialized) return;
-
-    const kindsToCollapse = new Set([
-      'deleted',
-      'renamed',
-      'copied',
-      'permissionChange',
-    ]);
-    const initial = new Set(
-      diffs
-        .filter((d) => kindsToCollapse.has(d.change))
-        .map((d, i) => getDiffId(d, i))
-    );
+    const initial =
+      diffs.length > COLLAPSE_ALL_DEFAULT_THRESHOLD
+        ? new Set(diffs.map((d, i) => getDiffId(d, i)))
+        : new Set(
+            diffs
+              .filter((d) => DEFAULT_COLLAPSED_CHANGES.has(d.change))
+              .map((d, i) => getDiffId(d, i))
+          );
 
     if (initial.size > 0) {
       setCollapsedIds(initial);
     }
     setHasInitialized(true);
-  }, [diffs, hasInitialized]);
+  }, [diffs, hasInitialized, hasUserAdjustedCollapse, isComplete]);
 
   useEffect(() => {
     const validIds = new Set(diffs.map((diff, idx) => getDiffId(diff, idx)));
@@ -175,6 +169,7 @@ export function DiffsPanel({ selectedAttempt }: DiffsPanelProps) {
   }, [mergedDiffs]);
 
   const toggle = useCallback((id: string) => {
+    setHasUserAdjustedCollapse(true);
     setCollapsedIds((prev) => {
       const next = new Set(prev);
       next.has(id) ? next.delete(id) : next.add(id);
@@ -184,6 +179,7 @@ export function DiffsPanel({ selectedAttempt }: DiffsPanelProps) {
 
   const allCollapsed = collapsedIds.size === mergedDiffs.length;
   const handleCollapseAll = useCallback(() => {
+    setHasUserAdjustedCollapse(true);
     setCollapsedIds(allCollapsed ? new Set() : new Set(ids));
   }, [allCollapsed, ids]);
 

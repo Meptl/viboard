@@ -15,11 +15,17 @@ interface UseJsonPatchStreamOptions<T> {
    * Filter/deduplicate patches before applying them
    */
   deduplicatePatches?: (patches: Operation[]) => Operation[];
+  /**
+   * Whether a {finished: true} message should close the socket and stop reconnect.
+   * Defaults to true for terminal streams.
+   */
+  treatFinishedAsTerminal?: boolean;
 }
 
 interface UseJsonPatchStreamResult<T> {
   data: T | undefined;
   isConnected: boolean;
+  isFinished: boolean;
   error: string | null;
 }
 
@@ -34,6 +40,7 @@ export const useJsonPatchWsStream = <T extends object>(
 ): UseJsonPatchStreamResult<T> => {
   const [data, setData] = useState<T | undefined>(undefined);
   const [isConnected, setIsConnected] = useState(false);
+  const [isFinished, setIsFinished] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const dataRef = useRef<T | undefined>(undefined);
@@ -44,6 +51,7 @@ export const useJsonPatchWsStream = <T extends object>(
 
   const injectInitialEntry = options?.injectInitialEntry;
   const deduplicatePatches = options?.deduplicatePatches;
+  const treatFinishedAsTerminal = options?.treatFinishedAsTerminal ?? true;
 
   function scheduleReconnect() {
     if (retryTimerRef.current) return; // already scheduled
@@ -71,6 +79,7 @@ export const useJsonPatchWsStream = <T extends object>(
       finishedRef.current = false;
       setData(undefined);
       setIsConnected(false);
+      setIsFinished(false);
       setError(null);
       dataRef.current = undefined;
       return;
@@ -90,6 +99,7 @@ export const useJsonPatchWsStream = <T extends object>(
     if (!wsRef.current) {
       // Reset finished flag for new connection
       finishedRef.current = false;
+      setIsFinished(false);
 
       // Convert HTTP endpoint to WebSocket endpoint
       const wsEndpoint = endpoint.replace(/^http/, 'ws');
@@ -131,12 +141,15 @@ export const useJsonPatchWsStream = <T extends object>(
           }
 
           // Handle finished messages ({finished: true})
-          // Treat finished as terminal - do NOT reconnect
+          // Optionally treat finished as terminal - default is terminal.
           if ('finished' in msg) {
-            finishedRef.current = true;
-            ws.close(1000, 'finished');
-            wsRef.current = null;
-            setIsConnected(false);
+            setIsFinished(true);
+            if (treatFinishedAsTerminal) {
+              finishedRef.current = true;
+              ws.close(1000, 'finished');
+              wsRef.current = null;
+              setIsConnected(false);
+            }
           }
         } catch (err) {
           console.error('Failed to process WebSocket message:', err);
@@ -186,6 +199,7 @@ export const useJsonPatchWsStream = <T extends object>(
       finishedRef.current = false;
       dataRef.current = undefined;
       setData(undefined);
+      setIsFinished(false);
     };
   }, [
     endpoint,
@@ -193,8 +207,9 @@ export const useJsonPatchWsStream = <T extends object>(
     initialData,
     injectInitialEntry,
     deduplicatePatches,
+    treatFinishedAsTerminal,
     retryNonce,
   ]);
 
-  return { data, isConnected, error };
+  return { data, isConnected, isFinished, error };
 };

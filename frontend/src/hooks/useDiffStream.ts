@@ -12,6 +12,7 @@ type DiffStreamEvent = {
 
 interface UseDiffStreamResult {
   diffs: Diff[];
+  isComplete: boolean;
   error: string | null;
 }
 
@@ -31,11 +32,14 @@ export const useDiffStream = (
     []
   );
 
-  const { data, error } = useJsonPatchWsStream<DiffStreamEvent>(
+  const { data, error, isFinished } = useJsonPatchWsStream<DiffStreamEvent>(
     endpoint,
     enabled && !!attemptId,
-    initialData
-    // No need for injectInitialEntry or deduplicatePatches for diffs
+    initialData,
+    {
+      // Diff stream remains open for live updates after initial snapshot.
+      treatFinishedAsTerminal: false,
+    }
   );
 
   const diffs = useMemo(() => {
@@ -44,5 +48,5 @@ export const useDiffStream = (
       .map((entry) => entry.content);
   }, [data?.entries]);
 
-  return { diffs, error };
+  return { diffs, isComplete: isFinished, error };
 };

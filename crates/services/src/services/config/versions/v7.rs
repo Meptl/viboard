@@ -55,14 +55,9 @@ pub struct Config {
 
 impl Config {
     pub fn from_previous_version(raw_config: &str) -> Result<Self, Error> {
-        let old_config = match serde_json::from_str::<v6::Config>(raw_config) {
-            Ok(cfg) => cfg,
-            Err(e) => {
-                tracing::error!("❌ Failed to parse config: {}", e);
-                tracing::error!("   at line {}, column {}", e.line(), e.column());
-                return Err(e.into());
-            }
-        };
+        // Delegate to v6's conversion chain so pre-v6 configs still migrate through
+        // intermediate schemas instead of requiring an already-v6-shaped payload.
+        let old_config = v6::Config::from(raw_config.to_string());
 
         // Map old theme modes to new simplified theme modes
         let theme = match old_config.theme {

@@ -6,3 +6,4 @@ This directory defines the high-level concepts, business logic, and architecture
 - [[ascii-block-text]] — Documents the terminal block-text generator and optional box-drawing drop shadow mode.
 - [[rebase-abort-auto-commit]] — Documents cleanup of synthetic rebase auto-commit when conflicts are aborted.
 - [[lazy-diff-loading]] — Documents metadata-first diff streaming and on-demand file content loading for diff views.
+- [[config-v7]] — Documents v7 migration-chain compatibility for older config schemas.

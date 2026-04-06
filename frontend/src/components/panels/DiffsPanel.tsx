@@ -128,7 +128,10 @@ export function DiffsPanel({ selectedAttempt }: DiffsPanelProps) {
         ? new Set(diffs.map((d, i) => getDiffId(d, i)))
         : new Set(
             diffs
-              .filter((d) => DEFAULT_COLLAPSED_CHANGES.has(d.change))
+              .filter(
+                (d) =>
+                  DEFAULT_COLLAPSED_CHANGES.has(d.change) || d.contentOmitted
+              )
               .map((d, i) => getDiffId(d, i))
           );
 

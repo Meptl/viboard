@@ -37,4 +37,5 @@ The omitted-file indicator in [[frontend/src/components/panels/DiffsPanel.tsx#Di
 Diff panels default to collapsed when more than 100 files are changed, reducing initial rendering pressure and making large reviews easier to navigate.
 
 The thresholded default is applied in [[frontend/src/components/panels/DiffsPanel.tsx#DiffsPanel]] after the diff stream emits its initial snapshot-complete marker.
+For smaller diffs, cards flagged with `contentOmitted` (for example binary or non-renderable files) also start collapsed so placeholder messages do not dominate the first render.
 Diff cards remain behind the loading state until snapshot completion, so initial card expansion never flashes before the default collapse decision is applied.

@@ -8,3 +8,4 @@ This directory defines the high-level concepts, business logic, and architecture
 - [[lazy-diff-loading]] — Documents metadata-first diff streaming and on-demand file content loading for diff views.
 - [[config-v7]] — Documents v7 migration-chain compatibility for older config schemas.
 - [[worktree-submodules]] — Documents worktree creation behavior that initializes submodules in new worktrees.
+- [[task-attempt-startup-failures]] — Documents create-attempt startup failure propagation and orphan cleanup behavior.

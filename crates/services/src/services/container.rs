@@ -558,14 +558,71 @@ pub trait ContainerService {
         task_attempt: &TaskAttempt,
         executor_profile_id: ExecutorProfileId,
     ) -> Result<ExecutionProcess, ContainerError> {
-        // Create container
-        self.create(task_attempt).await?;
-
-        // Get parent task
+        // Get parent task early so startup failures before process spawn can still surface
+        // through the standard failed execution-process path in the UI.
         let task = task_attempt
             .parent_task(&self.db().pool)
             .await?
             .ok_or(SqlxError::RowNotFound)?;
+
+        // Create container
+        if let Err(create_error) = self.create(task_attempt).await {
+            let failed_action = ExecutorAction::new(
+                ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
+                    prompt: task.with_agent_conversation_metadata(&task.to_prompt()),
+                    executor_profile_id: executor_profile_id.clone(),
+                }),
+                None,
+            );
+            let create_execution_process = CreateExecutionProcess {
+                task_attempt_id: task_attempt.id,
+                executor_action: failed_action,
+                run_reason: ExecutionProcessRunReason::CodingAgent,
+            };
+
+            let execution_process = ExecutionProcess::create(
+                &self.db().pool,
+                &create_execution_process,
+                Uuid::new_v4(),
+                None,
+            )
+            .await?;
+
+            if let Err(update_error) = ExecutionProcess::update_completion(
+                &self.db().pool,
+                execution_process.id,
+                ExecutionProcessStatus::Failed,
+                None,
+            )
+            .await
+            {
+                tracing::error!(
+                    "Failed to mark execution process {} as failed after attempt startup error: {}",
+                    execution_process.id,
+                    update_error
+                );
+            }
+
+            Task::update_status(&self.db().pool, task.id, TaskStatus::InReview).await?;
+
+            let log_message =
+                LogMsg::Stderr(format!("Failed to start task attempt: {create_error}"));
+            if let Err(log_error) = execution_process::append_log_message(
+                task_attempt.id,
+                execution_process.id,
+                &log_message,
+            )
+            .await
+            {
+                tracing::error!(
+                    "Failed to write startup error log for execution {}: {}",
+                    execution_process.id,
+                    log_error
+                );
+            }
+
+            return Err(create_error);
+        }
 
         // Get parent project
         let project = task

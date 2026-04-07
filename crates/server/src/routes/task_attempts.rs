@@ -394,6 +394,24 @@ pub async fn create_task_attempt(
         .await
     {
         tracing::error!("Failed to start task attempt: {}", err);
+
+        deployment
+            .container()
+            .cleanup_setup_script_subprocesses(task_attempt.id)
+            .await;
+
+        if let Ok(Some(latest_attempt)) = TaskAttempt::find_by_id(pool, task_attempt.id).await
+            && latest_attempt.container_ref.is_some()
+            && let Err(cleanup_err) = deployment.container().delete(&latest_attempt).await
+        {
+            tracing::warn!(
+                "Failed to clean up partially created container for attempt {}: {}",
+                task_attempt.id,
+                cleanup_err
+            );
+        }
+
+        return Err(ApiError::Container(err));
     }
 
     tracing::info!("Created attempt for task {}", task.id);

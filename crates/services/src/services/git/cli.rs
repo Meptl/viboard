@@ -106,6 +106,17 @@ impl GitCli {
         // Good practice: reapply sparse-checkout in the new worktree to ensure materialization matches
         // Non-fatal if it fails or not configured.
         let _ = self.git(worktree_path, ["sparse-checkout", "reapply"]);
+        self.git(
+            worktree_path,
+            [
+                "-c",
+                "protocol.file.allow=always",
+                "submodule",
+                "update",
+                "--init",
+                "--recursive",
+            ],
+        )?;
 
         Ok(())
     }

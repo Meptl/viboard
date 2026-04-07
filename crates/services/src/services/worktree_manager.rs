@@ -609,3 +609,89 @@ async fn create_worktree_when_repo_path_is_a_worktree() {
     .await
     .unwrap();
 }
+
+#[cfg(test)]
+fn run_git(repo_path: &Path, args: &[&str]) -> String {
+    let output = std::process::Command::new("git")
+        .arg("-C")
+        .arg(repo_path)
+        .args(args)
+        .output()
+        .unwrap_or_else(|e| panic!("failed to run git {:?}: {e}", args));
+
+    if !output.status.success() {
+        panic!(
+            "git {:?} failed in {}: {}",
+            args,
+            repo_path.display(),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    String::from_utf8(output.stdout).unwrap_or_default()
+}
+
+#[tokio::test]
+async fn create_worktree_initializes_submodules() {
+    use tempfile::TempDir;
+
+    let td = TempDir::new().unwrap();
+
+    let submodule_repo_path = td.path().join("submodule-repo");
+    let git_service = GitService::new();
+    git_service
+        .initialize_repo_with_main_branch(&submodule_repo_path)
+        .unwrap();
+
+    let repo_path = td.path().join("repo");
+    git_service
+        .initialize_repo_with_main_branch(&repo_path)
+        .unwrap();
+
+    run_git(&repo_path, &["config", "protocol.file.allow", "always"]);
+    run_git(
+        &repo_path,
+        &[
+            "-c",
+            "protocol.file.allow=always",
+            "submodule",
+            "add",
+            submodule_repo_path.to_str().unwrap(),
+            "deps/submodule-repo",
+        ],
+    );
+    run_git(&repo_path, &["add", ".gitmodules", "deps/submodule-repo"]);
+    run_git(
+        &repo_path,
+        &[
+            "-c",
+            "user.name=Vibe Kanban",
+            "-c",
+            "user.email=noreply@vibekanban.com",
+            "commit",
+            "-m",
+            "Add submodule",
+        ],
+    );
+
+    let worktree_path = td.path().join("wt-submodule");
+    WorktreeManager::create_worktree(
+        &repo_path,
+        "wt-submodule-branch",
+        &worktree_path,
+        "main",
+        true,
+    )
+    .await
+    .unwrap();
+
+    assert!(
+        worktree_path.join("deps/submodule-repo/.git").exists(),
+        "submodule should be initialized in new worktree"
+    );
+    let submodule_status = run_git(&worktree_path, &["submodule", "status"]);
+    assert!(
+        !submodule_status.starts_with('-'),
+        "submodule should not be left uninitialized: {submodule_status}"
+    );
+}

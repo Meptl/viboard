@@ -7,6 +7,13 @@ The diff WebSocket now sends only per-file metadata without file bodies, which k
 The metadata stream is produced by [[crates/services/src/services/diff_stream.rs#create]] and consumed in [[frontend/src/components/panels/DiffsPanel.tsx#DiffsPanel]].
 After initial metadata entries are sent, the stream emits a non-terminal `finished` marker so the UI can treat the snapshot as complete without closing live updates.
 
+## Merged Attempt Terminal Snapshot
+Merged attempts emit a fixed commit-diff snapshot while clean/not-ahead, and switch back to live worktree diffs as soon as new work resumes.
+
+The merged-attempt branch is selected in [[crates/local-deployment/src/container.rs#LocalContainerService#stream_diff]].
+The merged snapshot payload is emitted by [[crates/local-deployment/src/container.rs#LocalContainerService#create_merged_diff_stream]].
+The diff WS route closes with an explicit close frame on stream completion in [[crates/server/src/routes/task_attempts.rs#handle_task_attempt_diff_ws]], preventing reconnect loops after finite merged snapshots.
+
 ## On-Demand File Content Fetch
 Full text for a file is fetched only when needed through a dedicated per-file API endpoint, so backend diff computation stays scoped to the requested path.
 

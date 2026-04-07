@@ -10,7 +10,7 @@ use axum::{
     Extension, Json, Router,
     extract::{
         Query, State,
-        ws::{WebSocket, WebSocketUpgrade},
+        ws::{Message, WebSocket, WebSocketUpgrade},
     },
     http::StatusCode,
     middleware::from_fn_with_state,
@@ -610,7 +610,10 @@ async fn handle_task_attempt_diff_ws(
                         tracing::error!("stream error: {}", e);
                         break;
                     }
-                    None => break,
+                    None => {
+                        let _ = sender.send(Message::Close(None)).await;
+                        break;
+                    }
                 }
             }
             // Detect client disconnection

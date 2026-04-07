@@ -10,7 +10,7 @@ use axum::{
     Extension, Json, Router,
     extract::{
         Query, State,
-        ws::{Message, WebSocket, WebSocketUpgrade},
+        ws::{CloseFrame, Message, WebSocket, WebSocketUpgrade, close_code},
     },
     http::StatusCode,
     middleware::from_fn_with_state,
@@ -611,7 +611,12 @@ async fn handle_task_attempt_diff_ws(
                         break;
                     }
                     None => {
-                        let _ = sender.send(Message::Close(None)).await;
+                        let _ = sender
+                            .send(Message::Close(Some(CloseFrame {
+                                code: close_code::NORMAL,
+                                reason: "finished".into(),
+                            })))
+                            .await;
                         break;
                     }
                 }

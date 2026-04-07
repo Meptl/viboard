@@ -166,7 +166,11 @@ export const useJsonPatchWsStream = <T extends object>(
         wsRef.current = null;
 
         // Do not reconnect if we received a finished message or clean close
-        if (finishedRef.current || (evt?.code === 1000 && evt?.wasClean)) {
+        if (
+          finishedRef.current ||
+          (evt?.code === 1000 && evt?.wasClean) ||
+          evt?.reason === 'finished'
+        ) {
           return;
         }
 

@@ -13,6 +13,7 @@ Merged attempts emit a fixed commit-diff snapshot while clean/not-ahead, and swi
 The merged-attempt branch is selected in [[crates/local-deployment/src/container.rs#LocalContainerService#stream_diff]].
 The merged snapshot payload is emitted by [[crates/local-deployment/src/container.rs#LocalContainerService#create_merged_diff_stream]].
 The diff WS route closes with an explicit close frame on stream completion in [[crates/server/src/routes/task_attempts.rs#handle_task_attempt_diff_ws]], preventing reconnect loops after finite merged snapshots.
+The WebSocket client skips reconnect when close reason is `finished` in [[frontend/src/hooks/useJsonPatchWsStream.ts#useJsonPatchWsStream]], while still reconnecting unexpected closures for live streams.
 
 ## On-Demand File Content Fetch
 Full text for a file is fetched only when needed through a dedicated per-file API endpoint, so backend diff computation stays scoped to the requested path.

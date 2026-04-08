@@ -11,3 +11,5 @@ This directory defines the high-level concepts, business logic, and architecture
 - [[task-attempt-startup-failures]] — Documents create-attempt startup failure propagation and orphan cleanup behavior.
 - [[dark-theme-comment-actions]] — Documents dark-theme readability styling for draft comment edit/delete action icons.
 - [[setup-script-stale-cleanup]] — Documents retaining setup-script subprocesses in review and cleaning them when attempts become stale.
+- [[setup-node-pnpm-cache]] — Documents CI setup order that avoids pnpm cache lookup before pnpm installation.
+- [[settings-storage]] — Documents where settings are persisted across config files, SQLite tables, and browser local storage.

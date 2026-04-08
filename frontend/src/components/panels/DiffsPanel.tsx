@@ -407,6 +407,21 @@ export function DiffsPanel({ selectedAttempt }: DiffsPanelProps) {
     [selectedAttempt?.id, metadataSignatures, loadedDiffs, loadingIds]
   );
 
+  useEffect(() => {
+    mergedDiffs.forEach((diff, idx) => {
+      const id = getDiffId(diff, idx);
+      const isExpanded = !collapsedIds.has(id);
+      const hasLoadedContent = diff.oldContent != null || diff.newContent != null;
+      const isDeferredContent =
+        !diff.contentOmitted &&
+        !hasLoadedContent &&
+        diff.change !== 'permissionChange';
+
+      if (!isExpanded || !isDeferredContent) return;
+      void ensureDiffContentLoaded(id, diff);
+    });
+  }, [mergedDiffs, collapsedIds, ensureDiffContentLoaded]);
+
   if (error) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-4 m-4">

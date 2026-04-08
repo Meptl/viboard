@@ -210,10 +210,8 @@ impl LocalContainerService {
     #[cfg(not(unix))]
     async fn cleanup_setup_script_process_groups(&self, _task_attempt_id: Uuid) {}
 
-    async fn finalize_task_with_setup_cleanup(&self, ctx: &ExecutionContext) {
+    async fn finalize_task_for_review(&self, ctx: &ExecutionContext) {
         self.finalize_task(ctx).await;
-        self.cleanup_setup_script_process_groups(ctx.task_attempt.id)
-            .await;
     }
 
     async fn take_interrupt_sender(&self, id: &Uuid) -> Option<InterruptSender> {
@@ -504,7 +502,7 @@ impl LocalContainerService {
                         );
 
                         // Manually finalize task since we're bypassing normal execution flow
-                        container.finalize_task_with_setup_cleanup(&ctx).await;
+                        container.finalize_task_for_review(&ctx).await;
                         finalized = true;
                     }
                 }
@@ -543,7 +541,7 @@ impl LocalContainerService {
                                 tracing::error!("Failed to start queued follow-up: {}", e);
                                 // Fall back to finalization if follow-up fails
                                 if !finalized {
-                                    container.finalize_task_with_setup_cleanup(&ctx).await;
+                                    container.finalize_task_for_review(&ctx).await;
                                 }
                             }
                         } else {
@@ -554,12 +552,12 @@ impl LocalContainerService {
                                 ctx.execution_process.status
                             );
                             if !finalized {
-                                container.finalize_task_with_setup_cleanup(&ctx).await;
+                                container.finalize_task_for_review(&ctx).await;
                             }
                         }
                     } else {
                         if !finalized {
-                            container.finalize_task_with_setup_cleanup(&ctx).await;
+                            container.finalize_task_for_review(&ctx).await;
                         }
                     }
                 }

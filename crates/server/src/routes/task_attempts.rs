@@ -735,10 +735,14 @@ pub async fn merge_task_attempt(
     )
     .await?;
     Task::update_status(pool, ctx.task.id, TaskStatus::Done).await?;
-    deployment
-        .container()
-        .cleanup_setup_script_subprocesses(task_attempt.id)
-        .await;
+    // Moving the task to done makes all attempts stale for setup-script subprocess retention.
+    let attempts = TaskAttempt::fetch_all(pool, Some(ctx.task.id)).await?;
+    for attempt in attempts {
+        deployment
+            .container()
+            .cleanup_setup_script_subprocesses(attempt.id)
+            .await;
+    }
 
     // Stop any running dev servers for this task attempt
     let dev_servers =

@@ -10,3 +10,4 @@ This directory defines the high-level concepts, business logic, and architecture
 - [[worktree-submodules]] — Documents worktree creation behavior that initializes submodules in new worktrees.
 - [[task-attempt-startup-failures]] — Documents create-attempt startup failure propagation and orphan cleanup behavior.
 - [[dark-theme-comment-actions]] — Documents dark-theme readability styling for draft comment edit/delete action icons.
+- [[setup-script-stale-cleanup]] — Documents retaining setup-script subprocesses in review and cleaning them when attempts become stale.

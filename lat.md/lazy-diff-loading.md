@@ -41,6 +41,8 @@ Inline review comment editors keep typing state locally in [[frontend/src/compon
 Diff-local drafts are keyed by file inside [[frontend/src/components/panels/DiffsPanel.tsx#DiffsPanel]] and passed down as per-file slices to [[frontend/src/components/DiffCard.tsx#DiffCard]], so draft mutations only invalidate the affected file card.
 Draft persistence is debounced in [[frontend/src/components/panels/DiffsPanel.tsx#DiffsPanel]] and merged with the latest follow-up message/variant from storage before writeback, while [[frontend/src/contexts/ReviewProvider.tsx#ReviewProvider]] now persists finalized review comments.
 Expanded diff cards add 0.6rem bottom padding to horizontal scroll containers via `frontend/src/styles/diff-style-overrides.css` so temporary scrollbars do not cover the last visible lines.
+Diff line-content indentation supports both `pl-[2.0em]` and `pl-[2em]` utility variants in `frontend/src/styles/diff-style-overrides.css`, keeping deleted-line text out of the left line-number gutter across library class-name variants.
+Diff gutter styling in `frontend/src/styles/diff-style-overrides.css` now uses an opaque mixed background for deleted line numbers (matching additions), preventing horizontal-scroll content bleed-through into the left numbering column.
 
 ## Metadata-Only Header Health Signals
 Diff header warnings now rely on streamed metadata flags instead of reparsing every file body, which prevents render-time main-thread spikes on large attempts.

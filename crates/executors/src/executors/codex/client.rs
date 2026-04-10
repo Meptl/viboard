@@ -10,8 +10,11 @@ use codex_app_server_protocol::{
     CommandExecutionRequestApprovalResponse, FileChangeApprovalDecision,
     FileChangeRequestApprovalResponse, GetAuthStatusParams, GetAuthStatusResponse,
     InitializeResponse, JSONRPCError, JSONRPCNotification, JSONRPCRequest, JSONRPCResponse,
+    McpElicitationPrimitiveSchema, McpServerElicitationAction, McpServerElicitationRequest,
+    McpServerElicitationRequestResponse, PermissionGrantScope, PermissionsRequestApprovalResponse,
     RequestId, ServerRequest, ThreadResumeParams, ThreadResumeResponse, ThreadStartParams,
-    ThreadStartResponse, TurnStartParams, TurnStartResponse, UserInput,
+    ThreadStartResponse, ToolRequestUserInputAnswer, ToolRequestUserInputResponse,
+    TurnStartParams, TurnStartResponse, UserInput,
 };
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::{self, Value, json};
@@ -237,18 +240,84 @@ impl AppServerClient {
                 )
                 .await
             }
-            ServerRequest::ToolRequestUserInput { request_id, .. }
-            | ServerRequest::McpServerElicitationRequest { request_id, .. }
-            | ServerRequest::PermissionsRequestApproval { request_id, .. }
-            | ServerRequest::DynamicToolCall { request_id, .. }
-            | ServerRequest::ChatgptAuthTokensRefresh { request_id, .. } => {
-                send_server_error(
+            ServerRequest::PermissionsRequestApproval { request_id, params } => {
+                let granted_permissions = serde_json::from_value(
+                    serde_json::to_value(params.permissions)
+                        .map_err(|err| ExecutorError::Io(io::Error::other(err.to_string())))?,
+                )
+                .map_err(|err| ExecutorError::Io(io::Error::other(err.to_string())))?;
+
+                let response = PermissionsRequestApprovalResponse {
+                    permissions: granted_permissions,
+                    scope: PermissionGrantScope::Session,
+                };
+                send_server_response(peer, request_id, response).await
+            }
+            ServerRequest::ToolRequestUserInput { request_id, params } => {
+                let answers = params
+                    .questions
+                    .into_iter()
+                    .map(|question| {
+                        let selected = question
+                            .options
+                            .and_then(|options| options.into_iter().next().map(|o| o.label))
+                            .unwrap_or_default();
+                        (
+                            question.id,
+                            ToolRequestUserInputAnswer {
+                                answers: vec![selected],
+                            },
+                        )
+                    })
+                    .collect();
+
+                let response = ToolRequestUserInputResponse { answers };
+                send_server_response(peer, request_id, response).await
+            }
+            ServerRequest::McpServerElicitationRequest { request_id, params } => {
+                let (action, content) = match params.request {
+                    McpServerElicitationRequest::Form {
+                        requested_schema, ..
+                    } => (
+                        McpServerElicitationAction::Accept,
+                        Some(build_elicitation_content(requested_schema)),
+                    ),
+                    McpServerElicitationRequest::Url { .. } => {
+                        (McpServerElicitationAction::Cancel, None)
+                    }
+                };
+                let response = McpServerElicitationRequestResponse {
+                    action,
+                    content,
+                    meta: None,
+                };
+                send_server_response(peer, request_id, response).await
+            }
+            ServerRequest::DynamicToolCall {
+                request_id, params, ..
+            } => {
+                tracing::warn!(
+                    "Dynamic tool call not supported by Codex executor (tool={}): {}",
+                    params.tool,
+                    params.arguments
+                );
+                send_server_response(
                     peer,
                     request_id,
-                    -32601,
-                    "server request is not supported by the Codex executor",
+                    codex_app_server_protocol::DynamicToolCallResponse {
+                        content_items: vec![
+                            codex_app_server_protocol::DynamicToolCallOutputContentItem::InputText {
+                                text: "Dynamic tool calls are not supported by this Codex executor."
+                                    .to_string(),
+                            },
+                        ],
+                        success: false,
+                    },
                 )
                 .await
+            }
+            ServerRequest::ChatgptAuthTokensRefresh { request_id, .. } => {
+                send_server_response_value(peer, request_id, Value::Null).await
             }
         }
     }
@@ -475,6 +544,67 @@ impl JsonRpcCallbacks for AppServerClient {
     }
 }
 
+fn build_elicitation_content(schema: codex_app_server_protocol::McpElicitationSchema) -> Value {
+    let mut content = serde_json::Map::new();
+    for (key, field) in schema.properties {
+        let value = match field {
+            McpElicitationPrimitiveSchema::String(s) => Value::String(s.default.unwrap_or_default()),
+            McpElicitationPrimitiveSchema::Number(n) => {
+                Value::from(n.default.unwrap_or_default())
+            }
+            McpElicitationPrimitiveSchema::Boolean(b) => Value::Bool(b.default.unwrap_or(false)),
+            McpElicitationPrimitiveSchema::Enum(e) => match e {
+                codex_app_server_protocol::McpElicitationEnumSchema::SingleSelect(single) => {
+                    let selected = match single {
+                        codex_app_server_protocol::McpElicitationSingleSelectEnumSchema::Untitled(
+                            schema,
+                        ) => schema
+                            .default
+                            .or_else(|| schema.enum_.into_iter().next())
+                            .unwrap_or_default(),
+                        codex_app_server_protocol::McpElicitationSingleSelectEnumSchema::Titled(
+                            schema,
+                        ) => schema
+                            .default
+                            .or_else(|| schema.one_of.into_iter().next().map(|o| o.const_))
+                            .unwrap_or_default(),
+                    };
+                    Value::String(selected)
+                }
+                codex_app_server_protocol::McpElicitationEnumSchema::MultiSelect(multi) => {
+                    let selected = match multi {
+                        codex_app_server_protocol::McpElicitationMultiSelectEnumSchema::Untitled(
+                            schema,
+                        ) => schema
+                            .default
+                            .or_else(|| schema.items.enum_.into_iter().next().map(|v| vec![v]))
+                            .unwrap_or_default(),
+                        codex_app_server_protocol::McpElicitationMultiSelectEnumSchema::Titled(
+                            schema,
+                        ) => schema
+                            .default
+                            .or_else(|| {
+                                schema.items.any_of.into_iter().next().map(|v| vec![v.const_])
+                            })
+                            .unwrap_or_default(),
+                    };
+                    Value::Array(selected.into_iter().map(Value::String).collect())
+                }
+                codex_app_server_protocol::McpElicitationEnumSchema::Legacy(schema) => {
+                    Value::String(
+                        schema
+                            .default
+                            .or_else(|| schema.enum_.into_iter().next())
+                            .unwrap_or_default(),
+                    )
+                }
+            },
+        };
+        content.insert(key, value);
+    }
+    Value::Object(content)
+}
+
 async fn send_server_response<T>(
     peer: &JsonRpcPeer,
     request_id: RequestId,
@@ -489,6 +619,18 @@ where
             .map_err(|err| ExecutorError::Io(io::Error::other(err.to_string())))?,
     };
 
+    peer.send(&payload).await
+}
+
+async fn send_server_response_value(
+    peer: &JsonRpcPeer,
+    request_id: RequestId,
+    result: Value,
+) -> Result<(), ExecutorError> {
+    let payload = JSONRPCResponse {
+        id: request_id,
+        result,
+    };
     peer.send(&payload).await
 }
 

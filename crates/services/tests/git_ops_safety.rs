@@ -528,7 +528,7 @@ fn merge_does_not_overwrite_main_repo_untracked_files() {
 }
 
 #[test]
-fn merge_blocks_when_base_has_uncommitted_tracked_changes() {
+fn merge_allows_non_overlapping_uncommitted_tracked_changes() {
     let td = TempDir::new().unwrap();
     let (repo_path, worktree_path) = setup_repo_with_worktree(&td);
 
@@ -539,20 +539,15 @@ fn merge_blocks_when_base_has_uncommitted_tracked_changes() {
     let g = GitService::new();
     let before_oid = g.get_branch_oid(&repo_path, "main").unwrap();
 
-    // Create a tracked file that will also be added by feature branch to simulate overlap
-    write_file(&repo_path, "danger2.txt", "my staged change\n");
-    {
-        // stage and then unstage to leave WT_MODIFIED? Simpler: just modify an existing tracked file
-        // Use common.txt which is tracked
-        write_file(&repo_path, "common.txt", "edited locally\n");
-    }
+    // Local tracked edit that does not overlap with incoming merge paths.
+    write_file(&repo_path, "common.txt", "edited locally\n");
 
     // Feature adds a change and is committed in worktree
     write_file(&worktree_path, "danger2.txt", "feature tracked\n");
     let wt_repo = Repository::open(&worktree_path).unwrap();
     commit_all(&wt_repo, "feature adds danger2.txt");
 
-    // Merge via service should block until tracked edits are committed/stashed.
+    // Merge should proceed because tracked local edits do not overlap incoming paths.
     let service = GitService::new();
     let res = service.merge_changes(
         &repo_path,
@@ -561,33 +556,38 @@ fn merge_blocks_when_base_has_uncommitted_tracked_changes() {
         "main",
         "squash merge",
     );
-    assert!(res.is_err(), "merge should block on tracked edits: {res:?}");
+    assert!(
+        res.is_ok(),
+        "merge should allow non-overlapping tracked edits: {res:?}"
+    );
 
     // Confirm the local edit to tracked file remains
     let content = std::fs::read_to_string(repo_path.join("common.txt")).unwrap();
     assert_eq!(content, "edited locally\n");
 
-    // Confirm the main branch ref did not advance
+    // Confirm the main branch ref advanced
     let after_oid = g.get_branch_oid(&repo_path, "main").unwrap();
-    assert_eq!(
+    assert_ne!(
         before_oid, after_oid,
-        "main ref should not move on blocked merge"
+        "main ref should move when merge succeeds"
     );
 }
 
 #[test]
-fn merge_blocks_when_base_has_staged_changes() {
+fn merge_blocks_when_base_has_overlapping_staged_changes() {
     let td = TempDir::new().unwrap();
     let (repo_path, worktree_path) = setup_repo_with_worktree(&td);
     let s = GitService::new();
     // ensure main is checked out
     let repo = Repository::open(&repo_path).unwrap();
     checkout_branch(&repo, "main");
-    // feature adds change and commits
-    write_file(&worktree_path, "m.txt", "feature\n");
+    // feature changes staged.txt
+    write_file(&repo_path, "staged.txt", "base\n");
+    commit_all(&repo, "seed staged file");
+    write_file(&worktree_path, "staged.txt", "feature\n");
     let wt_repo = Repository::open(&worktree_path).unwrap();
     commit_all(&wt_repo, "feat change");
-    // main has staged change
+    // main has staged local change to the same path
     write_file(&repo_path, "staged.txt", "staged\n");
     add_path(&repo_path, "staged.txt");
     let res = s.merge_changes(&repo_path, &worktree_path, "feature", "main", "squash");
@@ -629,6 +629,29 @@ fn merge_preserves_untracked_changes_on_base() {
     assert!(
         has_untracked_path(&repo_path, "local-note.txt"),
         "unrelated untracked file should remain untracked"
+    );
+}
+
+#[test]
+fn merge_ignores_agents_instruction_file_changes_on_base() {
+    let td = TempDir::new().unwrap();
+    let (repo_path, worktree_path) = setup_repo_with_worktree(&td);
+    let s = GitService::new();
+    let repo = Repository::open(&repo_path).unwrap();
+    checkout_branch(&repo, "main");
+
+    write_file(&worktree_path, "m-agents.txt", "feature\n");
+    let wt_repo = Repository::open(&worktree_path).unwrap();
+    commit_all(&wt_repo, "feature change");
+
+    // Root instruction files are managed by the local coding environment and
+    // should not block merges for unrelated task branches.
+    write_file(&repo_path, "AGENTS.md", "locally customized instructions\n");
+
+    let res = s.merge_changes(&repo_path, &worktree_path, "feature", "main", "squash");
+    assert!(
+        res.is_ok(),
+        "merge should ignore local AGENTS.md edits on base: {res:?}"
     );
 }
 
@@ -735,15 +758,15 @@ fn merge_preserves_unstaged_changes_on_base() {
 
     let res = s.merge_changes(&repo_path, &worktree_path, "feature", "main", "squash");
     assert!(
-        res.is_err(),
-        "merge should block on unstaged tracked changes: {res:?}"
+        res.is_ok(),
+        "merge should allow non-overlapping unstaged tracked changes: {res:?}"
     );
     // local edit preserved
     let loc = std::fs::read_to_string(repo_path.join("common.txt")).unwrap();
     assert_eq!(loc, "local edited\n");
-    // merge output should not be applied on blocked merge
+    // merge output is applied
     let m = std::fs::read_to_string(repo_path.join("merged.txt")).unwrap_or_default();
-    assert_ne!(m, "merged content\n");
+    assert_eq!(m, "merged content\n");
 }
 
 #[test]

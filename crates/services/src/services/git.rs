@@ -1,4 +1,7 @@
-use std::{collections::HashMap, path::Path};
+use std::{
+    collections::{HashMap, HashSet},
+    path::Path,
+};
 
 use chrono::{DateTime, Utc};
 use git2::{
@@ -833,11 +836,14 @@ impl GitService {
             Some(base_checkout_path) => {
                 // base branch is checked out somewhere - use CLI merge
                 let git_cli = GitCli::new();
-                let base_checkout_repo = self.open_repo(&base_checkout_path)?;
 
                 // Keep merge behavior strict for tracked local edits in the base worktree.
-                // Users should explicitly commit/stash before merging.
-                self.check_worktree_clean(&base_checkout_repo)?;
+                // Allow unrelated local edits while still blocking overlapping paths.
+                self.check_worktree_safe_for_merge(
+                    &base_checkout_path,
+                    base_branch_name,
+                    task_branch_name,
+                )?;
 
                 // Use CLI merge in base context
                 self.ensure_cli_commit_identity(&base_checkout_path)?;
@@ -1107,6 +1113,86 @@ impl GitService {
         }
 
         Ok(())
+    }
+
+    /// Ensure tracked local changes in `worktree_path` do not overlap with files
+    /// changed between `base_branch_name` and `task_branch_name`.
+    fn check_worktree_safe_for_merge(
+        &self,
+        worktree_path: &Path,
+        base_branch_name: &str,
+        task_branch_name: &str,
+    ) -> Result<(), GitServiceError> {
+        let git_cli = GitCli::new();
+        let status = git_cli
+            .get_worktree_status(worktree_path)
+            .map_err(|e| GitServiceError::InvalidRepository(format!("git status failed: {e}")))?;
+
+        let mut tracked_dirty_paths = HashSet::new();
+        for entry in status.entries {
+            if entry.is_untracked {
+                continue;
+            }
+            if entry.staged == ' ' && entry.unstaged == ' ' {
+                continue;
+            }
+
+            tracked_dirty_paths.insert(String::from_utf8_lossy(&entry.path).to_string());
+            if let Some(orig_path) = entry.orig_path {
+                tracked_dirty_paths.insert(String::from_utf8_lossy(&orig_path).to_string());
+            }
+        }
+
+        if tracked_dirty_paths.is_empty() {
+            return Ok(());
+        }
+
+        let diff_output = git_cli
+            .git(
+                worktree_path,
+                [
+                    "diff",
+                    "--name-only",
+                    "-M",
+                    "-C",
+                    base_branch_name,
+                    task_branch_name,
+                ],
+            )
+            .map_err(|e| {
+                GitServiceError::InvalidRepository(format!(
+                    "git diff --name-only failed: {e}"
+                ))
+            })?;
+
+        let merge_paths: HashSet<String> = diff_output
+            .lines()
+            .map(str::trim)
+            .filter(|line| !line.is_empty())
+            .map(ToString::to_string)
+            .collect();
+
+        if merge_paths.is_empty() {
+            return Ok(());
+        }
+
+        let mut overlapping: Vec<String> = tracked_dirty_paths
+            .into_iter()
+            .filter(|path| merge_paths.contains(path))
+            .collect();
+        if overlapping.is_empty() {
+            return Ok(());
+        }
+
+        overlapping.sort();
+        let branch_name = self
+            .get_head_info(worktree_path)
+            .map(|info| info.branch)
+            .unwrap_or_else(|_| "unknown branch".to_string());
+        Err(GitServiceError::WorktreeDirty(
+            branch_name,
+            overlapping.join(", "),
+        ))
     }
 
     /// Get current HEAD information including branch name and commit OID

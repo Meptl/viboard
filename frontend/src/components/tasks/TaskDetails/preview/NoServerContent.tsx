@@ -123,13 +123,15 @@ export function NoServerContent({
         <div className="space-y-4">
           <div>
             <h3 className="text-lg font-medium text-foreground mb-2">
-              {t('preview.noServer.title')}
-            </h3>
-            <p className="text-sm text-muted-foreground">
               {projectHasDevScript
-                ? t('preview.noServer.startPrompt')
-                : t('preview.noServer.setupPrompt')}
-            </p>
+                ? t('preview.noServer.title')
+                : t('preview.noServer.noPreviewTitle')}
+            </h3>
+            {projectHasDevScript && (
+              <p className="text-sm text-muted-foreground">
+                {t('preview.noServer.startPrompt')}
+              </p>
+            )}
           </div>
 
           {!isEditingExistingScript ? (

@@ -53,6 +53,7 @@
     },
     "noServer": {
       "title": "没有运行开发服务器",
+      "noPreviewTitle": "无可用预览",
       "startPrompt": "请启动开发服务器以查看预览",
       "setupPrompt": "要使用实时预览和点击编辑，请为此项目添加开发服务器脚本。",
       "companionPrompt": "要使用点击编辑功能，请将浏览器伴侣添加到您的项目。",

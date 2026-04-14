@@ -56,6 +56,7 @@
     },
     "noServer": {
       "title": "No dev server running",
+      "noPreviewTitle": "No preview available",
       "startPrompt": "Please start a dev server to see the preview",
       "setupPrompt": "To use the live preview and click-to-edit, please add a dev server script to this project.",
       "companionPrompt": "For click-to-edit functionality, add the browser companion to your project.",

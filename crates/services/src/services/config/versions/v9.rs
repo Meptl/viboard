@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use anyhow::Error;
+use db::models::tag::Tag;
 use executors::{executors::BaseCodingAgent, profile::ExecutorProfileId};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
@@ -81,6 +82,8 @@ pub struct Config {
     pub task_title_prompt: Option<String>,
     #[serde(default = "default_task_description_prompt")]
     pub task_description_prompt: Option<String>,
+    #[serde(default)]
+    pub project_local_tags: HashMap<String, Vec<Tag>>,
 }
 
 impl Config {
@@ -107,6 +110,7 @@ impl Config {
             automatic_done_task_cleanup_days_by_project: HashMap::new(),
             task_title_prompt: default_task_title_prompt(),
             task_description_prompt: default_task_description_prompt(),
+            project_local_tags: HashMap::new(),
         }
     }
 
@@ -155,6 +159,7 @@ impl Default for Config {
             automatic_done_task_cleanup_days_by_project: HashMap::new(),
             task_title_prompt: default_task_title_prompt(),
             task_description_prompt: default_task_description_prompt(),
+            project_local_tags: HashMap::new(),
         }
     }
 }

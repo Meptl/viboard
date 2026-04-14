@@ -1160,9 +1160,7 @@ impl GitService {
                 ],
             )
             .map_err(|e| {
-                GitServiceError::InvalidRepository(format!(
-                    "git diff --name-only failed: {e}"
-                ))
+                GitServiceError::InvalidRepository(format!("git diff --name-only failed: {e}"))
             })?;
 
         let merge_paths: HashSet<String> = diff_output

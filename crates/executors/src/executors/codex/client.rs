@@ -13,8 +13,8 @@ use codex_app_server_protocol::{
     McpElicitationPrimitiveSchema, McpServerElicitationAction, McpServerElicitationRequest,
     McpServerElicitationRequestResponse, PermissionGrantScope, PermissionsRequestApprovalResponse,
     RequestId, ServerRequest, ThreadResumeParams, ThreadResumeResponse, ThreadStartParams,
-    ThreadStartResponse, ToolRequestUserInputAnswer, ToolRequestUserInputResponse,
-    TurnStartParams, TurnStartResponse, UserInput,
+    ThreadStartResponse, ToolRequestUserInputAnswer, ToolRequestUserInputResponse, TurnStartParams,
+    TurnStartResponse, UserInput,
 };
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::{self, Value, json};
@@ -548,10 +548,10 @@ fn build_elicitation_content(schema: codex_app_server_protocol::McpElicitationSc
     let mut content = serde_json::Map::new();
     for (key, field) in schema.properties {
         let value = match field {
-            McpElicitationPrimitiveSchema::String(s) => Value::String(s.default.unwrap_or_default()),
-            McpElicitationPrimitiveSchema::Number(n) => {
-                Value::from(n.default.unwrap_or_default())
+            McpElicitationPrimitiveSchema::String(s) => {
+                Value::String(s.default.unwrap_or_default())
             }
+            McpElicitationPrimitiveSchema::Number(n) => Value::from(n.default.unwrap_or_default()),
             McpElicitationPrimitiveSchema::Boolean(b) => Value::Bool(b.default.unwrap_or(false)),
             McpElicitationPrimitiveSchema::Enum(e) => match e {
                 codex_app_server_protocol::McpElicitationEnumSchema::SingleSelect(single) => {

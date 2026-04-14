@@ -57,6 +57,7 @@ export function PreviewPanel() {
   const listenerRef = useRef<ClickToComponentListener | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const hasAttemptedAutoStartRef = useRef(false);
+  const autoExpandedNoUrlLogsProcessIdRef = useRef<string | null>(null);
 
   const { t } = useTranslation('tasks');
   const { project, projectId } = useProject();
@@ -223,6 +224,35 @@ export function PreviewPanel() {
     iframeError,
     latestDevServerProcess,
     runningDevServer,
+  ]);
+
+  useEffect(() => {
+    if (!latestDevServerProcess) {
+      autoExpandedNoUrlLogsProcessIdRef.current = null;
+      return;
+    }
+
+    if (lastKnownUrl || latestDevServerProcess.status === 'running') {
+      return;
+    }
+
+    const hasAnyOutput =
+      Boolean(logStream.error) || (logStream.logs?.length ?? 0) > 0;
+    if (!hasAnyOutput) {
+      return;
+    }
+
+    if (autoExpandedNoUrlLogsProcessIdRef.current === latestDevServerProcess.id) {
+      return;
+    }
+
+    autoExpandedNoUrlLogsProcessIdRef.current = latestDevServerProcess.id;
+    setShowLogs(true);
+  }, [
+    latestDevServerProcess,
+    lastKnownUrl,
+    logStream.error,
+    logStream.logs,
   ]);
 
   const isPreviewReady =

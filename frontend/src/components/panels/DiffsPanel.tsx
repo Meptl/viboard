@@ -33,7 +33,6 @@ interface DiffsPanelProps {
 
 type LoadedDiffRecord = {
   diff: Diff;
-  signature: string;
 };
 
 const COLLAPSE_ALL_DEFAULT_THRESHOLD = 100;
@@ -68,17 +67,6 @@ function getDiffId(diff: Diff, idx: number): string {
   return diff.newPath || diff.oldPath || String(idx);
 }
 
-function getDiffSignature(diff: Diff): string {
-  return [
-    diff.change,
-    diff.oldPath || '',
-    diff.newPath || '',
-    diff.additions ?? 'na',
-    diff.deletions ?? 'na',
-    diff.contentOmitted ? '1' : '0',
-  ].join('|');
-}
-
 export function DiffsPanel({ selectedAttempt }: DiffsPanelProps) {
   const { t } = useTranslation('tasks');
   const { comments } = useReview();
@@ -96,33 +84,31 @@ export function DiffsPanel({ selectedAttempt }: DiffsPanelProps) {
     Record<string, Record<string, ReviewDraft>>
   >({});
   const loadedDraftAttemptIdRef = useRef<string | null>(null);
+  const [hasCompletedFirstPageLoad, setHasCompletedFirstPageLoad] = useState(false);
+  const hasSeenDiffUpdateRef = useRef(false);
 
   // @lat: [[lazy-diff-loading#Metadata-First Diff Stream]]
   const { diffs, isComplete, error } = useDiffStream(
     selectedAttempt?.id ?? null,
     true
   );
-  const loading = !!selectedAttempt && !isComplete && !error;
-
-  const metadataSignatures = useMemo(() => {
-    const map = new Map<string, string>();
-    diffs.forEach((diff, idx) => {
-      map.set(getDiffId(diff, idx), getDiffSignature(diff));
-    });
-    return map;
-  }, [diffs]);
+  const loading =
+    !!selectedAttempt &&
+    !hasCompletedFirstPageLoad &&
+    !error &&
+    !isComplete &&
+    diffs.length === 0;
 
   const mergedDiffs = useMemo(() => {
     return diffs.map((diff, idx) => {
       const id = getDiffId(diff, idx);
       const loaded = loadedDiffs[id];
-      const currentSig = metadataSignatures.get(id);
-      if (!loaded || loaded.signature !== currentSig) {
+      if (!loaded) {
         return diff;
       }
       return loaded.diff;
     });
-  }, [diffs, loadedDiffs, metadataSignatures]);
+  }, [diffs, loadedDiffs]);
 
   const { fileCount, added, deleted } = useMemo(() => {
     if (mergedDiffs.length === 0) {
@@ -147,7 +133,27 @@ export function DiffsPanel({ selectedAttempt }: DiffsPanelProps) {
     setProcessedStatsIds(new Set());
     setDraftsByFile({});
     loadedDraftAttemptIdRef.current = null;
+    hasSeenDiffUpdateRef.current = false;
   }, [selectedAttempt?.id]);
+
+  useEffect(() => {
+    if (!hasCompletedFirstPageLoad && (isComplete || !!error || diffs.length > 0)) {
+      setHasCompletedFirstPageLoad(true);
+    }
+  }, [diffs.length, error, hasCompletedFirstPageLoad, isComplete]);
+
+  useEffect(() => {
+    if (!hasSeenDiffUpdateRef.current) {
+      hasSeenDiffUpdateRef.current = true;
+      return;
+    }
+
+    // Disable long-lived client-side diff-content caching.
+    // On any streamed diff update, force full-content refetches.
+    setLoadedDiffs({});
+    setLoadingIds(new Set());
+    setProcessedStatsIds(new Set());
+  }, [diffs]);
 
   useEffect(() => {
     const attemptId = selectedAttempt?.id;
@@ -304,15 +310,14 @@ export function DiffsPanel({ selectedAttempt }: DiffsPanelProps) {
     setLoadedDiffs((prev) => {
       const next: Record<string, LoadedDiffRecord> = {};
       for (const [id, loaded] of Object.entries(prev)) {
-        const signature = metadataSignatures.get(id);
-        if (!validIds.has(id) || signature !== loaded.signature) {
+        if (!validIds.has(id)) {
           continue;
         }
         next[id] = loaded;
       }
       return next;
     });
-  }, [diffs, metadataSignatures]);
+  }, [diffs]);
 
   useEffect(() => {
     const validIds = new Set(diffs.map((diff, idx) => getDiffId(diff, idx)));
@@ -362,9 +367,7 @@ export function DiffsPanel({ selectedAttempt }: DiffsPanelProps) {
       const path = diff.newPath || diff.oldPath;
       if (!attemptId || !path) return;
 
-      const signature = metadataSignatures.get(id);
-      if (!signature) return;
-      if (loadedDiffs[id]?.signature === signature) return;
+      if (loadedDiffs[id]) return;
       if (loadingIds.has(id)) return;
 
       setLoadingIds((prev) => {
@@ -386,7 +389,6 @@ export function DiffsPanel({ selectedAttempt }: DiffsPanelProps) {
           ...prev,
           [id]: {
             diff: fullDiff,
-            signature,
           },
         }));
       } catch (fetchError) {
@@ -404,7 +406,7 @@ export function DiffsPanel({ selectedAttempt }: DiffsPanelProps) {
         });
       }
     },
-    [selectedAttempt?.id, metadataSignatures, loadedDiffs, loadingIds]
+    [selectedAttempt?.id, loadedDiffs, loadingIds]
   );
 
   useEffect(() => {

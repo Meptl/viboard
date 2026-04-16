@@ -16,6 +16,7 @@ npm install
 REM Add any setup commands here...`,
       dev: `@echo off
 npm run dev
+REM Scripts run from the task worktree directory (current working directory)
 REM Add dev server start command here...`,
       cleanup: `@echo off
 REM Add cleanup commands here...
@@ -32,6 +33,7 @@ npm install
 # Add any setup commands here...`,
       dev: `#!/bin/bash
 npm run dev
+# Scripts run from the task worktree directory (current working directory)
 # Add dev server start command here...`,
       cleanup: `#!/bin/bash
 # Add cleanup commands here...

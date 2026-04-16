@@ -1022,7 +1022,9 @@ fn rebase_preserves_feature_after_main_reset_of_prior_merge() {
     let repo_path = td.path().join("repo_remerge_reset");
     let worktree_path = td.path().join("wt_feature_remerge_reset");
     let service = GitService::new();
-    service.initialize_repo_with_main_branch(&repo_path).unwrap();
+    service
+        .initialize_repo_with_main_branch(&repo_path)
+        .unwrap();
 
     let repo = Repository::open(&repo_path).unwrap();
     configure_user(&repo);
@@ -1040,10 +1042,22 @@ fn rebase_preserves_feature_after_main_reset_of_prior_merge() {
     commit_all(&wt_repo, "feature commit");
 
     let merge_sha = service
-        .merge_changes(&repo_path, &worktree_path, "feature", "main", "merge feature")
+        .merge_changes(
+            &repo_path,
+            &worktree_path,
+            "feature",
+            "main",
+            "merge feature",
+        )
         .unwrap();
-    assert_eq!(service.get_branch_oid(&repo_path, "main").unwrap(), merge_sha);
-    assert_eq!(service.get_branch_oid(&repo_path, "feature").unwrap(), merge_sha);
+    assert_eq!(
+        service.get_branch_oid(&repo_path, "main").unwrap(),
+        merge_sha
+    );
+    assert_eq!(
+        service.get_branch_oid(&repo_path, "feature").unwrap(),
+        merge_sha
+    );
 
     let git = GitCli::new();
     checkout_branch(&repo, "main");

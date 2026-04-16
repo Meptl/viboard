@@ -400,7 +400,7 @@ async fn check_editor_availability(
     // Construct a minimal EditorConfig for checking
     let editor_config = EditorConfig::new(
         query.editor_type,
-        None, // custom_command
+        None, // custom_ide_dir_cmd
         None, // remote_ssh_host
         None, // remote_ssh_user
     );

@@ -56,7 +56,10 @@
         "customCommand": {
           "label": "Custom Editor Command",
           "placeholder": "e.g., code, subl, vim",
-          "helper": "Enter the command to launch your custom editor. This will be used to open files."
+          "workspaceLabel": "Workspace Open Command",
+          "workspacePlaceholder": "konsole --workdir %repo_root%",
+          "fileLabel": "File Open Command",
+          "filePlaceholder": "konsole --workdir %repo_root% -e nvim %file%"
         },
         "remoteSsh": {
           "host": {

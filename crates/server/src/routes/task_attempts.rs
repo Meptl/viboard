@@ -759,12 +759,8 @@ pub async fn open_task_attempt_in_editor(
     let base_path_buf = ensure_worktree_path(&deployment, &task_attempt).await?;
     let base_path = base_path_buf.as_path();
 
-    // If a specific file path is provided, use it; otherwise use the base path
-    let path = if let Some(file_path) = payload.file_path.as_ref() {
-        base_path.join(file_path)
-    } else {
-        base_path.to_path_buf()
-    };
+    let file_path = payload.file_path.as_ref().map(|path| base_path.join(path));
+    let path = file_path.as_deref().unwrap_or(base_path);
 
     let editor_config = {
         let config = deployment.config().read().await;
@@ -772,7 +768,10 @@ pub async fn open_task_attempt_in_editor(
         config.editor.with_override(editor_type_str)
     };
 
-    match editor_config.open_file(path.as_path()).await {
+    match editor_config
+        .open_file(base_path, file_path.as_deref())
+        .await
+    {
         Ok(url) => {
             tracing::info!(
                 "Opened editor for task attempt {} at path: {}{}",

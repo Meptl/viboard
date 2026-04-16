@@ -302,28 +302,56 @@ export function GeneralSettings() {
           </div>
 
           {draft?.editor.editor_type === EditorType.CUSTOM && (
-            <div className="space-y-2">
-              <Label htmlFor="custom-command">
-                {t('settings.general.editor.customCommand.label')}
-              </Label>
-              <Input
-                id="custom-command"
-                placeholder={t(
-                  'settings.general.editor.customCommand.placeholder'
-                )}
-                value={draft?.editor.custom_command || ''}
-                onChange={(e) =>
-                  updateDraft({
-                    editor: {
-                      ...draft!.editor,
-                      custom_command: e.target.value || null,
-                    },
-                  })
-                }
-              />
-              <p className="text-sm text-muted-foreground">
-                {t('settings.general.editor.customCommand.helper')}
-              </p>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="custom-command-workspace">
+                  {t('settings.general.editor.customCommand.workspaceLabel', {
+                    defaultValue: 'Workspace Open Command',
+                  })}
+                </Label>
+                <Input
+                  id="custom-command-workspace"
+                  placeholder={t(
+                    'settings.general.editor.customCommand.workspacePlaceholder',
+                    { defaultValue: 'konsole --workdir %repo_root%' }
+                  )}
+                  value={draft?.editor.custom_ide_dir_cmd || ''}
+                  onChange={(e) =>
+                    updateDraft({
+                      editor: {
+                        ...draft!.editor,
+                        custom_ide_dir_cmd: e.target.value || null,
+                      },
+                    })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="custom-command-file">
+                  {t('settings.general.editor.customCommand.fileLabel', {
+                    defaultValue: 'File Open Command',
+                  })}
+                </Label>
+                <Input
+                  id="custom-command-file"
+                  placeholder={t(
+                    'settings.general.editor.customCommand.filePlaceholder',
+                    {
+                      defaultValue:
+                        'konsole --workdir %repo_root% -e nvim %file%',
+                    }
+                  )}
+                  value={draft?.editor.custom_ide_file_cmd || ''}
+                  onChange={(e) =>
+                    updateDraft({
+                      editor: {
+                        ...draft!.editor,
+                        custom_ide_file_cmd: e.target.value || null,
+                      },
+                    })
+                  }
+                />
+              </div>
             </div>
           )}
 

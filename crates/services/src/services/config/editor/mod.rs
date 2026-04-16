@@ -32,7 +32,9 @@ pub enum EditorOpenError {
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct EditorConfig {
     editor_type: EditorType,
-    custom_command: Option<String>,
+    custom_ide_dir_cmd: Option<String>,
+    #[serde(default)]
+    custom_ide_file_cmd: Option<String>,
     #[serde(default)]
     remote_ssh_host: Option<String>,
     #[serde(default)]
@@ -57,7 +59,8 @@ impl Default for EditorConfig {
     fn default() -> Self {
         Self {
             editor_type: EditorType::VsCode,
-            custom_command: None,
+            custom_ide_dir_cmd: None,
+            custom_ide_file_cmd: None,
             remote_ssh_host: None,
             remote_ssh_user: None,
         }
@@ -68,19 +71,20 @@ impl EditorConfig {
     /// Create a new EditorConfig. This is primarily used by version migrations.
     pub fn new(
         editor_type: EditorType,
-        custom_command: Option<String>,
+        custom_ide_dir_cmd: Option<String>,
         remote_ssh_host: Option<String>,
         remote_ssh_user: Option<String>,
     ) -> Self {
         Self {
             editor_type,
-            custom_command,
+            custom_ide_dir_cmd,
+            custom_ide_file_cmd: None,
             remote_ssh_host,
             remote_ssh_user,
         }
     }
 
-    pub fn get_command(&self) -> CommandBuilder {
+    pub fn get_command(&self, is_file_open: bool) -> CommandBuilder {
         let base_command = match &self.editor_type {
             EditorType::VsCode => "code",
             EditorType::Cursor => "cursor",
@@ -89,8 +93,15 @@ impl EditorConfig {
             EditorType::Zed => "zed",
             EditorType::Xcode => "xed",
             EditorType::Custom => {
-                // Custom editor - use user-provided command or fallback to VSCode
-                self.custom_command.as_deref().unwrap_or("code")
+                // Custom editor - workspace and file opens can use separate commands.
+                let custom_command = if is_file_open {
+                    self.custom_ide_file_cmd
+                        .as_deref()
+                        .or(self.custom_ide_dir_cmd.as_deref())
+                } else {
+                    self.custom_ide_dir_cmd.as_deref()
+                };
+                custom_command.unwrap_or("code")
             }
         };
         CommandBuilder::new(base_command)
@@ -98,8 +109,11 @@ impl EditorConfig {
 
     /// Resolve the editor command to an executable path and args.
     /// This is shared logic used by both check_availability() and spawn_local().
-    async fn resolve_command(&self) -> Result<(std::path::PathBuf, Vec<String>), EditorOpenError> {
-        let command_builder = self.get_command();
+    async fn resolve_command(
+        &self,
+        is_file_open: bool,
+    ) -> Result<(std::path::PathBuf, Vec<String>), EditorOpenError> {
+        let command_builder = self.get_command(is_file_open);
         let command_parts =
             command_builder
                 .build_initial()
@@ -125,14 +139,21 @@ impl EditorConfig {
     /// Check if the editor is available on the system.
     /// Uses the same command resolution logic as spawn_local().
     pub async fn check_availability(&self) -> bool {
-        self.resolve_command().await.is_ok()
+        self.resolve_command(false).await.is_ok()
     }
 
-    pub async fn open_file(&self, path: &Path) -> Result<Option<String>, EditorOpenError> {
-        if let Some(url) = self.remote_url(path) {
+    pub async fn open_file(
+        &self,
+        repo_root: &Path,
+        file_path: Option<&Path>,
+    ) -> Result<Option<String>, EditorOpenError> {
+        let is_file_open = file_path.is_some();
+        let target_path = file_path.unwrap_or(repo_root);
+        if let Some(url) = self.remote_url(target_path) {
             return Ok(Some(url));
         }
-        self.spawn_local(path).await?;
+        self.spawn_local(repo_root, target_path, is_file_open)
+            .await?;
         Ok(None)
     }
 
@@ -157,11 +178,21 @@ impl EditorConfig {
         ))
     }
 
-    pub async fn spawn_local(&self, path: &Path) -> Result<(), EditorOpenError> {
-        let (executable, args) = self.resolve_command().await?;
+    pub async fn spawn_local(
+        &self,
+        repo_root: &Path,
+        target_path: &Path,
+        is_file_open: bool,
+    ) -> Result<(), EditorOpenError> {
+        let (executable, mut args) = self.resolve_command(is_file_open).await?;
+        let has_path_placeholder = self.custom_command_has_any_placeholder(is_file_open);
+        self.apply_custom_placeholders(&mut args, repo_root, target_path);
 
         let mut cmd = std::process::Command::new(&executable);
-        cmd.args(&args).arg(path);
+        cmd.args(&args);
+        if !has_path_placeholder {
+            cmd.arg(target_path);
+        }
         cmd.spawn().map_err(|e| EditorOpenError::LaunchFailed {
             executable: executable.to_string_lossy().into_owned(),
             details: e.to_string(),
@@ -170,13 +201,45 @@ impl EditorConfig {
         Ok(())
     }
 
+    fn custom_command_has_any_placeholder(&self, is_file_open: bool) -> bool {
+        if !matches!(self.editor_type, EditorType::Custom) {
+            return false;
+        }
+        let custom_command = if is_file_open {
+            self.custom_ide_file_cmd
+                .as_deref()
+                .or(self.custom_ide_dir_cmd.as_deref())
+        } else {
+            self.custom_ide_dir_cmd.as_deref()
+        };
+        custom_command.is_some_and(|cmd| cmd.contains("%repo_root%") || cmd.contains("%file%"))
+    }
+
+    fn apply_custom_placeholders(&self, args: &mut [String], repo_root: &Path, target_path: &Path) {
+        if !matches!(self.editor_type, EditorType::Custom) {
+            return;
+        }
+
+        let repo_root = repo_root.to_string_lossy();
+        let target_path = target_path.to_string_lossy();
+        for arg in args.iter_mut() {
+            if arg.contains("%repo_root%") {
+                *arg = arg.replace("%repo_root%", repo_root.as_ref());
+            }
+            if arg.contains("%file%") {
+                *arg = arg.replace("%file%", target_path.as_ref());
+            }
+        }
+    }
+
     pub fn with_override(&self, editor_type_str: Option<&str>) -> Self {
         if let Some(editor_type_str) = editor_type_str {
             let editor_type =
                 EditorType::from_str(editor_type_str).unwrap_or(self.editor_type.clone());
             EditorConfig {
                 editor_type,
-                custom_command: self.custom_command.clone(),
+                custom_ide_dir_cmd: self.custom_ide_dir_cmd.clone(),
+                custom_ide_file_cmd: self.custom_ide_file_cmd.clone(),
                 remote_ssh_host: self.remote_ssh_host.clone(),
                 remote_ssh_user: self.remote_ssh_user.clone(),
             }

@@ -92,6 +92,7 @@
       "split": "分割视图"
     },
     "ignoreWhitespace": "忽略空格更改",
+    "wrapText": "自动换行",
     "errorLoadingDiff": "加载差异失败：{{error}}",
     "expandAll": "展开所有差异",
     "collapseAll": "折叠所有差异",

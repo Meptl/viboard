@@ -95,6 +95,7 @@
       "split": "Split view"
     },
     "ignoreWhitespace": "Ignore whitespace changes",
+    "wrapText": "Wrap text",
     "errorLoadingDiff": "Failed to load diff: {{error}}",
     "expandAll": "Expand all diffs",
     "collapseAll": "Collapse all diffs",

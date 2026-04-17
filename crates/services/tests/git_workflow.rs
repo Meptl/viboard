@@ -262,6 +262,38 @@ fn commit_and_is_worktree_clean() {
 }
 
 #[test]
+fn commit_diff_full_content_includes_line_stats() {
+    let td = TempDir::new().unwrap();
+    let repo_path = init_repo_main(&td);
+    let s = GitService::new();
+
+    write_file(&repo_path, "stats.txt", "line1\nline2\n");
+    let _ = s.commit(&repo_path, "add stats").unwrap();
+
+    write_file(&repo_path, "stats.txt", "line1\nline2-updated\nline3\n");
+    let _ = s.commit(&repo_path, "update stats").unwrap();
+    let commit_sha = s.get_head_info(&repo_path).unwrap().oid;
+
+    let diffs = s
+        .get_diffs(
+            DiffTarget::Commit {
+                repo_path: Path::new(&repo_path),
+                commit_sha: &commit_sha,
+            },
+            None,
+            DiffDetailLevel::FullContent,
+        )
+        .unwrap();
+
+    let stats = diffs
+        .into_iter()
+        .find(|d| d.new_path.as_deref() == Some("stats.txt"))
+        .expect("stats.txt diff present");
+    assert_eq!(stats.additions, Some(2));
+    assert_eq!(stats.deletions, Some(1));
+}
+
+#[test]
 fn commit_in_detached_head_succeeds_via_service() {
     let td = TempDir::new().unwrap();
     let repo_path = init_repo_main(&td);

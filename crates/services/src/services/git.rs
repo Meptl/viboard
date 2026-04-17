@@ -536,12 +536,11 @@ impl GitService {
                     content_omitted = true;
                 }
 
-                // Always try to compute line stats via libgit2 patch when contents are
-                // omitted/deferred so metadata-only responses still provide summary totals.
+                // Compute line stats via libgit2 patch whenever available so summary totals
+                // remain stable when switching between metadata-only and full-content payloads.
                 let mut additions: Option<usize> = None;
                 let mut deletions: Option<usize> = None;
-                if (content_omitted || !include_contents)
-                    && let Ok(Some(patch)) = git2::Patch::from_diff(&diff, delta_index)
+                if let Ok(Some(patch)) = git2::Patch::from_diff(&diff, delta_index)
                     && let Ok((_ctx, adds, dels)) = patch.line_stats()
                 {
                     additions = Some(adds);

@@ -361,6 +361,12 @@
     "starting": "Starting...",
     "creating": "Creating...",
     "create": "Create",
+    "disabledReason": {
+      "titleMissing": "Title is required.",
+      "executorMissing": "Select an executor profile to start automatically.",
+      "branchMissing": "Select a branch to start automatically.",
+      "generic": "Please complete the required fields."
+    },
     "discardDialog": {
       "title": "Discard unsaved changes?",
       "description": "You have unsaved changes. Are you sure you want to discard them?",

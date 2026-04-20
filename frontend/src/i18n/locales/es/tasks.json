@@ -358,6 +358,12 @@
     "starting": "Iniciando...",
     "creating": "Creando...",
     "create": "Crear",
+    "disabledReason": {
+      "titleMissing": "El título es obligatorio.",
+      "executorMissing": "Selecciona un perfil de ejecutor para iniciar automáticamente.",
+      "branchMissing": "Selecciona una rama para iniciar automáticamente.",
+      "generic": "Completa los campos obligatorios."
+    },
     "discardDialog": {
       "title": "¿Descartar cambios sin guardar?",
       "description": "Tienes cambios sin guardar. ¿Estás seguro de que deseas descartarlos?",

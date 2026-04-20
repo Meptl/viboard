@@ -358,6 +358,12 @@
     "starting": "시작 중...",
     "creating": "만드는 중...",
     "create": "만들기",
+    "disabledReason": {
+      "titleMissing": "제목은 필수입니다.",
+      "executorMissing": "자동 시작하려면 실행 프로필을 선택하세요.",
+      "branchMissing": "자동 시작하려면 브랜치를 선택하세요.",
+      "generic": "필수 항목을 입력해 주세요."
+    },
     "discardDialog": {
       "title": "저장하지 않은 변경사항을 버리시겠습니까?",
       "description": "저장하지 않은 변경사항이 있습니다. 정말 버리시겠습니까?",

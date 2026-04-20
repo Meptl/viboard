@@ -358,6 +358,12 @@
     "starting": "开始中...",
     "creating": "创建中...",
     "create": "创建",
+    "disabledReason": {
+      "titleMissing": "标题为必填项。",
+      "executorMissing": "如需自动开始，请选择执行配置。",
+      "branchMissing": "如需自动开始，请选择分支。",
+      "generic": "请先填写必填项。"
+    },
     "discardDialog": {
       "title": "放弃未保存的更改？",
       "description": "您有未保存的更改。您确定要放弃它们吗？",

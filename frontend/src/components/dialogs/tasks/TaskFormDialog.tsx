@@ -94,6 +94,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   );
   const [showDiscardWarning, setShowDiscardWarning] = useState(false);
   const [closeSearchSignal, setCloseSearchSignal] = useState(0);
+  const [showSubmitBlockedReason, setShowSubmitBlockedReason] = useState(false);
   const forceCreateOnlyRef = useRef(false);
 
   const { data: branches, isLoading: branchesLoading } =
@@ -207,15 +208,27 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
     }
   };
 
+  const getSubmitBlockedReason = useCallback(
+    (value: TaskFormValues): string | null => {
+      if (!value.title.trim().length) {
+        return t('taskFormDialog.disabledReason.titleMissing');
+      }
+      if (value.autoStart && !forceCreateOnlyRef.current) {
+        if (!value.executorProfileId) {
+          return t('taskFormDialog.disabledReason.executorMissing');
+        }
+        if (!value.branch) {
+          return t('taskFormDialog.disabledReason.branchMissing');
+        }
+      }
+
+      return null;
+    },
+    [t]
+  );
+
   const validator = (value: TaskFormValues): string | undefined => {
-    if (!value.title.trim().length) return 'need title';
-    if (
-      value.autoStart &&
-      !forceCreateOnlyRef.current &&
-      (!value.executorProfileId || !value.branch)
-    ) {
-      return 'need executor profile or branch;';
-    }
+    return getSubmitBlockedReason(value) ?? undefined;
   };
 
   // Initialize TanStack Form
@@ -233,6 +246,9 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   const isSubmitting = useStore(form.store, (state) => state.isSubmitting);
   const isDirty = useStore(form.store, (state) => state.isDirty);
   const canSubmit = useStore(form.store, (state) => state.canSubmit);
+  const formValues = useStore(form.store, (state) => state.values);
+  const blockedReason =
+    getSubmitBlockedReason(formValues) ?? t('taskFormDialog.disabledReason.generic');
 
   // Load images for edit mode
   useEffect(() => {
@@ -303,9 +319,20 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
 
   // Keyboard shortcuts
   const primaryAction = useCallback(() => {
-    if (isSubmitting || !canSubmit) return;
+    if (isSubmitting) return;
+    if (!canSubmit) {
+      setShowSubmitBlockedReason(true);
+      return;
+    }
+    setShowSubmitBlockedReason(false);
     void form.handleSubmit();
   }, [form, isSubmitting, canSubmit]);
+
+  useEffect(() => {
+    if (canSubmit) {
+      setShowSubmitBlockedReason(false);
+    }
+  }, [canSubmit]);
 
   const shortcutsEnabled =
     modal.visible && !isSubmitting && canSubmit && !showDiscardWarning;
@@ -480,6 +507,11 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
               >
                 <ImageIcon className="h-4 w-4" />
               </Button>
+              {showSubmitBlockedReason && !canSubmit && (
+                <p className="text-xs text-destructive whitespace-nowrap" role="alert">
+                  {blockedReason}
+                </p>
+              )}
             </div>
 
             {/* Autostart switch */}
@@ -527,9 +559,25 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
                       : t('taskFormDialog.create');
 
                   return (
-                    <Button onClick={form.handleSubmit} disabled={!canSubmit}>
-                      {buttonText}
-                    </Button>
+                    <div className="flex flex-col items-end gap-1">
+                      <Button
+                        onClick={() => {
+                          if (isSubmitting) return;
+                          if (!canSubmit) {
+                            setShowSubmitBlockedReason(true);
+                            return;
+                          }
+                          setShowSubmitBlockedReason(false);
+                          void form.handleSubmit();
+                        }}
+                        disabled={isSubmitting}
+                        aria-disabled={!canSubmit}
+                        title={!canSubmit ? blockedReason : undefined}
+                        className={cn(!canSubmit && 'opacity-50')}
+                      >
+                        {buttonText}
+                      </Button>
+                    </div>
                   );
                 }}
               </form.Subscribe>

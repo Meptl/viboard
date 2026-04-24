@@ -144,7 +144,7 @@ async function main() {
   const versionCacheDir = path.join(CACHE_DIR, releaseTag, platformDir);
   fs.mkdirSync(versionCacheDir, { recursive: true });
 
-  console.log(`Starting vibe-kanban v${CLI_VERSION} (${releaseTag})...`);
+  console.log(`Starting viboard v${CLI_VERSION} (${releaseTag})...`);
   await extractAndRun("vibe-kanban", releaseTag, (bin) => {
     if (platform === "win32") {
       execSync(`"${bin}"`, { stdio: "inherit" });

@@ -141,7 +141,7 @@ function writeBuilderConfig() {
 
   const config = {
     appId: 'ai.bloop.vibekanban',
-    productName: 'Vibe Kanban',
+    productName: 'Viboard',
     directories: {
       output: electronOutDir,
       buildResources: path.join(rootDir, 'docs', 'logo'),

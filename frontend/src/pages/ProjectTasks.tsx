@@ -1212,8 +1212,8 @@ export function ProjectTasks() {
         }
       >
         <div className="mx-auto w-full">
-          <div className="flex items-center gap-3">
-            <div className="min-w-0 max-w-full text-base md:text-lg font-semibold text-left whitespace-normal break-words">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="min-w-0 flex-1 truncate text-base md:text-lg font-semibold text-left">
               {selectedTask.title || 'Task'}
             </div>
           </div>

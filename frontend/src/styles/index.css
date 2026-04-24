@@ -220,7 +220,9 @@
   }
 
   .logo {
-    @apply fill-foreground;
+    @apply block text-foreground;
+    height: 1.25rem;
+    width: auto;
   }
 }
 

@@ -65,7 +65,7 @@
           "host": {
             "label": "Host SSH Remoto (Opcional)",
             "placeholder": "ej., nombre de host o dirección IP",
-            "helper": "Configura esto si Vibe Kanban se ejecuta en un servidor remoto. Cuando se establece, al hacer clic en \"Abrir en Editor\" se generará una URL para abrir tu editor a través de SSH en lugar de ejecutar un comando local."
+            "helper": "Configura esto si Viboard se ejecuta en un servidor remoto. Cuando se establece, al hacer clic en \"Abrir en Editor\" se generará una URL para abrir tu editor a través de SSH en lugar de ejecutar un comando local."
           },
           "user": {
             "label": "Usuario SSH Remoto (Opcional)",
@@ -118,7 +118,7 @@
         "description": "Configurar preferencias de nombres de ramas git",
         "branchPrefix": {
           "label": "Prefijo de Rama",
-          "placeholder": "vk",
+          "placeholder": "vb",
           "helper": "Prefijo para nombres de ramas generadas automáticamente. Dejar vacío para no usar prefijo.",
           "preview": "Vista previa:",
           "previewWithPrefix": "{{prefix}}/1a2b-nombre-tarea",
@@ -170,7 +170,7 @@
       },
       "privacy": {
         "title": "Privacidad",
-        "description": "Ayuda a mejorar Vibe-Kanban compartiendo datos de uso anónimos."
+        "description": "Ayuda a mejorar Viboard compartiendo datos de uso anónimos."
       },
       "taskTemplates": {
         "title": "Etiquetas",

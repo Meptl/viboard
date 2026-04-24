@@ -4,7 +4,7 @@ export function Logo() {
       className="logo"
       viewBox="0 0 941 190"
       xmlns="http://www.w3.org/2000/svg"
-      aria-label="Vibe Kanban"
+      aria-label="Viboard"
       role="img"
     >
       <g transform="translate(581.875 -152.28879)">

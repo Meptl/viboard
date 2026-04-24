@@ -6,10 +6,10 @@ import { useRetryUi } from '@/contexts/RetryUiContext';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import { RetryEditorInline } from './RetryEditorInline';
 
-const VK_CONTEXT_BLOCK_RE = /\[vk_context\][\s\S]*?\[\/vk_context\]/gi;
+const VB_CONTEXT_BLOCK_RE = /\[vb_context\][\s\S]*?\[\/vb_context\]/gi;
 
-function stripVkContextBlocks(content: string): string {
-  return content.replace(VK_CONTEXT_BLOCK_RE, '').trimStart();
+function stripVbContextBlocks(content: string): string {
+  return content.replace(VB_CONTEXT_BLOCK_RE, '').trimStart();
 }
 
 const UserMessage = ({
@@ -56,7 +56,7 @@ const UserMessage = ({
 
   // Only show retry button when allowed (has process, can fork, not running)
   const canRetry = executionProcessId && canFork && !isAttemptRunning;
-  const displayContent = stripVkContextBlocks(content);
+  const displayContent = stripVbContextBlocks(content);
 
   return (
     <div className={`py-2 ${greyed ? 'opacity-50 pointer-events-none' : ''}`}>

@@ -65,7 +65,7 @@
           "host": {
             "label": "원격 SSH 호스트 (선택사항)",
             "placeholder": "예: 호스트 이름 또는 IP 주소",
-            "helper": "Vibe Kanban이 원격 서버에서 실행 중인 경우 설정하세요. 설정하면 \"에디터에서 열기\"를 클릭할 때 로컬 명령을 실행하는 대신 SSH를 통해 에디터를 여는 URL이 생성됩니다."
+            "helper": "Viboard이 원격 서버에서 실행 중인 경우 설정하세요. 설정하면 \"에디터에서 열기\"를 클릭할 때 로컬 명령을 실행하는 대신 SSH를 통해 에디터를 여는 URL이 생성됩니다."
           },
           "user": {
             "label": "원격 SSH 사용자 (선택사항)",
@@ -118,7 +118,7 @@
         "description": "Git 브랜치 이름 지정 기본 설정 구성",
         "branchPrefix": {
           "label": "브랜치 접두사",
-          "placeholder": "vk",
+          "placeholder": "vb",
           "helper": "자동 생성된 브랜치 이름의 접두사입니다. 접두사가 없으려면 비워두세요.",
           "preview": "미리보기:",
           "previewWithPrefix": "{{prefix}}/1a2b-task-name",
@@ -170,7 +170,7 @@
       },
       "privacy": {
         "title": "개인정보 보호",
-        "description": "익명 사용 데이터를 공유하여 Vibe-Kanban 개선에 도움을 주세요."
+        "description": "익명 사용 데이터를 공유하여 Viboard 개선에 도움을 주세요."
       },
       "taskTemplates": {
         "title": "태그",

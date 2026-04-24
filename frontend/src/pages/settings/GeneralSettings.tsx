@@ -472,7 +472,7 @@ export function GeneralSettings() {
           <CardDescription>
             {t('settings.general.taskCreation.description', {
               defaultValue:
-                'These descriptions are given to agents when they are tasked with creating tasks in vibe-kanban.',
+                'These descriptions are given to agents when they are tasked with creating tasks in viboard.',
             })}
           </CardDescription>
         </CardHeader>

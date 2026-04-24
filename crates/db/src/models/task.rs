@@ -122,12 +122,12 @@ impl Task {
     pub fn agent_conversation_metadata_preamble(&self) -> String {
         format!(
             concat!(
-                "[vk_context]\n",
-                "VK task context:\n",
+                "[vb_context]\n",
+                "VB task context:\n",
                 "project_id: {}\n",
                 "task_id: {}\n",
-                "These are the associated ids for this task for use with the vk MCP server.\n",
-                "[/vk_context]"
+                "These are the associated ids for this task for use with the vb MCP server.\n",
+                "[/vb_context]"
             ),
             self.project_id, self.id
         )

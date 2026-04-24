@@ -54,9 +54,9 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
   // Centralized page title management
   useEffect(() => {
     if (query.data) {
-      document.title = `${query.data.name} | vibe-kanban`;
+      document.title = `${query.data.name} | viboard`;
     } else {
-      document.title = 'vibe-kanban';
+      document.title = 'viboard';
     }
   }, [query.data]);
 

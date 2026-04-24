@@ -65,7 +65,7 @@
           "host": {
             "label": "リモートSSHホスト（オプション）",
             "placeholder": "例: ホスト名またはIPアドレス",
-            "helper": "Vibe Kanbanがリモートサーバーで実行されている場合に設定してください。設定すると、「エディターで開く」をクリックしたときに、ローカルコマンドを実行する代わりにSSH経由でエディターを開くURLが生成されます。"
+            "helper": "Viboardがリモートサーバーで実行されている場合に設定してください。設定すると、「エディターで開く」をクリックしたときに、ローカルコマンドを実行する代わりにSSH経由でエディターを開くURLが生成されます。"
           },
           "user": {
             "label": "リモートSSHユーザー（オプション）",
@@ -118,7 +118,7 @@
         "description": "Gitブランチ名の設定",
         "branchPrefix": {
           "label": "ブランチプレフィックス",
-          "placeholder": "vk",
+          "placeholder": "vb",
           "helper": "自動生成されるブランチ名のプレフィックス。空欄にするとプレフィックスなしになります。",
           "preview": "プレビュー：",
           "previewWithPrefix": "{{prefix}}/1a2b-タスク名",
@@ -170,7 +170,7 @@
       },
       "privacy": {
         "title": "プライバシー",
-        "description": "匿名の使用データを共有してVibe-Kanbanの改善にご協力ください。"
+        "description": "匿名の使用データを共有してViboardの改善にご協力ください。"
       },
       "taskTemplates": {
         "title": "タグ",

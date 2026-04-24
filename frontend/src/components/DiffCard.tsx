@@ -4,10 +4,7 @@ import { generateDiffFile, type DiffFile } from '@git-diff-view/file';
 import {
   useCallback,
   memo,
-  useEffect,
   useMemo,
-  useRef,
-  type ComponentProps,
 } from 'react';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { getHighLightLanguageFromPath } from '@/utils/extToLanguage';
@@ -50,11 +47,11 @@ import {
 } from '@/stores/useDiffViewStore';
 import { useProject } from '@/contexts/ProjectContext';
 
-type DiffWidgetHook = NonNullable<
-  ComponentProps<typeof DiffView>['onCreateUseWidgetHook']
-> extends (hook: infer Hook) => void
-  ? Hook
-  : never;
+type ExtendLineData = {
+  comments: ReviewComment[];
+  draft?: ReviewDraft;
+  draftKey?: string;
+};
 
 type Props = {
   diff: Diff;
@@ -214,27 +211,46 @@ function DiffCard({
       ),
     [draftsForFile]
   );
-  const widgetHookRef = useRef<DiffWidgetHook | null>(null);
 
-  // Transform comments to git-diff-view extendData format
+  // Use extend lines for drafts so multiple draft comments can stay open at once.
+  // The widget API supports only one active line widget.
+  // Transform comments/drafts to git-diff-view extendData format.
   const extendData = useMemo(() => {
-    const oldFileData: Record<string, { data: ReviewComment }> = {};
-    const newFileData: Record<string, { data: ReviewComment }> = {};
+    const oldFileData: Record<string, { data: ExtendLineData }> = {};
+    const newFileData: Record<string, { data: ExtendLineData }> = {};
+
+    const ensureLine = (
+      side: SplitSide,
+      lineNumber: number
+    ): ExtendLineData => {
+      const lineKey = String(lineNumber);
+      const fileData = side === SplitSide.old ? oldFileData : newFileData;
+      if (!fileData[lineKey]) {
+        fileData[lineKey] = {
+          data: {
+            comments: [],
+          },
+        };
+      }
+      return fileData[lineKey].data;
+    };
 
     commentsForFile.forEach((comment) => {
-      const lineKey = String(comment.lineNumber);
-      if (comment.side === SplitSide.old) {
-        oldFileData[lineKey] = { data: comment };
-      } else {
-        newFileData[lineKey] = { data: comment };
-      }
+      const line = ensureLine(comment.side, comment.lineNumber);
+      line.comments.push(comment);
+    });
+
+    draftEntriesForFile.forEach(([draftKey, draft]) => {
+      const line = ensureLine(draft.side, draft.lineNumber);
+      line.draft = draft;
+      line.draftKey = draftKey;
     });
 
     return {
       oldFile: oldFileData,
       newFile: newFileData,
     };
-  }, [commentsForFile]);
+  }, [commentsForFile, draftEntriesForFile]);
 
   const handleAddWidgetClick = (lineNumber: number, side: SplitSide) => {
     const widgetKey = `${filePath}-${side}-${lineNumber}`;
@@ -249,55 +265,29 @@ function DiffCard({
     setDraft(widgetKey, draft);
   };
 
-  const renderWidgetLine = (props: {
-    side: SplitSide;
-    lineNumber: number;
-    onClose: () => void;
-  }) => {
-    const widgetKey = `${filePath}-${props.side}-${props.lineNumber}`;
-    const draft = draftsForFile[widgetKey];
-    if (!draft) return null;
-
+  const renderExtendLine = (lineData: { data: ExtendLineData }) => {
     return (
-      <CommentWidgetLine
-        draft={draft}
-        widgetKey={widgetKey}
-        setDraft={setDraft}
-        onSave={props.onClose}
-        onCancel={props.onClose}
-        projectId={projectId}
-      />
+      <>
+        {lineData.data.comments.map((comment) => (
+          <ReviewCommentRenderer
+            key={comment.id}
+            comment={comment}
+            projectId={projectId}
+          />
+        ))}
+        {lineData.data.draft && lineData.data.draftKey && (
+          <CommentWidgetLine
+            draft={lineData.data.draft}
+            widgetKey={lineData.data.draftKey}
+            setDraft={setDraft}
+            onSave={() => {}}
+            onCancel={() => {}}
+            projectId={projectId}
+          />
+        )}
+      </>
     );
   };
-
-  const renderExtendLine = (lineData: { data: ReviewComment }) => {
-    return (
-      <ReviewCommentRenderer comment={lineData.data} projectId={projectId} />
-    );
-  };
-
-  useEffect(() => {
-    if (!expanded) return;
-    if (draftEntriesForFile.length === 0) return;
-
-    const hook = widgetHookRef.current;
-    if (!hook) return;
-
-    const state = hook.getReadonlyState();
-    const activeSide = state.widgetSide;
-    const activeLineNumber = state.widgetLineNumber;
-    const hasActiveSavedDraft = draftEntriesForFile.some(
-      ([, draft]) =>
-        draft.side === activeSide && draft.lineNumber === activeLineNumber
-    );
-    if (hasActiveSavedDraft) return;
-
-    const firstDraft = draftEntriesForFile[0][1];
-    state.setWidget({
-      side: firstDraft.side,
-      lineNumber: firstDraft.lineNumber,
-    });
-  }, [expanded, draftEntriesForFile]);
 
   // Title row
   const title = (
@@ -423,10 +413,6 @@ function DiffCard({
             diffViewFontSize={12}
             diffViewAddWidget
             onAddWidgetClick={handleAddWidgetClick}
-            renderWidgetLine={renderWidgetLine}
-            onCreateUseWidgetHook={(hook) => {
-              widgetHookRef.current = hook;
-            }}
             extendData={extendData}
             renderExtendLine={renderExtendLine}
           />

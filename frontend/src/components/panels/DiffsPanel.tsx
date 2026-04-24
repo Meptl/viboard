@@ -433,21 +433,6 @@ export function DiffsPanel({ selectedAttempt }: DiffsPanelProps) {
     [selectedAttempt?.id, loadedDiffs, loadingIds]
   );
 
-  useEffect(() => {
-    mergedDiffs.forEach((diff, idx) => {
-      const id = getDiffId(diff, idx);
-      const isExpanded = !collapsedIds.has(id);
-      const hasLoadedContent = diff.oldContent != null || diff.newContent != null;
-      const isDeferredContent =
-        !diff.contentOmitted &&
-        !hasLoadedContent &&
-        diff.change !== 'permissionChange';
-
-      if (!isExpanded || !isDeferredContent) return;
-      void ensureDiffContentLoaded(id, diff);
-    });
-  }, [mergedDiffs, collapsedIds, ensureDiffContentLoaded]);
-
   if (error) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-4 m-4">
@@ -473,7 +458,6 @@ export function DiffsPanel({ selectedAttempt }: DiffsPanelProps) {
       loadingIds={loadingIds}
       ensureDiffContentLoaded={ensureDiffContentLoaded}
       processedStatsIds={processedStatsIds}
-      largeDiffIds={largeDiffIds}
       draftsByFile={draftsByFile}
       setDraftForFile={setDraftForFile}
       t={t}
@@ -495,7 +479,6 @@ interface DiffsPanelContentProps {
   loadingIds: Set<string>;
   ensureDiffContentLoaded: (id: string, diff: Diff) => Promise<void>;
   processedStatsIds: Set<string>;
-  largeDiffIds: Set<string>;
   draftsByFile: Record<string, Record<string, ReviewDraft>>;
   setDraftForFile: (
     filePath: string,
@@ -519,7 +502,6 @@ function DiffsPanelContent({
   loadingIds,
   ensureDiffContentLoaded,
   processedStatsIds,
-  largeDiffIds,
   draftsByFile,
   setDraftForFile,
   t,
@@ -623,7 +605,7 @@ function DiffsPanelContent({
                 id={id}
                 rootRef={listRootRef}
                 onVisible={() => {
-                  if (largeDiffIds.has(id) && !isExpanded) return;
+                  if (!isExpanded) return;
                   void ensureDiffContentLoaded(id, diff);
                 }}
               >

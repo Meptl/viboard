@@ -1,11 +1,9 @@
 <p align="center">
-  <a href="https://vibekanban.com">
-    <picture>
-      <source srcset="frontend/public/logo-dark.svg" media="(prefers-color-scheme: dark)">
-      <source srcset="frontend/public/logo-light.svg" media="(prefers-color-scheme: light)">
-      <img src="frontend/public/logo-light.svg" alt="Viboard Logo" width="360">
-    </picture>
-  </a>
+  <picture>
+    <source srcset="frontend/public/logo-dark.svg" media="(prefers-color-scheme: dark)">
+    <source srcset="frontend/public/logo-light.svg" media="(prefers-color-scheme: light)">
+    <img src="frontend/public/logo-light.svg" alt="Viboard Logo" width="360">
+  </picture>
 </p>
 
 ![](frontend/public/overview.png)

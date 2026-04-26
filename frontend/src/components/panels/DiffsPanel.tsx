@@ -36,6 +36,15 @@ type LoadedDiffRecord = {
   diff: Diff;
 };
 
+type DiffMetadataSignature = {
+  change: DiffMetadata['change'];
+  oldPath: string | null;
+  newPath: string | null;
+  additions: number | null;
+  deletions: number | null;
+  contentOmitted: boolean;
+};
+
 const COLLAPSE_ALL_DEFAULT_THRESHOLD = 100;
 const LARGE_FILE_CHANGE_COLLAPSE_THRESHOLD = 400;
 const DEFAULT_COLLAPSED_CHANGES = new Set([
@@ -94,7 +103,9 @@ export function DiffsPanel({ selectedAttempt }: DiffsPanelProps) {
   >({});
   const loadedDraftAttemptIdRef = useRef<string | null>(null);
   const [hasCompletedFirstPageLoad, setHasCompletedFirstPageLoad] = useState(false);
-  const hasSeenDiffUpdateRef = useRef(false);
+  const previousMetadataByIdRef = useRef<Record<string, DiffMetadataSignature>>(
+    {}
+  );
 
   // @lat: [[lazy-diff-loading#Metadata-First Diff Stream]]
   const diffStreamContext = useDiffStreamContext();
@@ -145,7 +156,7 @@ export function DiffsPanel({ selectedAttempt }: DiffsPanelProps) {
     setProcessedStatsIds(new Set());
     setDraftsByFile({});
     loadedDraftAttemptIdRef.current = null;
-    hasSeenDiffUpdateRef.current = false;
+    previousMetadataByIdRef.current = {};
   }, [selectedAttempt?.id]);
 
   useEffect(() => {
@@ -158,16 +169,75 @@ export function DiffsPanel({ selectedAttempt }: DiffsPanelProps) {
   }, [metadataDiffs.length, error, hasCompletedFirstPageLoad, isComplete]);
 
   useEffect(() => {
-    if (!hasSeenDiffUpdateRef.current) {
-      hasSeenDiffUpdateRef.current = true;
-      return;
-    }
+    const nextMetadataById: Record<string, DiffMetadataSignature> = {};
+    const invalidatedIds = new Set<string>();
+    const previousMetadataById = previousMetadataByIdRef.current;
 
-    // Disable long-lived client-side diff-content caching.
-    // On any streamed diff update, force full-content refetches.
-    setLoadedDiffs({});
-    setLoadingIds(new Set());
-    setProcessedStatsIds(new Set());
+    metadataDiffs.forEach((diff, idx) => {
+      const id = getDiffId(diff, idx);
+      const signature: DiffMetadataSignature = {
+        change: diff.change,
+        oldPath: diff.oldPath ?? null,
+        newPath: diff.newPath ?? null,
+        additions: diff.additions ?? null,
+        deletions: diff.deletions ?? null,
+        contentOmitted: !!diff.contentOmitted,
+      };
+      nextMetadataById[id] = signature;
+
+      const previous = previousMetadataById[id];
+      if (!previous) return;
+      if (
+        previous.change !== signature.change ||
+        previous.oldPath !== signature.oldPath ||
+        previous.newPath !== signature.newPath ||
+        previous.additions !== signature.additions ||
+        previous.deletions !== signature.deletions ||
+        previous.contentOmitted !== signature.contentOmitted
+      ) {
+        invalidatedIds.add(id);
+      }
+    });
+
+    previousMetadataByIdRef.current = nextMetadataById;
+    if (invalidatedIds.size === 0) return;
+
+    setLoadedDiffs((prev) => {
+      let changed = false;
+      const next: Record<string, LoadedDiffRecord> = {};
+      for (const [id, loaded] of Object.entries(prev)) {
+        if (invalidatedIds.has(id)) {
+          changed = true;
+          continue;
+        }
+        next[id] = loaded;
+      }
+      return changed ? next : prev;
+    });
+    setLoadingIds((prev) => {
+      let changed = false;
+      const next = new Set<string>();
+      prev.forEach((id) => {
+        if (invalidatedIds.has(id)) {
+          changed = true;
+          return;
+        }
+        next.add(id);
+      });
+      return changed ? next : prev;
+    });
+    setProcessedStatsIds((prev) => {
+      let changed = false;
+      const next = new Set<string>();
+      prev.forEach((id) => {
+        if (invalidatedIds.has(id)) {
+          changed = true;
+          return;
+        }
+        next.add(id);
+      });
+      return changed ? next : prev;
+    });
   }, [metadataDiffs]);
 
   useEffect(() => {

@@ -9,7 +9,7 @@ use codex_app_server_protocol::{
     ClientNotification, ClientRequest, CommandExecutionApprovalDecision,
     CommandExecutionRequestApprovalResponse, FileChangeApprovalDecision,
     FileChangeRequestApprovalResponse, GetAuthStatusParams, GetAuthStatusResponse,
-    InitializeResponse, JSONRPCError, JSONRPCNotification, JSONRPCRequest, JSONRPCResponse,
+    JSONRPCError, JSONRPCNotification, JSONRPCRequest, JSONRPCResponse,
     McpElicitationPrimitiveSchema, McpServerElicitationAction, McpServerElicitationRequest,
     McpServerElicitationRequestResponse, PermissionGrantScope, PermissionsRequestApprovalResponse,
     RequestId, ServerRequest, ThreadResumeParams, ThreadResumeResponse, ThreadStartParams,
@@ -81,7 +81,7 @@ impl AppServerClient {
         };
 
         self.rpc()
-            .request::<InitializeResponse, _>(request_id, &request, "initialize")
+            .request::<Value, _>(request_id, &request, "initialize")
             .await?;
         self.send_message(&ClientNotification::Initialized).await
     }

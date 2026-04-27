@@ -128,6 +128,8 @@ function DiffCard({
   const hasLoadedContent = diff.oldContent != null || diff.newContent != null;
   const hasDeferredContent =
     !isOmitted && !hasLoadedContent && diff.change !== 'permissionChange';
+  const isActivelyLoadingContent =
+    loadingContent || (hasDeferredContent && !statsProcessed);
 
   // Build a diff from raw contents so the viewer can expand beyond hunks
   const oldContentSafe = diff.oldContent ?? '';
@@ -423,8 +425,10 @@ function DiffCard({
           className="px-4 pb-4 text-xs font-mono"
           style={{ color: 'hsl(var(--muted-foreground) / 0.9)' }}
         >
-          {loadingContent || hasDeferredContent
+          {isActivelyLoadingContent
             ? 'Loading diff content...'
+            : hasDeferredContent
+            ? 'Diff content is unavailable for this file.'
             : isOmitted
             ? 'Content omitted or not renderable as a text diff. Open in editor to view.'
             : isContentEqual

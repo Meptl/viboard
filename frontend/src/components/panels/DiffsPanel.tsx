@@ -674,6 +674,7 @@ function DiffsPanelContent({
                 key={id}
                 id={id}
                 rootRef={listRootRef}
+                visibilityKey={`${isExpanded}:${diff.change}:${diff.oldPath ?? ''}:${diff.newPath ?? ''}:${diff.additions ?? ''}:${diff.deletions ?? ''}:${diff.contentOmitted ? '1' : '0'}:${loadingIds.has(id) ? '1' : '0'}:${processedStatsIds.has(id) ? '1' : '0'}`}
                 onVisible={() => {
                   if (!isExpanded) return;
                   void ensureDiffContentLoaded(id, diff);
@@ -707,16 +708,19 @@ function DiffsPanelContent({
 function ViewportAwareRow({
   id,
   rootRef,
+  visibilityKey,
   onVisible,
   children,
 }: {
   id: string;
   rootRef: RefObject<HTMLDivElement | null>;
+  visibilityKey: string;
   onVisible: () => void;
   children: ReactNode;
 }) {
   const rowRef = useRef<HTMLDivElement>(null);
   const onVisibleRef = useRef(onVisible);
+  const isIntersectingRef = useRef(false);
 
   useEffect(() => {
     onVisibleRef.current = onVisible;
@@ -728,7 +732,9 @@ function ViewportAwareRow({
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
+        const isIntersecting = entries.some((entry) => entry.isIntersecting);
+        isIntersectingRef.current = isIntersecting;
+        if (isIntersecting) {
           onVisibleRef.current();
         }
       },
@@ -741,6 +747,11 @@ function ViewportAwareRow({
     observer.observe(node);
     return () => observer.disconnect();
   }, [id, rootRef]);
+
+  useEffect(() => {
+    if (!isIntersectingRef.current) return;
+    onVisibleRef.current();
+  }, [visibilityKey]);
 
   return <div ref={rowRef}>{children}</div>;
 }

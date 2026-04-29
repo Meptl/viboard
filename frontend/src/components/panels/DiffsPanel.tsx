@@ -72,6 +72,12 @@ function isLargeDiffFile(diff: DiffMetadata): boolean {
 }
 
 function getDiffId(diff: DiffMetadata, idx: number): string {
+  if (diff.change === 'deleted') {
+    return diff.oldPath || diff.newPath || String(idx);
+  }
+  if (diff.change === 'added') {
+    return diff.newPath || diff.oldPath || String(idx);
+  }
   return diff.newPath || diff.oldPath || String(idx);
 }
 
@@ -467,6 +473,12 @@ export function DiffsPanel({ selectedAttempt }: DiffsPanelProps) {
       try {
         const startedAt = performance.now();
         const fullDiff = await attemptsApi.getDiffFile(attemptId, path);
+        const normalizedDiff: Diff = {
+          ...fullDiff,
+          oldPath: diff.oldPath,
+          newPath: diff.newPath,
+          change: diff.change,
+        };
         const fetchMs = performance.now() - startedAt;
         if (fetchMs > 150) {
           console.debug(
@@ -476,7 +488,7 @@ export function DiffsPanel({ selectedAttempt }: DiffsPanelProps) {
         setLoadedDiffs((prev) => ({
           ...prev,
           [id]: {
-            diff: fullDiff,
+            diff: normalizedDiff,
           },
         }));
       } catch (fetchError) {

@@ -463,6 +463,7 @@ export function DiffsPanel({ selectedAttempt }: DiffsPanelProps) {
 
       if (loadedDiffs[id]) return;
       if (loadingIds.has(id)) return;
+      if (processedStatsIds.has(id)) return;
 
       setLoadingIds((prev) => {
         const next = new Set(prev);
@@ -506,7 +507,7 @@ export function DiffsPanel({ selectedAttempt }: DiffsPanelProps) {
         });
       }
     },
-    [selectedAttempt?.id, loadedDiffs, loadingIds]
+    [selectedAttempt?.id, loadedDiffs, loadingIds, processedStatsIds]
   );
 
   if (error) {
@@ -680,7 +681,7 @@ function DiffsPanelContent({
                 key={id}
                 id={id}
                 rootRef={listRootRef}
-                visibilityKey={`${isExpanded}:${diff.change}:${diff.oldPath ?? ''}:${diff.newPath ?? ''}:${diff.additions ?? ''}:${diff.deletions ?? ''}:${diff.contentOmitted ? '1' : '0'}:${loadingIds.has(id) ? '1' : '0'}:${processedStatsIds.has(id) ? '1' : '0'}`}
+                visibilityKey={`${isExpanded}:${diff.change}:${diff.oldPath ?? ''}:${diff.newPath ?? ''}:${diff.additions ?? ''}:${diff.deletions ?? ''}:${diff.contentOmitted ? '1' : '0'}`}
                 onVisible={() => {
                   if (!isExpanded) return;
                   void ensureDiffContentLoaded(id, diff);

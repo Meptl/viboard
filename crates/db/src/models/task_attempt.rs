@@ -41,7 +41,7 @@ pub struct TaskAttempt {
     pub container_ref: Option<String>, // Path to a worktree (local), or cloud container id
     pub branch: String,                // Git branch name for this task attempt
     pub target_branch: String,         // Target branch for this attempt
-    pub executor: String, // Name of the base coding agent to use ("AMP", "CLAUDE_CODE",
+    pub executor: String, // Name of the base coding agent to use ("CLAUDE_CODE",
     // "GEMINI", etc.)
     pub worktree_deleted: bool, // Flag indicating if worktree has been cleaned up
     pub setup_completed_at: Option<DateTime<Utc>>, // When setup script was last completed

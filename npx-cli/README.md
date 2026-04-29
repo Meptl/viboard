@@ -1,6 +1,6 @@
 # Viboard
 
-> A visual project management tool for developers that integrates with git repositories and coding agents like Claude Code and Amp.
+> A visual project management tool for developers that integrates with git repositories and coding agents like Claude Code, Gemini, Codex, and OpenCode.
 
 ## Quick Start
 
@@ -44,7 +44,6 @@ Viboard is a modern project management tool designed specifically for developers
 
 **🤖 AI Agent Integration**
 - **Claude**: Advanced AI coding assistant
-- **Amp**: Powerful development agent
 - **Echo**: Simple testing/debugging agent
 - Create tasks and immediately start agent execution
 - Follow-up task execution for iterative development

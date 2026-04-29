@@ -75,20 +75,12 @@ function getDiffId(diff: DiffMetadata, idx: number): string {
   if (diff.change === 'deleted') {
     return diff.oldPath || diff.newPath || String(idx);
   }
-  if (diff.change === 'added') {
-    return diff.newPath || diff.oldPath || String(idx);
-  }
   return diff.newPath || diff.oldPath || String(idx);
 }
 
 function getDiffFetchPaths(diff: Diff): string[] {
   if (diff.change === 'deleted') {
     return [diff.oldPath, diff.newPath].filter(
-      (path): path is string => typeof path === 'string' && path.length > 0
-    );
-  }
-  if (diff.change === 'added') {
-    return [diff.newPath, diff.oldPath].filter(
       (path): path is string => typeof path === 'string' && path.length > 0
     );
   }

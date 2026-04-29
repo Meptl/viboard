@@ -115,10 +115,12 @@ impl AppServerClient {
                 approval_policy: overrides.approval_policy,
                 approvals_reviewer: None,
                 sandbox: overrides.sandbox,
+                permission_profile: None,
                 config: overrides.config,
                 base_instructions: overrides.base_instructions,
                 developer_instructions: overrides.developer_instructions,
                 personality: None,
+                exclude_turns: false,
                 persist_extended_history: false,
                 history: None,
             },
@@ -250,6 +252,7 @@ impl AppServerClient {
                 let response = PermissionsRequestApprovalResponse {
                     permissions: granted_permissions,
                     scope: PermissionGrantScope::Session,
+                    strict_auto_review: None,
                 };
                 send_server_response(peer, request_id, response).await
             }

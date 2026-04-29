@@ -486,7 +486,7 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                                 value: Value::String(err.message),
                             });
                         } else if let Some(value) = result {
-                            mcp_tool_state.result = Some(mcp_tool_result_from_response(value));
+                            mcp_tool_state.result = Some(mcp_tool_result_from_response(*value));
                         }
                         let index = add_normalized_entry(
                             &msg_store,
@@ -510,7 +510,8 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                     }
                     ThreadItem::ImageView { path, .. } => {
                         state.close_streaming_text();
-                        let relative_path = make_path_relative(&path, &worktree_path_str);
+                        let relative_path =
+                            make_path_relative(path.to_string_lossy().as_ref(), &worktree_path_str);
                         add_normalized_entry(
                             &msg_store,
                             &entry_index,
@@ -608,7 +609,7 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                                     value: Value::String(err.message),
                                 });
                             } else if let Some(value) = result {
-                                mcp_tool_state.result = Some(mcp_tool_result_from_response(value));
+                                mcp_tool_state.result = Some(mcp_tool_result_from_response(*value));
                             }
                             if let Some(index) = mcp_tool_state.index {
                                 replace_normalized_entry(

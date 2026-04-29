@@ -78,6 +78,10 @@ export function KeyboardShortcutsHelp() {
       description: 'Find on page',
       keys: ['Cmd + F', 'Ctrl + F'],
     });
+    addBinding({
+      description: 'Duplicate task by dragging',
+      keys: ['Shift + Drag'],
+    });
 
     keyBindings.forEach((binding) => {
       if (binding.action === Action.EXIT || binding.action === Action.CREATE) {

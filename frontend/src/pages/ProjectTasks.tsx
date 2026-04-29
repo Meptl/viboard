@@ -148,6 +148,7 @@ export function ProjectTasks() {
   const { enableScope, disableScope } = useHotkeysContext();
   const [searchParams, setSearchParams] = useSearchParams();
   const [dropPreview, setDropPreview] = useState<DropPreview>(null);
+  const [duplicateOnDrop, setDuplicateOnDrop] = useState(false);
   const [optimisticStatusByTaskId, setOptimisticStatusByTaskId] = useState<
     Record<string, TaskStatus>
   >({});
@@ -767,6 +768,25 @@ export function ProjectTasks() {
       const newStatus = over.id as Task['status'];
       const task = tasksById[draggedTaskId];
       if (!task || task.status === newStatus) return;
+
+      if (duplicateOnDrop) {
+        try {
+          await tasksApi.create({
+            project_id: task.project_id,
+            title: task.title,
+            description: task.description,
+            status: newStatus,
+            parent_task_attempt: task.parent_task_attempt,
+            image_ids: null,
+          });
+        } catch (err) {
+          console.error('Failed to duplicate task via shift-drag:', err);
+        } finally {
+          setDuplicateOnDrop(false);
+        }
+        return;
+      }
+
       const shouldStopAgent =
         task.status === 'inprogress' &&
         newStatus !== 'inprogress' &&
@@ -971,6 +991,8 @@ export function ProjectTasks() {
           'Failed to update task status / auto-start attempt:',
           err
         );
+      } finally {
+        setDuplicateOnDrop(false);
       }
     },
     [
@@ -978,6 +1000,7 @@ export function ProjectTasks() {
       config?.executor_profile,
       config?.show_new_attempt_drag_warning,
       clearTaskNotifications,
+      duplicateOnDrop,
       projectId,
       t,
       tasksById,
@@ -988,11 +1011,21 @@ export function ProjectTasks() {
 
   const clearDropPreview = useCallback(() => {
     setDropPreview(null);
+    setDuplicateOnDrop(false);
   }, []);
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
-    void event;
     setDropPreview(null);
+    const activatorEvent = event.activatorEvent;
+    if (activatorEvent instanceof MouseEvent) {
+      setDuplicateOnDrop(activatorEvent.shiftKey);
+      return;
+    }
+    if (activatorEvent instanceof PointerEvent) {
+      setDuplicateOnDrop(activatorEvent.shiftKey);
+      return;
+    }
+    setDuplicateOnDrop(false);
   }, []);
 
   const handleDragOver = useCallback(

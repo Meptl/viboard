@@ -40,8 +40,6 @@ type DiffMetadataSignature = {
   change: DiffMetadata['change'];
   oldPath: string | null;
   newPath: string | null;
-  additions: number | null;
-  deletions: number | null;
   contentOmitted: boolean;
 };
 
@@ -179,8 +177,6 @@ export function DiffsPanel({ selectedAttempt }: DiffsPanelProps) {
         change: diff.change,
         oldPath: diff.oldPath ?? null,
         newPath: diff.newPath ?? null,
-        additions: diff.additions ?? null,
-        deletions: diff.deletions ?? null,
         contentOmitted: !!diff.contentOmitted,
       };
       nextMetadataById[id] = signature;
@@ -191,8 +187,6 @@ export function DiffsPanel({ selectedAttempt }: DiffsPanelProps) {
         previous.change !== signature.change ||
         previous.oldPath !== signature.oldPath ||
         previous.newPath !== signature.newPath ||
-        previous.additions !== signature.additions ||
-        previous.deletions !== signature.deletions ||
         previous.contentOmitted !== signature.contentOmitted
       ) {
         invalidatedIds.add(id);

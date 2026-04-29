@@ -81,6 +81,22 @@ function getDiffId(diff: DiffMetadata, idx: number): string {
   return diff.newPath || diff.oldPath || String(idx);
 }
 
+function getDiffFetchPaths(diff: Diff): string[] {
+  if (diff.change === 'deleted') {
+    return [diff.oldPath, diff.newPath].filter(
+      (path): path is string => typeof path === 'string' && path.length > 0
+    );
+  }
+  if (diff.change === 'added') {
+    return [diff.newPath, diff.oldPath].filter(
+      (path): path is string => typeof path === 'string' && path.length > 0
+    );
+  }
+  return [diff.newPath, diff.oldPath].filter(
+    (path): path is string => typeof path === 'string' && path.length > 0
+  );
+}
+
 function metadataToDisplayDiff(metadata: DiffMetadata): Diff {
   return {
     ...metadata,
@@ -458,8 +474,8 @@ export function DiffsPanel({ selectedAttempt }: DiffsPanelProps) {
   const ensureDiffContentLoaded = useCallback(
     async (id: string, diff: Diff) => {
       const attemptId = selectedAttempt?.id;
-      const path = diff.newPath || diff.oldPath;
-      if (!attemptId || !path) return;
+      const candidatePaths = getDiffFetchPaths(diff);
+      if (!attemptId || candidatePaths.length === 0) return;
 
       if (loadedDiffs[id]) return;
       if (loadingIds.has(id)) return;
@@ -473,7 +489,22 @@ export function DiffsPanel({ selectedAttempt }: DiffsPanelProps) {
 
       try {
         const startedAt = performance.now();
-        const fullDiff = await attemptsApi.getDiffFile(attemptId, path);
+        let fullDiff: Diff | null = null;
+        let lastError: unknown = null;
+
+        for (const candidatePath of candidatePaths) {
+          try {
+            fullDiff = await attemptsApi.getDiffFile(attemptId, candidatePath);
+            break;
+          } catch (fetchError) {
+            lastError = fetchError;
+          }
+        }
+
+        if (!fullDiff) {
+          throw lastError ?? new Error('Failed to load diff file content');
+        }
+
         const normalizedDiff: Diff = {
           ...fullDiff,
           oldPath: diff.oldPath,
@@ -483,7 +514,7 @@ export function DiffsPanel({ selectedAttempt }: DiffsPanelProps) {
         const fetchMs = performance.now() - startedAt;
         if (fetchMs > 150) {
           console.debug(
-            `[diff-timing] fetched ${path} in ${fetchMs.toFixed(1)}ms`
+            `[diff-timing] fetched ${candidatePaths.join(' | ')} in ${fetchMs.toFixed(1)}ms`
           );
         }
         setLoadedDiffs((prev) => ({
@@ -493,7 +524,11 @@ export function DiffsPanel({ selectedAttempt }: DiffsPanelProps) {
           },
         }));
       } catch (fetchError) {
-        console.error('Failed to load diff file content', path, fetchError);
+        console.error(
+          'Failed to load diff file content',
+          candidatePaths,
+          fetchError
+        );
       } finally {
         setProcessedStatsIds((prev) => {
           const next = new Set(prev);

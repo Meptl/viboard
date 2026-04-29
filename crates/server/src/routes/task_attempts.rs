@@ -268,6 +268,11 @@ async fn get_task_attempt_diff_for_file(
 
     let path_filter = [file_path.as_str()];
     let latest_merge_commit = latest_merge.as_ref().map(Merge::merge_commit);
+    let git = deployment.git();
+    let should_retry_without_path_filter = |err: &services::services::git::GitServiceError| {
+        let msg = err.to_string();
+        msg.contains("pathspec") && msg.contains("did not match any files")
+    };
 
     let before_diff_fetch = Instant::now();
     let diffs = if let Some(commit) = latest_merge_commit
@@ -277,14 +282,25 @@ async fn get_task_attempt_diff_for_file(
             .await?
         && !is_ahead
     {
-        deployment.git().get_diffs(
+        match git.get_diffs(
             DiffTarget::Commit {
                 repo_path: project_repo_path,
                 commit_sha: &commit,
             },
             Some(&path_filter),
             DiffDetailLevel::FullContent,
-        )?
+        ) {
+            Ok(diffs) => diffs,
+            Err(err) if should_retry_without_path_filter(&err) => git.get_diffs(
+                DiffTarget::Commit {
+                    repo_path: project_repo_path,
+                    commit_sha: &commit,
+                },
+                None,
+                DiffDetailLevel::FullContent,
+            )?,
+            Err(err) => return Err(err.into()),
+        }
     } else {
         let worktree_path_buf = ensure_worktree_path(&deployment, &task_attempt).await?;
         let base_commit = deployment.git().get_base_commit(
@@ -292,14 +308,25 @@ async fn get_task_attempt_diff_for_file(
             &task_attempt.branch,
             &task_attempt.target_branch,
         )?;
-        deployment.git().get_diffs(
+        match git.get_diffs(
             DiffTarget::Worktree {
                 worktree_path: worktree_path_buf.as_path(),
                 base_commit: &base_commit,
             },
             Some(&path_filter),
             DiffDetailLevel::FullContent,
-        )?
+        ) {
+            Ok(diffs) => diffs,
+            Err(err) if should_retry_without_path_filter(&err) => git.get_diffs(
+                DiffTarget::Worktree {
+                    worktree_path: worktree_path_buf.as_path(),
+                    base_commit: &base_commit,
+                },
+                None,
+                DiffDetailLevel::FullContent,
+            )?,
+            Err(err) => return Err(err.into()),
+        }
     };
     let diff_fetch_ms = before_diff_fetch.elapsed().as_millis();
 

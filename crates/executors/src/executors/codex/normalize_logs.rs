@@ -196,6 +196,7 @@ struct ModelParamsState {
     index: Option<usize>,
     model: Option<String>,
     reasoning_effort: Option<ReasoningEffort>,
+    cli_version: Option<String>,
 }
 
 enum StreamingTextKind {
@@ -217,6 +218,7 @@ impl LogState {
                 index: None,
                 model: None,
                 reasoning_effort: None,
+                cli_version: None,
             },
         }
     }
@@ -725,11 +727,14 @@ fn handle_jsonrpc_response(
     entry_index: &EntryIndexProvider,
     model_params: &mut ModelParamsState,
 ) {
+    let cli_version = extract_cli_version(&response.result);
+
     if let Ok(response) = serde_json::from_value::<ThreadStartResponse>(response.result.clone()) {
         msg_store.push_session_id(response.thread.id);
         handle_model_params(
             Some(response.model),
             response.reasoning_effort,
+            cli_version.clone(),
             msg_store,
             entry_index,
             model_params,
@@ -742,6 +747,7 @@ fn handle_jsonrpc_response(
         handle_model_params(
             Some(response.model),
             response.reasoning_effort,
+            cli_version,
             msg_store,
             entry_index,
             model_params,
@@ -755,6 +761,7 @@ fn handle_jsonrpc_response(
 fn handle_model_params(
     model: Option<String>,
     reasoning_effort: Option<ReasoningEffort>,
+    cli_version: Option<String>,
     msg_store: &Arc<MsgStore>,
     entry_index: &EntryIndexProvider,
     state: &mut ModelParamsState,
@@ -765,6 +772,9 @@ fn handle_model_params(
     if let Some(reasoning_effort) = reasoning_effort {
         state.reasoning_effort = Some(reasoning_effort);
     }
+    if let Some(cli_version) = cli_version {
+        state.cli_version = Some(cli_version);
+    }
 
     let mut params = vec![];
     if let Some(model) = &state.model {
@@ -772,6 +782,9 @@ fn handle_model_params(
     }
     if let Some(reasoning_effort) = &state.reasoning_effort {
         params.push(format!("reasoning effort: {reasoning_effort}"));
+    }
+    if let Some(cli_version) = &state.cli_version {
+        params.push(format!("cli version: {cli_version}"));
     }
 
     if params.is_empty() {
@@ -787,6 +800,14 @@ fn handle_model_params(
         metadata: None,
     };
     upsert_normalized_entry(msg_store, index, entry, is_new);
+}
+
+fn extract_cli_version(result: &Value) -> Option<String> {
+    result
+        .as_object()
+        .and_then(|obj| obj.get("cli_version").or_else(|| obj.get("cliVersion")))
+        .and_then(Value::as_str)
+        .map(str::to_owned)
 }
 
 fn build_command_output(stdout: Option<&str>, stderr: Option<&str>) -> Option<String> {

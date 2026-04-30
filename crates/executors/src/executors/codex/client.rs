@@ -8,13 +8,13 @@ use async_trait::async_trait;
 use codex_app_server_protocol::{
     ClientNotification, ClientRequest, CommandExecutionApprovalDecision,
     CommandExecutionRequestApprovalResponse, FileChangeApprovalDecision,
-    FileChangeRequestApprovalResponse, GetAuthStatusParams, GetAuthStatusResponse,
-    JSONRPCError, JSONRPCNotification, JSONRPCRequest, JSONRPCResponse,
-    McpElicitationPrimitiveSchema, McpServerElicitationAction, McpServerElicitationRequest,
-    McpServerElicitationRequestResponse, PermissionGrantScope, PermissionsRequestApprovalResponse,
-    RequestId, ServerRequest, ThreadResumeParams, ThreadResumeResponse, ThreadStartParams,
-    ThreadStartResponse, ToolRequestUserInputAnswer, ToolRequestUserInputResponse, TurnStartParams,
-    TurnStartResponse, UserInput,
+    FileChangeRequestApprovalResponse, GetAuthStatusParams, GetAuthStatusResponse, JSONRPCError,
+    JSONRPCNotification, JSONRPCRequest, JSONRPCResponse, McpElicitationPrimitiveSchema,
+    McpServerElicitationAction, McpServerElicitationRequest, McpServerElicitationRequestResponse,
+    PermissionGrantScope, PermissionsRequestApprovalResponse, RequestId, ServerRequest,
+    ThreadResumeParams, ThreadResumeResponse, ThreadStartParams, ThreadStartResponse,
+    ToolRequestUserInputAnswer, ToolRequestUserInputResponse, TurnStartParams, TurnStartResponse,
+    UserInput,
 };
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::{self, Value, json};
@@ -34,6 +34,7 @@ pub struct AppServerClient {
     rpc: OnceLock<JsonRpcPeer>,
     log_writer: LogWriter,
     approvals: Option<Arc<dyn ExecutorApprovalService>>,
+    cli_version: Option<String>,
     thread_id: Mutex<Option<String>>,
     pending_feedback: Mutex<VecDeque<String>>,
     auto_approve: bool,
@@ -43,12 +44,14 @@ impl AppServerClient {
     pub fn new(
         log_writer: LogWriter,
         approvals: Option<Arc<dyn ExecutorApprovalService>>,
+        cli_version: Option<String>,
         auto_approve: bool,
     ) -> Arc<Self> {
         Arc::new(Self {
             rpc: OnceLock::new(),
             log_writer,
             approvals,
+            cli_version,
             auto_approve,
             thread_id: Mutex::new(None),
             pending_feedback: Mutex::new(VecDeque::new()),
@@ -512,9 +515,15 @@ impl JsonRpcCallbacks for AppServerClient {
         &self,
         _peer: &JsonRpcPeer,
         raw: &str,
-        _response: &JSONRPCResponse,
+        response: &JSONRPCResponse,
     ) -> Result<(), ExecutorError> {
-        self.log_writer.log_raw(raw).await
+        self.log_writer
+            .log_raw(&inject_cli_version(
+                raw,
+                response,
+                self.cli_version.as_deref(),
+            ))
+            .await
     }
 
     async fn on_error(
@@ -545,6 +554,30 @@ impl JsonRpcCallbacks for AppServerClient {
         self.log_writer.log_raw(raw).await?;
         Ok(())
     }
+}
+
+fn inject_cli_version(raw: &str, response: &JSONRPCResponse, cli_version: Option<&str>) -> String {
+    let Some(cli_version) = cli_version else {
+        return raw.to_string();
+    };
+
+    if serde_json::from_value::<ThreadStartResponse>(response.result.clone()).is_err()
+        && serde_json::from_value::<ThreadResumeResponse>(response.result.clone()).is_err()
+    {
+        return raw.to_string();
+    }
+
+    let mut response = response.clone();
+    let Some(result) = response.result.as_object_mut() else {
+        return raw.to_string();
+    };
+
+    result.insert(
+        "cli_version".to_string(),
+        Value::String(cli_version.to_string()),
+    );
+
+    serde_json::to_string(&response).unwrap_or_else(|_| raw.to_string())
 }
 
 fn build_elicitation_content(schema: codex_app_server_protocol::McpElicitationSchema) -> Value {

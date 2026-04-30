@@ -41,6 +41,8 @@ use crate::{
     stdout_dup::create_stdout_pipe_writer,
 };
 
+pub const CODEX_CLI_PACKAGE_VERSION: &str = "0.125.0";
+
 /// Sandbox policy modes for Codex
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema, AsRefStr)]
 #[serde(rename_all = "kebab-case")]
@@ -219,8 +221,8 @@ impl StandardCodingAgentExecutor for Codex {
 }
 
 impl Codex {
-    pub fn base_command() -> &'static str {
-        "npx -y @openai/codex@0.125.0"
+    pub fn base_command() -> String {
+        format!("npx -y @openai/codex@{CODEX_CLI_PACKAGE_VERSION}")
     }
 
     pub fn base_command_builder() -> CommandBuilder {
@@ -324,6 +326,7 @@ impl Codex {
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let combined_prompt = self.append_prompt.combine_prompt(prompt);
+        let cli_version = extract_cli_version_from_command(&command_parts);
         let (program_path, args) = command_parts.into_resolved().await?;
 
         let mut process = Command::new(program_path);
@@ -373,6 +376,7 @@ impl Codex {
                 log_writer.clone(),
                 exit_signal_tx.clone(),
                 approvals,
+                cli_version,
                 auto_approve,
             )
             .await
@@ -427,9 +431,10 @@ impl Codex {
         log_writer: LogWriter,
         exit_signal_tx: ExitSignalSender,
         approvals: Option<Arc<dyn ExecutorApprovalService>>,
+        cli_version: Option<String>,
         auto_approve: bool,
     ) -> Result<(), ExecutorError> {
-        let client = AppServerClient::new(log_writer, approvals, auto_approve);
+        let client = AppServerClient::new(log_writer, approvals, cli_version, auto_approve);
         let rpc_peer =
             JsonRpcPeer::spawn(child_stdin, child_stdout, client.clone(), exit_signal_tx);
         client.connect(rpc_peer);
@@ -467,4 +472,12 @@ impl Codex {
         }
         Ok(())
     }
+}
+
+fn extract_cli_version_from_command(command_parts: &CommandParts) -> Option<String> {
+    let (_program, args) = command_parts.parts();
+    args.iter()
+        .find_map(|arg| arg.strip_prefix("@openai/codex@"))
+        .filter(|version| !version.is_empty() && *version != "latest")
+        .map(str::to_owned)
 }

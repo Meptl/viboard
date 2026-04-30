@@ -54,7 +54,7 @@ import TaskKanbanBoard, {
 } from '@/components/tasks/TaskKanbanBoard';
 import type {
   DragEndEvent,
-  DragOverEvent,
+  DragMoveEvent,
   DragStartEvent,
 } from '@/components/ui/shadcn-io/kanban';
 import { useProjectTasks } from '@/hooks/useProjectTasks';
@@ -92,9 +92,29 @@ const TASK_STATUSES = [
   'cancelled',
 ] as const;
 const AUTO_DONE_CLEANUP_INTERVAL_MS = 30 * 60 * 1000;
+const SAME_STATUS_DUPLICATE_MIN_DISTANCE_PX = 36;
 
 const normalizeStatus = (status: string): TaskStatus =>
   status.toLowerCase() as TaskStatus;
+
+const getDragDistance = (delta: DragEndEvent['delta']) =>
+  Math.hypot(delta.x, delta.y);
+
+const resolveDropStatus = (
+  overId: string,
+  tasksById: Record<string, Task>
+): TaskStatus | null => {
+  if (TASK_STATUSES.includes(overId as TaskStatus)) {
+    return normalizeStatus(overId);
+  }
+
+  const overTask = tasksById[overId];
+  if (!overTask) {
+    return null;
+  }
+
+  return normalizeStatus(overTask.status);
+};
 
 function GitErrorBanner() {
   const { error: gitError } = useGitOperationsError();
@@ -772,17 +792,37 @@ export function ProjectTasks() {
       setDraggingTaskId(null);
       const { active, over } = event;
       const shouldDuplicate = duplicateOnDrop;
-      if (!over || !active.data.current) {
+      if (!active.data.current) {
         setDuplicateOnDrop(false);
         return;
       }
 
       const draggedTaskId = active.id as string;
-      const newStatus = over.id as Task['status'];
       const task = tasksById[draggedTaskId];
-      if (!task || task.status === newStatus) {
+      if (!task) {
         setDuplicateOnDrop(false);
         return;
+      }
+      const fallbackStatus = normalizeStatus(task.status);
+      const newStatus = over
+        ? resolveDropStatus(String(over.id), tasksById)
+        : shouldDuplicate
+          ? fallbackStatus
+          : null;
+      if (!newStatus) {
+        setDuplicateOnDrop(false);
+        return;
+      }
+
+      const isSameStatus = task.status === newStatus;
+      if (isSameStatus) {
+        if (
+          !shouldDuplicate ||
+          getDragDistance(event.delta) < SAME_STATUS_DUPLICATE_MIN_DISTANCE_PX
+        ) {
+          setDuplicateOnDrop(false);
+          return;
+        }
       }
 
       if (shouldDuplicate) {
@@ -1041,13 +1081,8 @@ export function ProjectTasks() {
   }, []);
 
   const handleDragOver = useCallback(
-    (event: DragOverEvent) => {
-      const { active, over } = event;
-      if (!over) {
-        setDropPreview(null);
-        return;
-      }
-
+    (event: Pick<DragMoveEvent, 'active' | 'over' | 'delta'>) => {
+      const { active, over, delta } = event;
       const activeTaskId = active.id as string;
       const task = tasksById[activeTaskId];
       if (!task) {
@@ -1055,15 +1090,32 @@ export function ProjectTasks() {
         return;
       }
 
-      if (!TASK_STATUSES.includes(String(over.id) as TaskStatus)) {
+      const dragDistance = getDragDistance(delta);
+      if (
+        duplicateOnDrop &&
+        dragDistance < SAME_STATUS_DUPLICATE_MIN_DISTANCE_PX
+      ) {
         setDropPreview(null);
         return;
       }
 
-      const targetStatus = normalizeStatus(String(over.id));
+      const fallbackStatus = normalizeStatus(task.status);
+      const targetStatus = over
+        ? resolveDropStatus(String(over.id), tasksById)
+        : duplicateOnDrop
+          ? fallbackStatus
+          : null;
+      if (!targetStatus) {
+        setDropPreview(null);
+        return;
+      }
       const currentStatus = normalizeStatus(task.status);
+      const isSameStatusDuplicate =
+        duplicateOnDrop &&
+        targetStatus === currentStatus &&
+        dragDistance >= SAME_STATUS_DUPLICATE_MIN_DISTANCE_PX;
 
-      if (targetStatus === currentStatus) {
+      if (targetStatus === currentStatus && !isSameStatusDuplicate) {
         setDropPreview(null);
         return;
       }
@@ -1084,12 +1136,16 @@ export function ProjectTasks() {
         }
       }
 
+      const previewIndex = isSameStatusDuplicate
+        ? insertIndex + 1
+        : insertIndex;
+
       setDropPreview((prev) => {
         const nextHeight = active.rect.current.initial?.height ?? prev?.height;
         if (
           prev &&
           prev.status === targetStatus &&
-          prev.index === insertIndex &&
+          prev.index === previewIndex &&
           prev.height === nextHeight
         ) {
           return prev;
@@ -1097,12 +1153,19 @@ export function ProjectTasks() {
 
         return {
           status: targetStatus,
-          index: insertIndex,
+          index: previewIndex,
           height: nextHeight,
         };
       });
     },
-    [kanbanColumns, tasksById]
+    [duplicateOnDrop, kanbanColumns, tasksById]
+  );
+
+  const handleDragMove = useCallback(
+    (event: DragMoveEvent) => {
+      handleDragOver(event);
+    },
+    [handleDragOver]
   );
 
   const isInitialTasksLoad = isLoading && tasks.length === 0;
@@ -1180,6 +1243,7 @@ export function ProjectTasks() {
           columns={kanbanColumns}
           onDragEnd={handleDragEnd}
           onDragStart={handleDragStart}
+          onDragMove={handleDragMove}
           onDragOver={handleDragOver}
           onDragCancel={clearDropPreview}
           onViewTaskDetails={handleViewTaskDetails}

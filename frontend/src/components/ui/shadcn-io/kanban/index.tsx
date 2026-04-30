@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import type {
   DragCancelEvent,
   DragEndEvent,
+  DragMoveEvent,
   DragOverEvent,
   DragStartEvent,
   Modifier,
@@ -34,6 +35,7 @@ import { Button } from '../../button';
 export type {
   DragCancelEvent,
   DragEndEvent,
+  DragMoveEvent,
   DragOverEvent,
   DragStartEvent,
 } from '@dnd-kit/core';
@@ -285,6 +287,7 @@ export type KanbanProviderProps = {
   children: ReactNode;
   onDragEnd: (event: DragEndEvent) => void;
   onDragStart?: (event: DragStartEvent) => void;
+  onDragMove?: (event: DragMoveEvent) => void;
   onDragOver?: (event: DragOverEvent) => void;
   onDragCancel?: (event: DragCancelEvent) => void;
   dragOverlay?: ReactNode;
@@ -295,6 +298,7 @@ export const KanbanProvider = ({
   children,
   onDragEnd,
   onDragStart,
+  onDragMove,
   onDragOver,
   onDragCancel,
   dragOverlay,
@@ -311,6 +315,7 @@ export const KanbanProvider = ({
       collisionDetection={rectIntersection}
       onDragEnd={onDragEnd}
       onDragStart={onDragStart}
+      onDragMove={onDragMove}
       onDragOver={onDragOver}
       onDragCancel={onDragCancel}
       sensors={sensors}

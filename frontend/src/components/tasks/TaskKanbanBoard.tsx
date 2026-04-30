@@ -9,6 +9,7 @@ import {
 import {
   type DragCancelEvent,
   type DragEndEvent,
+  type DragMoveEvent,
   type DragOverEvent,
   type DragStartEvent,
   KanbanBoard,
@@ -39,6 +40,7 @@ interface TaskKanbanBoardProps {
   columns: KanbanColumns;
   onDragEnd: (event: DragEndEvent) => void;
   onDragStart?: (event: DragStartEvent) => void;
+  onDragMove?: (event: DragMoveEvent) => void;
   onDragOver?: (event: DragOverEvent) => void;
   onDragCancel?: (event: DragCancelEvent) => void;
   onViewTaskDetails: (task: TaskWithAttemptStatus) => void;
@@ -60,6 +62,7 @@ function TaskKanbanBoard({
   columns,
   onDragEnd,
   onDragStart,
+  onDragMove,
   onDragOver,
   onDragCancel,
   onViewTaskDetails,
@@ -127,6 +130,7 @@ function TaskKanbanBoard({
     <KanbanProvider
       onDragEnd={onDragEnd}
       onDragStart={onDragStart}
+      onDragMove={onDragMove}
       onDragOver={onDragOver}
       onDragCancel={onDragCancel}
       dragOverlay={dragOverlay}

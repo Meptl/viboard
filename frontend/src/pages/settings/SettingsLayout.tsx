@@ -5,7 +5,7 @@ import {
   useNavigate,
   useSearchParams,
 } from 'react-router-dom';
-import { Settings, Cpu, Server, X, FolderOpen } from 'lucide-react';
+import { Settings, Cpu, X, FolderOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useEffect, useRef } from 'react';
@@ -31,12 +31,6 @@ const settingsNavigation = [
     icon: Cpu,
     label: 'Agents',
     description: 'Coding agent configurations',
-  },
-  {
-    path: 'mcp',
-    icon: Server,
-    label: 'MCP Servers',
-    description: 'Model Context Protocol servers',
   },
 ];
 

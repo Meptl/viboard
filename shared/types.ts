@@ -104,12 +104,6 @@ capabilities: { [key in string]?: Array<BaseAgentCapability> }, executors: { [ke
 
 export type Environment = { os_type: string, os_version: string, os_architecture: string, bitness: string, };
 
-export type McpServerQuery = { executor: BaseCodingAgent, };
-
-export type UpdateMcpServersBody = { servers: { [key in string]?: JsonValue }, };
-
-export type GetMcpServerResponse = { mcp_config: McpConfig, config_path: string, };
-
 export type CheckEditorAvailabilityQuery = { editor_type: EditorType, };
 
 export type CheckEditorAvailabilityResponse = { available: boolean, };
@@ -205,8 +199,6 @@ export type QueueStatus = { "status": "empty" } | { "status": "queued", message:
 export type ConflictOp = "rebase" | "merge" | "cherry_pick" | "revert";
 
 export type ExecutorAction = { typ: ExecutorActionType, next_action: ExecutorAction | null, };
-
-export type McpConfig = { servers: { [key in string]?: JsonValue }, servers_path: Array<string>, template: JsonValue, preconfigured: JsonValue, is_toml_config: boolean, };
 
 export type ExecutorActionType = { "type": "CodingAgentInitialRequest" } & CodingAgentInitialRequest | { "type": "CodingAgentFollowUpRequest" } & CodingAgentFollowUpRequest | { "type": "ScriptRequest" } & ScriptRequest;
 

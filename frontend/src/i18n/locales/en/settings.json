@@ -8,9 +8,7 @@
         "projects": "Projects",
         "projectsDesc": "Project scripts and configuration",
         "agents": "Agents",
-        "agentsDesc": "Coding agent configurations",
-        "mcp": "MCP Servers",
-        "mcpDesc": "Model Context Protocol servers"
+        "agentsDesc": "Coding agent configurations"
       }
     },
     "general": {
@@ -264,40 +262,6 @@
         "deleteFailed": "Failed to delete configuration. Please try again.",
         "saveFailed": "Failed to save agent configurations. Please try again.",
         "saveConfigFailed": "Failed to save configuration. Please try again."
-      }
-    },
-    "mcp": {
-      "title": "MCP Server Configuration",
-      "loading": "Loading MCP configuration...",
-      "applying": "Applying configuration...",
-      "labels": {
-        "agent": "Agent",
-        "agentPlaceholder": "Select executor",
-        "serverConfig": "Server Configuration (JSON)",
-        "popularServers": "Popular servers",
-        "serverHelper": "Click a card to insert that MCP Server into the JSON above.",
-        "saveLocation": "Changes will be saved to:"
-      },
-      "loadingStates": {
-        "jsonEditor": "Loading...",
-        "configuration": "Loading current MCP server configuration..."
-      },
-      "errors": {
-        "loadFailed": "Failed to load configuration.",
-        "invalidJson": "Invalid JSON format",
-        "validationError": "Validation error",
-        "saveFailed": "Failed to save MCP servers",
-        "applyFailed": "Failed to apply MCP server configuration",
-        "addServerFailed": "Failed to add preconfigured server",
-        "mcpError": "MCP Configuration Error: {{error}}",
-        "notSupported": "MCP Not Supported",
-        "supportMessage": "To use MCP servers, please select a different executor that supports MCP (Claude, Amp, Gemini, Codex, or Opencode) above."
-      },
-      "save": {
-        "button": "Save",
-        "success": "Settings Saved!",
-        "successMessage": "✓ MCP configuration saved successfully!",
-        "loading": "Loading current MCP server configuration..."
       }
     },
     "projects": {

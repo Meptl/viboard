@@ -8,9 +8,7 @@
         "projects": "Proyectos",
         "projectsDesc": "Scripts y configuración de proyectos",
         "agents": "Agentes",
-        "agentsDesc": "Configuraciones de agentes",
-        "mcp": "Servidores MCP",
-        "mcpDesc": "Servidores de Protocolo de Contexto de Modelo (MCP)"
+        "agentsDesc": "Configuraciones de agentes"
       }
     },
     "general": {
@@ -265,42 +263,6 @@
         "deleteFailed": "Error al eliminar la configuración. Por favor, inténtalo de nuevo.",
         "saveFailed": "Error al guardar la configuración de los agentes. Por favor, inténtalo de nuevo.",
         "saveConfigFailed": "Error al guardar la configuración. Por favor, inténtalo de nuevo."
-      }
-    },
-    "mcp": {
-      "title": "Configuración de Servidor MCP",
-      "description": "Configura los servidores del Protocolo de Contexto de Modelos (MCP) para ampliar las capacidades del agente de codificación con herramientas y recursos personalizados.",
-      "loading": "Cargando configuración MCP...",
-      "applying": "Aplicando configuración...",
-      "loadingStates": {
-        "jsonEditor": "Cargando...",
-        "configuration": "Cargando configuración actual del servidor MCP..."
-      },
-      "labels": {
-        "agent": "Agente",
-        "agentPlaceholder": "Seleccionar",
-        "agentHelper": "Elige para qué agente configurar los servidores MCP.",
-        "serverConfig": "Configuración de Servidor (JSON)",
-        "popularServers": "Servidores populares",
-        "serverHelper": "Haz clic en una tarjeta para insertar ese Servidor MCP en el JSON de arriba.",
-        "saveLocation": "Los cambios se guardarán en:"
-      },
-      "errors": {
-        "loadFailed": "Error al cargar la configuración.",
-        "invalidJson": "Formato JSON inválido",
-        "validationError": "Error de validación",
-        "saveFailed": "Error al guardar servidores MCP",
-        "applyFailed": "Error al aplicar la configuración del servidor MCP",
-        "addServerFailed": "Error al agregar servidor preconfigurado",
-        "mcpError": "Error de Configuración MCP: {{error}}",
-        "notSupported": "MCP No Soportado",
-        "supportMessage": "Para usar servidores MCP, por favor selecciona un agente diferente que soporte MCP (Claude, Amp, Gemini, Codex, o Opencode) arriba."
-      },
-      "save": {
-        "button": "Guardar Configuración MCP",
-        "success": "¡Configuración Guardada!",
-        "successMessage": "✓ ¡Configuración MCP guardada exitosamente!",
-        "loading": "Cargando configuración actual del servidor MCP..."
       }
     },
     "projects": {

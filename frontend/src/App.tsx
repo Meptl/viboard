@@ -14,7 +14,6 @@ import { NormalLayout } from '@/components/layout/NormalLayout';
 import {
   AgentSettings,
   GeneralSettings,
-  McpSettings,
   ProjectSettings,
   SettingsLayout,
 } from '@/pages/settings/';
@@ -111,12 +110,7 @@ function AppContent() {
                     <Route path="general" element={<GeneralSettings />} />
                     <Route path="projects" element={<ProjectSettings />} />
                     <Route path="agents" element={<AgentSettings />} />
-                    <Route path="mcp" element={<McpSettings />} />
                   </Route>
-                  <Route
-                    path="/mcp-servers"
-                    element={<Navigate to="/settings/mcp" replace />}
-                  />
                   <Route
                     path="/projects/:projectId/tasks/:taskId"
                     element={<ProjectTasks />}

@@ -777,14 +777,14 @@ fn handle_model_params(
     }
 
     let mut params = vec![];
+    if let Some(cli_version) = &state.cli_version {
+        params.push(format!("cli version: {cli_version}"));
+    }
     if let Some(model) = &state.model {
         params.push(format!("model: {model}"));
     }
     if let Some(reasoning_effort) = &state.reasoning_effort {
         params.push(format!("reasoning effort: {reasoning_effort}"));
-    }
-    if let Some(cli_version) = &state.cli_version {
-        params.push(format!("cli version: {cli_version}"));
     }
 
     if params.is_empty() {

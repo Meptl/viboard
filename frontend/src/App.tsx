@@ -6,8 +6,6 @@ import {
   Routes,
   useParams,
 } from 'react-router-dom';
-import { I18nextProvider } from 'react-i18next';
-import i18n from '@/i18n';
 import { Projects } from '@/pages/Projects';
 import { ProjectTasks } from '@/pages/ProjectTasks';
 import { ProjectRepositoryNotDetected } from '@/pages/ProjectRepositoryNotDetected';
@@ -91,8 +89,7 @@ function AppContent() {
   }
 
   return (
-    <I18nextProvider i18n={i18n}>
-      <ThemeProvider initialTheme={config?.theme || ThemeMode.SYSTEM}>
+    <ThemeProvider initialTheme={config?.theme || ThemeMode.SYSTEM}>
         <SearchProvider>
           <TaskNotificationsProvider>
             <div className="h-screen flex flex-col bg-background">
@@ -133,8 +130,7 @@ function AppContent() {
             </div>
           </TaskNotificationsProvider>
         </SearchProvider>
-      </ThemeProvider>
-    </I18nextProvider>
+    </ThemeProvider>
   );
 }
 

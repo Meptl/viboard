@@ -1,5 +1,3 @@
-import { useTranslation } from 'react-i18next';
-
 interface ReadyContentProps {
   url?: string;
   iframeKey: string;
@@ -15,15 +13,13 @@ export function ReadyContent({
   onIframeError,
   onIframeLoad,
 }: ReadyContentProps) {
-  const { t } = useTranslation('tasks');
-
   return (
     <div className="flex-1">
       <iframe
         ref={iframeRef}
         key={iframeKey}
         src={url}
-        title={t('preview.iframe.title')}
+        title="Dev server preview"
         className="w-full h-full border-0"
         sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
         referrerPolicy="no-referrer"

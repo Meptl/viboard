@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useDevserverPreview } from '@/hooks/useDevserverPreview';
@@ -59,8 +58,6 @@ export function PreviewPanel() {
   const listenerRef = useRef<ClickToComponentListener | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const autoExpandedNoUrlLogsProcessIdRef = useRef<string | null>(null);
-
-  const { t } = useTranslation('tasks');
   const { project, projectId } = useProject();
   const { attemptId: rawAttemptId } = useParams<{ attemptId?: string }>();
 
@@ -110,7 +107,10 @@ export function PreviewPanel() {
     }
 
     const handleMessage = (event: MessageEvent) => {
-      if (!iframeRef.current?.contentWindow || event.source !== iframeRef.current.contentWindow) {
+      if (
+        !iframeRef.current?.contentWindow ||
+        event.source !== iframeRef.current.contentWindow
+      ) {
         return;
       }
 
@@ -161,7 +161,10 @@ export function PreviewPanel() {
   };
 
   const handleNavigate = (target: string) => {
-    const nextUrl = normalizePreviewNavigationTarget(target, effectivePreviewUrl);
+    const nextUrl = normalizePreviewNavigationTarget(
+      target,
+      effectivePreviewUrl
+    );
     if (!nextUrl) {
       return;
     }
@@ -220,12 +223,7 @@ export function PreviewPanel() {
     }, 5000);
 
     return () => window.clearTimeout(timer);
-  }, [
-    hasIframeLoaded,
-    iframeError,
-    latestDevServerProcess,
-    runningDevServer,
-  ]);
+  }, [hasIframeLoaded, iframeError, latestDevServerProcess, runningDevServer]);
 
   useEffect(() => {
     if (!latestDevServerProcess) {
@@ -243,18 +241,15 @@ export function PreviewPanel() {
       return;
     }
 
-    if (autoExpandedNoUrlLogsProcessIdRef.current === latestDevServerProcess.id) {
+    if (
+      autoExpandedNoUrlLogsProcessIdRef.current === latestDevServerProcess.id
+    ) {
       return;
     }
 
     autoExpandedNoUrlLogsProcessIdRef.current = latestDevServerProcess.id;
     setShowLogs(true);
-  }, [
-    latestDevServerProcess,
-    lastKnownUrl,
-    logStream.error,
-    logStream.logs,
-  ]);
+  }, [latestDevServerProcess, lastKnownUrl, logStream.error, logStream.logs]);
 
   const isPreviewReady =
     previewState.status === 'ready' &&
@@ -302,8 +297,8 @@ export function PreviewPanel() {
     return (
       <div className="h-full flex items-center justify-center p-8">
         <div className="text-center text-muted-foreground">
-          <p className="text-lg font-medium">{t('preview.title')}</p>
-          <p className="text-sm mt-2">{t('preview.selectAttempt')}</p>
+          <p className="text-lg font-medium">Preview</p>
+          <p className="text-sm mt-2">Select an attempt to see preview</p>
         </div>
       </div>
     );
@@ -311,7 +306,7 @@ export function PreviewPanel() {
 
   return (
     <div className="h-full flex flex-col min-h-0">
-      <div className={`flex-1 flex flex-col min-h-0`}>
+      <div className="flex-1 flex flex-col min-h-0">
         {mode === 'ready' ? (
           <>
             <PreviewToolbar
@@ -345,7 +340,9 @@ export function PreviewPanel() {
         {showHelp && (
           <Alert variant="destructive" className="py-2">
             <div className="flex items-center justify-between gap-2">
-              <p className="flex-1 text-sm">{t('preview.troubleAlert.title')}</p>
+              <p className="flex-1 text-sm">
+                No server url detected in dev script output.
+              </p>
               <Button
                 variant="ghost"
                 size="sm"

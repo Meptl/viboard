@@ -5,7 +5,6 @@ import {
   useNavigate,
   useSearchParams,
 } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import { Settings, Cpu, Server, X, FolderOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -18,23 +17,30 @@ const settingsNavigation = [
   {
     path: 'general',
     icon: Settings,
+    label: 'General',
+    description: 'Theme, notifications, and preferences',
   },
   {
     path: 'projects',
     icon: FolderOpen,
+    label: 'Projects',
+    description: 'Project scripts and configuration',
   },
   {
     path: 'agents',
     icon: Cpu,
+    label: 'Agents',
+    description: 'Coding agent configurations',
   },
   {
     path: 'mcp',
     icon: Server,
+    label: 'MCP Servers',
+    description: 'Model Context Protocol servers',
   },
 ];
 
 export function SettingsLayout() {
-  const { t } = useTranslation('settings');
   const { enableScope, disableScope } = useHotkeysContext();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -96,9 +102,7 @@ export function SettingsLayout() {
       <div className="container mx-auto px-4 py-8">
         {/* Header with title and close button */}
         <div className="flex items-center justify-between sticky top-0 bg-background z-10 py-4 -mx-4 px-4">
-          <h1 className="text-2xl font-semibold">
-            {t('settings.layout.nav.title')}
-          </h1>
+          <h1 className="text-2xl font-semibold">Settings</h1>
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
@@ -135,10 +139,8 @@ export function SettingsLayout() {
                     >
                       <Icon className="h-4 w-4 mt-0.5 shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <div className="font-medium">
-                          {t(`settings.layout.nav.${item.path}`)}
-                        </div>
-                        <div>{t(`settings.layout.nav.${item.path}Desc`)}</div>
+                        <div className="font-medium">{item.label}</div>
+                        <div>{item.description}</div>
                       </div>
                     </NavLink>
                   );

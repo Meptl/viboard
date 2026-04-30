@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
 import {
   Dialog,
   DialogContent,
@@ -46,7 +45,6 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
     initialForceReset = false,
   }) => {
     const modal = useModal();
-    const { t } = useTranslation(['tasks', 'common']);
     const [isLoading, setIsLoading] = useState(true);
     const [worktreeResetOn, setWorktreeResetOn] = useState(
       initialWorktreeResetOn
@@ -171,8 +169,8 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
         >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 mb-3 md:mb-4">
-              <AlertTriangle className="h-4 w-4 text-destructive" />{' '}
-              {t('restoreLogsDialog.title')}
+              <AlertTriangle className="h-4 w-4 text-destructive" /> Confirm
+              Retry
             </DialogTitle>
             <div className="mt-6 break-words text-sm text-muted-foreground">
               {isLoading ? (
@@ -186,47 +184,38 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
                       <AlertTriangle className="h-4 w-4 text-destructive mt-0.5" />
                       <div className="text-sm min-w-0 w-full break-words">
                         <p className="font-medium text-destructive mb-2">
-                          {t('restoreLogsDialog.historyChange.title')}
+                          History change
                         </p>
                         <>
                           <p className="mt-0.5">
-                            {t('restoreLogsDialog.historyChange.willDelete')}
+                            Will delete this process
                             {laterCount > 0 && (
                               <>
                                 {' '}
-                                {t(
-                                  'restoreLogsDialog.historyChange.andLaterProcesses',
-                                  { count: laterCount }
-                                )}
+                                {laterCount === 1
+                                  ? `and ${laterCount} later process`
+                                  : `and ${laterCount} later processes`}
                               </>
                             )}{' '}
-                            {t('restoreLogsDialog.historyChange.fromHistory')}
+                            from history.
                           </p>
                           <ul className="mt-1 text-xs text-muted-foreground list-disc pl-5">
                             {laterCoding > 0 && (
                               <li>
-                                {t(
-                                  'restoreLogsDialog.historyChange.codingAgentRuns',
-                                  { count: laterCoding }
-                                )}
+                                {laterCoding === 1
+                                  ? `${laterCoding} coding agent run`
+                                  : `${laterCoding} coding agent runs`}
                               </li>
                             )}
                             {laterSetup + laterCleanup > 0 && (
                               <li>
-                                {t(
-                                  'restoreLogsDialog.historyChange.scriptProcesses',
-                                  { count: laterSetup + laterCleanup }
-                                )}
+                                {laterSetup + laterCleanup === 1
+                                  ? `${laterSetup + laterCleanup} script process`
+                                  : `${laterSetup + laterCleanup} script processes`}
                                 {laterSetup > 0 && laterCleanup > 0 && (
                                   <>
                                     {' '}
-                                    {t(
-                                      'restoreLogsDialog.historyChange.setupCleanupBreakdown',
-                                      {
-                                        setup: laterSetup,
-                                        cleanup: laterCleanup,
-                                      }
-                                    )}
+                                    {`(${laterSetup} setup, ${laterCleanup} cleanup)`}
                                   </>
                                 )}
                               </li>
@@ -234,9 +223,7 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
                           </ul>
                         </>
                         <p className="mt-1 text-xs text-muted-foreground">
-                          {t(
-                            'restoreLogsDialog.historyChange.permanentWarning'
-                          )}
+                          This permanently alters history and cannot be undone.
                         </p>
                       </div>
                     </div>
@@ -247,22 +234,16 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
                       <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5" />
                       <div className="text-sm min-w-0 w-full break-words">
                         <p className="font-medium text-amber-700 dark:text-amber-300">
-                          {t('restoreLogsDialog.uncommittedChanges.title')}
+                          Uncommitted changes detected
                         </p>
                         <p className="mt-1 text-xs text-muted-foreground">
-                          {t(
-                            'restoreLogsDialog.uncommittedChanges.description',
-                            {
-                              count: uncommittedCount,
-                            }
-                          )}
+                          {uncommittedCount === 1
+                            ? `You have ${uncommittedCount} uncommitted change`
+                            : `You have ${uncommittedCount} uncommitted changes`}
                           {untrackedCount > 0 &&
-                            t(
-                              'restoreLogsDialog.uncommittedChanges.andUntracked',
-                              {
-                                count: untrackedCount,
-                              }
-                            )}
+                            (untrackedCount === 1
+                              ? ` and ${untrackedCount} untracked file`
+                              : ` and ${untrackedCount} untracked files`)}
                           .
                         </p>
                         <div
@@ -272,9 +253,7 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
                           onClick={() => setAcknowledgeUncommitted((v) => !v)}
                         >
                           <div className="text-xs text-muted-foreground flex-1 min-w-0 break-words">
-                            {t(
-                              'restoreLogsDialog.uncommittedChanges.acknowledgeLabel'
-                            )}
+                            I understand these changes may be affected
                           </div>
                           <div className="ml-auto relative inline-flex h-5 w-9 items-center rounded-full">
                             <span
@@ -319,9 +298,7 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
                         }
                       />
                       <div className="text-sm min-w-0 w-full break-words">
-                        <p className="font-medium mb-2">
-                          {t('restoreLogsDialog.resetWorktree.title')}
-                        </p>
+                        <p className="font-medium mb-2">Reset worktree</p>
                         <div
                           className="mt-2 w-full flex items-center cursor-pointer select-none"
                           role="switch"
@@ -329,9 +306,7 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
                           onClick={() => setWorktreeResetOn((v) => !v)}
                         >
                           <div className="text-xs text-muted-foreground flex-1 min-w-0 break-words">
-                            {worktreeResetOn
-                              ? t('restoreLogsDialog.resetWorktree.enabled')
-                              : t('restoreLogsDialog.resetWorktree.disabled')}
+                            {worktreeResetOn ? 'Enabled' : 'Disabled'}
                           </div>
                           <div className="ml-auto relative inline-flex h-5 w-9 items-center rounded-full">
                             <span
@@ -355,9 +330,7 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
                         {worktreeResetOn && (
                           <>
                             <p className="mt-2 text-xs text-muted-foreground">
-                              {t(
-                                'restoreLogsDialog.resetWorktree.restoreDescription'
-                              )}
+                              Your worktree will be restored to this commit.
                             </p>
                             <div className="mt-1 flex flex-wrap items-center gap-2 min-w-0">
                               <GitCommit className="h-3.5 w-3.5 text-muted-foreground" />
@@ -382,26 +355,23 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
                                   commitsToReset !== null &&
                                   commitsToReset > 0 && (
                                     <li>
-                                      {t(
-                                        'restoreLogsDialog.resetWorktree.rollbackCommits',
-                                        { count: commitsToReset }
-                                      )}
+                                      {commitsToReset === 1
+                                        ? `Roll back ${commitsToReset} commit from current HEAD.`
+                                        : `Roll back ${commitsToReset} commits from current HEAD.`}
                                     </li>
                                   )}
                                 {uncommittedCount > 0 && (
                                   <li>
-                                    {t(
-                                      'restoreLogsDialog.resetWorktree.discardChanges',
-                                      { count: uncommittedCount }
-                                    )}
+                                    {uncommittedCount === 1
+                                      ? `Discard ${uncommittedCount} uncommitted change.`
+                                      : `Discard ${uncommittedCount} uncommitted changes.`}
                                   </li>
                                 )}
                                 {untrackedCount > 0 && (
                                   <li>
-                                    {t(
-                                      'restoreLogsDialog.resetWorktree.untrackedPresent',
-                                      { count: untrackedCount }
-                                    )}
+                                    {untrackedCount === 1
+                                      ? `${untrackedCount} untracked file present (not affected by reset).`
+                                      : `${untrackedCount} untracked files present (not affected by reset).`}
                                   </li>
                                 )}
                               </ul>
@@ -423,10 +393,10 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
                       <AlertTriangle className="h-4 w-4 text-destructive mt-0.5" />
                       <div className="text-sm min-w-0 w-full break-words">
                         <p className="font-medium text-destructive">
-                          {t('restoreLogsDialog.resetWorktree.title')}
+                          Reset worktree
                         </p>
                         <div
-                          className={`mt-2 w-full flex items-center select-none cursor-pointer`}
+                          className="mt-2 w-full flex items-center select-none cursor-pointer"
                           role="switch"
                           onClick={() => {
                             setWorktreeResetOn((on) => {
@@ -439,11 +409,9 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
                           <div className="text-xs text-muted-foreground flex-1 min-w-0 break-words">
                             {forceReset
                               ? worktreeResetOn
-                                ? t('restoreLogsDialog.resetWorktree.enabled')
-                                : t('restoreLogsDialog.resetWorktree.disabled')
-                              : t(
-                                  'restoreLogsDialog.resetWorktree.disabledUncommitted'
-                                )}
+                                ? 'Enabled'
+                                : 'Disabled'
+                              : 'Disabled (uncommitted changes detected)'}
                           </div>
                           <div className="ml-auto relative inline-flex h-5 w-9 items-center rounded-full">
                             <span
@@ -476,7 +444,7 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
                           }}
                         >
                           <div className="text-xs font-medium text-destructive flex-1 min-w-0 break-words">
-                            {t('restoreLogsDialog.resetWorktree.forceReset')}
+                            Force reset (discard uncommitted changes)
                           </div>
                           <div className="ml-auto relative inline-flex h-5 w-9 items-center rounded-full">
                             <span
@@ -499,19 +467,13 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
                         </div>
                         <p className="mt-2 text-xs text-muted-foreground">
                           {forceReset
-                            ? t(
-                                'restoreLogsDialog.resetWorktree.uncommittedWillDiscard'
-                              )
-                            : t(
-                                'restoreLogsDialog.resetWorktree.uncommittedPresentHint'
-                              )}
+                            ? 'Uncommitted changes will be discarded.'
+                            : 'Uncommitted changes present. Turn on Force reset or commit/stash to proceed.'}
                         </p>
                         {short && (
                           <>
                             <p className="mt-2 text-xs text-muted-foreground">
-                              {t(
-                                'restoreLogsDialog.resetWorktree.restoreDescription'
-                              )}
+                              Your worktree will be restored to this commit.
                             </p>
                             <div className="mt-1 flex flex-wrap items-center gap-2 min-w-0">
                               <GitCommit className="h-3.5 w-3.5 text-muted-foreground" />
@@ -535,14 +497,14 @@ const RestoreLogsDialogImpl = NiceModal.create<RestoreLogsDialogProps>(
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={handleCancel}>
-              {t('common:buttons.cancel')}
+              Cancel
             </Button>
             <Button
               variant="destructive"
               disabled={isConfirmDisabled}
               onClick={handleConfirm}
             >
-              {t('restoreLogsDialog.buttons.retry')}
+              Retry
             </Button>
           </DialogFooter>
         </DialogContent>

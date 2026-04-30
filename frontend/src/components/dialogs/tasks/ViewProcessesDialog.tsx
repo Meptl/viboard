@@ -1,6 +1,5 @@
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
-import { useTranslation } from 'react-i18next';
 import { useState } from 'react';
 import {
   Dialog,
@@ -21,7 +20,6 @@ export interface ViewProcessesDialogProps {
 
 const ViewProcessesDialogImpl = NiceModal.create<ViewProcessesDialogProps>(
   ({ attemptId, initialProcessId }) => {
-    const { t } = useTranslation('tasks');
     const modal = useModal();
     const [activeTab, setActiveTab] = useState<'general' | 'processes'>(
       'general'
@@ -50,7 +48,7 @@ const ViewProcessesDialogImpl = NiceModal.create<ViewProcessesDialogProps>(
           }}
         >
           <DialogHeader className="px-4 py-3 border-b">
-            <DialogTitle>{t('viewProcessesDialog.title')}</DialogTitle>
+            <DialogTitle>Details</DialogTitle>
           </DialogHeader>
           <div className="h-[75vh] flex flex-col min-h-0 min-w-0">
             <div className="px-4 py-3 border-b">
@@ -67,7 +65,7 @@ const ViewProcessesDialogImpl = NiceModal.create<ViewProcessesDialogProps>(
                   )}
                   onClick={() => setActiveTab('general')}
                 >
-                  {t('viewProcessesDialog.tabs.general')}
+                  General
                 </Button>
                 <Button
                   type="button"
@@ -81,7 +79,7 @@ const ViewProcessesDialogImpl = NiceModal.create<ViewProcessesDialogProps>(
                   )}
                   onClick={() => setActiveTab('processes')}
                 >
-                  {t('viewProcessesDialog.tabs.processes')}
+                  Processes
                 </Button>
               </div>
             </div>
@@ -96,7 +94,7 @@ const ViewProcessesDialogImpl = NiceModal.create<ViewProcessesDialogProps>(
                 <div className="space-y-4 max-w-2xl">
                   <div>
                     <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                      {t('viewProcessesDialog.general.taskId')}
+                      Task ID
                     </p>
                     <p className="font-mono text-sm break-all">
                       {attempt?.task_id ?? '-'}
@@ -104,7 +102,7 @@ const ViewProcessesDialogImpl = NiceModal.create<ViewProcessesDialogProps>(
                   </div>
                   <div>
                     <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                      {t('viewProcessesDialog.general.latestAttemptId')}
+                      Latest Attempt ID
                     </p>
                     <p className="font-mono text-sm break-all">{attemptId}</p>
                   </div>

@@ -16,7 +16,6 @@ import {
 import { useMemo, useState } from 'react';
 import type { BranchStatus, GitBranch, TaskAttempt } from 'shared/types';
 import { ChangeTargetBranchDialog } from '@/components/dialogs/tasks/ChangeTargetBranchDialog';
-import { useTranslation } from 'react-i18next';
 import { useGitOperations } from '@/hooks/useGitOperations';
 
 interface GitOperationsProps {
@@ -44,8 +43,6 @@ function GitOperations({
   display = 'full',
   onMergeSuccess,
 }: GitOperationsProps) {
-  const { t } = useTranslation('tasks');
-
   const git = useGitOperations(selectedAttempt.id, projectId);
   const isChangingTargetBranch = git.states.changeTargetBranchPending;
 
@@ -103,15 +100,15 @@ function GitOperations({
   }, [branchStatus?.head_oid, branchStatus?.merges]);
 
   const mergeButtonLabel = useMemo(() => {
-    if (mergeSuccess) return t('git.states.merged');
-    if (merging) return t('git.states.merging');
-    return t('git.states.merge');
-  }, [mergeSuccess, merging, t]);
+    if (mergeSuccess) return 'Merged!';
+    if (merging) return 'Merging...';
+    return 'Merge';
+  }, [mergeSuccess, merging]);
 
   const rebaseButtonLabel = useMemo(() => {
-    if (rebasing) return t('git.states.rebasing');
-    return t('git.states.rebase');
-  }, [rebasing, t]);
+    if (rebasing) return 'Rebasing...';
+    return 'Rebase';
+  }, [rebasing]);
 
   const shouldShowRebaseAction = useMemo(
     () =>
@@ -196,7 +193,9 @@ function GitOperations({
       aria-label={shouldShowRebaseAction ? rebaseButtonLabel : mergeButtonLabel}
     >
       {shouldShowRebaseAction ? (
-        <RefreshCw className={`h-3.5 w-3.5 ${rebasing ? 'animate-spin' : ''}`} />
+        <RefreshCw
+          className={`h-3.5 w-3.5 ${rebasing ? 'animate-spin' : ''}`}
+        />
       ) : (
         <GitBranchIcon className="h-3.5 w-3.5" />
       )}
@@ -230,9 +229,7 @@ function GitOperations({
                   <span className="truncate">{selectedAttempt.branch}</span>
                 </span>
               </TooltipTrigger>
-              <TooltipContent side="bottom">
-                {t('git.labels.taskBranch')}
-              </TooltipContent>
+              <TooltipContent side="bottom">Task Branch</TooltipContent>
             </Tooltip>
           </TooltipProvider>
 
@@ -255,13 +252,11 @@ function GitOperations({
                       {branchStatus?.target_branch_name ||
                         selectedAttempt.target_branch ||
                         selectedBranch ||
-                        t('git.branch.current')}
+                        'current'}
                     </span>
                   </span>
                 </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  {t('rebase.dialog.targetLabel')}
-                </TooltipContent>
+                <TooltipContent side="bottom">Target Branch</TooltipContent>
               </Tooltip>
             </TooltipProvider>
 
@@ -274,13 +269,13 @@ function GitOperations({
                     onClick={handleChangeTargetBranchDialogOpen}
                     disabled={hasConflictsCalculated}
                     className={settingsBtnClasses}
-                    aria-label={t('branches.changeTarget.dialog.title')}
+                    aria-label="Change target branch"
                   >
                     <Settings className="h-3.5 w-3.5" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">
-                  {t('branches.changeTarget.dialog.title')}
+                  Change target branch
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -303,7 +298,7 @@ function GitOperations({
               return (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100/60 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
                   <AlertTriangle className="h-3.5 w-3.5" />
-                  {t('git.status.conflicts')}
+                  Conflicts
                 </span>
               );
             }
@@ -312,7 +307,7 @@ function GitOperations({
               return (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100/60 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
                   <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                  {t('git.states.rebasing')}
+                  Rebasing...
                 </span>
               );
             }
@@ -324,7 +319,7 @@ function GitOperations({
               return (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100/70 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300">
                   <CheckCircle className="h-3.5 w-3.5" />
-                  {t('git.states.merged')}
+                  Merged!
                 </span>
               );
             }
@@ -337,7 +332,7 @@ function GitOperations({
                   className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100/40 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300"
                 >
                   <CheckCircle className="h-3.5 w-3.5" />
-                  {t('git.states.merged')}
+                  Merged!
                 </span>
               );
             }
@@ -347,9 +342,8 @@ function GitOperations({
                   key="ahead"
                   className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100/70 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
                 >
-                  +{commitsAhead}{' '}
-                  {t('git.status.commits', { count: commitsAhead })}{' '}
-                  {t('git.status.ahead')}
+                  +{commitsAhead} {commitsAhead === 1 ? 'commit' : 'commits'}{' '}
+                  ahead
                 </span>
               );
             }
@@ -359,18 +353,19 @@ function GitOperations({
                   key="behind"
                   className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100/60 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
                 >
-                  {commitsBehind}{' '}
-                  {t('git.status.commits', { count: commitsBehind })}{' '}
-                  {t('git.status.behind')}
+                  {commitsBehind} {commitsBehind === 1 ? 'commit' : 'commits'}{' '}
+                  behind
                 </span>
               );
             }
             if (chips.length > 0)
-              return <div className="flex flex-wrap items-center gap-2">{chips}</div>;
+              return (
+                <div className="flex flex-wrap items-center gap-2">{chips}</div>
+              );
 
             return (
               <span className="text-muted-foreground hidden sm:inline">
-                {t('git.status.upToDate')}
+                Up to date
               </span>
             );
           })()}

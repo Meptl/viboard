@@ -44,7 +44,6 @@ import { useRetryUi } from '@/contexts/RetryUiContext';
 import { useFollowUpSend } from '@/hooks/useFollowUpSend';
 import { useVariant } from '@/hooks/useVariant';
 import { buildResolveConflictsInstructions } from '@/lib/conflicts';
-import { useTranslation } from 'react-i18next';
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
 import { useQueueStatus } from '@/hooks/useQueueStatus';
 import { attemptsApi, imagesApi } from '@/lib/api';
@@ -61,7 +60,6 @@ export function TaskFollowUpSection({
   task,
   selectedAttemptId,
 }: TaskFollowUpSectionProps) {
-  const { t } = useTranslation('tasks');
   const { projectId, project } = useProject();
 
   const { isAttemptRunning, stopExecution, isStopping, processes } =
@@ -106,11 +104,8 @@ export function TaskFollowUpSection({
   ]);
 
   // Editor state (persisted in DB draft storage)
-  const {
-    draft,
-    saveDraft,
-    clearDraft,
-  } = useFollowUpDraftStorage(selectedAttemptId);
+  const { draft, saveDraft, clearDraft } =
+    useFollowUpDraftStorage(selectedAttemptId);
 
   const draftData: DraftFollowUpData | undefined = draft ?? undefined;
 
@@ -170,8 +165,7 @@ export function TaskFollowUpSection({
           message,
           variant,
           review_comments: draftRef.current?.review_comments ?? [],
-          review_comment_drafts:
-            draftRef.current?.review_comment_drafts ?? [],
+          review_comment_drafts: draftRef.current?.review_comment_drafts ?? [],
         });
       } catch (e) {
         console.error('Failed to save follow-up draft', e);
@@ -591,14 +585,14 @@ export function TaskFollowUpSection({
                             size="xs"
                             variant="destructive"
                             disabled={!isEditable}
-                            aria-label={t('followUp.clearReviewComments')}
+                            aria-label="Clear Review Comments"
                             className="absolute top-2 right-2 z-10 h-6 w-6 p-0"
                           >
                             <X className="h-3.5 w-3.5" />
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="left">
-                          {t('followUp.clearReviewComments')}
+                          Clear Review Comments
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
@@ -634,10 +628,7 @@ export function TaskFollowUpSection({
               <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted p-3 rounded-md border">
                 <Clock className="h-4 w-4 flex-shrink-0" />
                 <div className="font-medium">
-                  {t(
-                    'followUp.queuedMessage',
-                    'Message queued - will execute when current run finishes'
-                  )}
+                  Message queued - will execute when current run finishes
                 </div>
               </div>
             )}
@@ -718,7 +709,7 @@ export function TaskFollowUpSection({
                     ) : (
                       <>
                         <X className="h-4 w-4 mr-2" />
-                        {t('followUp.cancelQueue', 'Cancel Queue')}
+                        Cancel Queue
                       </>
                     )}
                   </Button>
@@ -739,7 +730,7 @@ export function TaskFollowUpSection({
                     ) : (
                       <>
                         <Clock className="h-4 w-4 mr-2" />
-                        {t('followUp.queue', 'Queue')}
+                        Queue
                       </>
                     )}
                   </Button>
@@ -755,9 +746,7 @@ export function TaskFollowUpSection({
                   ) : (
                     <>
                       <StopCircle className="h-4 w-4 mr-2" />
-                      {isQueued
-                        ? t('followUp.steer', 'Steer')
-                        : t('followUp.stop')}
+                      {isQueued ? 'Steer' : 'Stop'}
                     </>
                   )}
                 </Button>
@@ -791,8 +780,8 @@ export function TaskFollowUpSection({
                     <>
                       <Send className="h-4 w-4 mr-2" />
                       {conflictResolutionInstructions
-                        ? t('followUp.resolveConflicts')
-                        : t('followUp.send')}
+                        ? 'Resolve conflicts'
+                        : 'Send'}
                     </>
                   )}
                 </Button>

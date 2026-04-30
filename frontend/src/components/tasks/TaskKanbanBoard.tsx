@@ -20,7 +20,6 @@ import {
 import { TaskCard } from './TaskCard';
 import type { TaskStatus, TaskWithAttemptStatus } from 'shared/types';
 import { statusBoardColors, statusLabels } from '@/utils/statusLabels';
-import { useTranslation } from 'react-i18next';
 
 export type KanbanColumnItem = {
   type: 'task';
@@ -62,8 +61,6 @@ function TaskKanbanBoard({
   disableDoneCleanup,
   dropPreview,
 }: TaskKanbanBoardProps) {
-  const { t } = useTranslation('tasks');
-
   const renderDropPlaceholder = (statusKey: TaskStatus, index: number) => {
     if (
       !dropPreview ||
@@ -118,14 +115,14 @@ function TaskKanbanBoard({
                           variant="ghost"
                           className="m-0 p-0 h-0 text-foreground/50 hover:text-foreground disabled:text-foreground/30"
                           onClick={onDoneCleanup}
-                          aria-label={t('actions.cleanupDone')}
+                          aria-label="Clean up done tasks"
                           disabled={disableDoneCleanup}
                         >
                           <Paintbrush className="h-4 w-4" />
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent side="top">
-                        {t('actions.cleanupDone')}
+                        Clean up done tasks
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>

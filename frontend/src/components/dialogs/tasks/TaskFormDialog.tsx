@@ -1,5 +1,4 @@
 import { useEffect, useCallback, useRef, useState, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { defineModal } from '@/lib/modals';
@@ -30,11 +29,7 @@ import {
   useTaskMutations,
 } from '@/hooks';
 import { useAttemptCreation } from '@/hooks/useAttemptCreation';
-import {
-  useKeySubmitTask,
-  useKeyExit,
-  Scope,
-} from '@/keyboard';
+import { useKeySubmitTask, useKeyExit, Scope } from '@/keyboard';
 import { useHotkeysContext } from 'react-hotkeys-hook';
 import { cn } from '@/lib/utils';
 import type {
@@ -78,7 +73,6 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   const modal = useModal();
   const navigate = useNavigate();
   const location = useLocation();
-  const { t } = useTranslation(['tasks', 'common']);
   const { createTask, createAndStart, updateTask } = useTaskMutations();
   const { createAttempt } = useAttemptCreation({
     taskId: editMode ? props.task.id : '',
@@ -174,7 +168,9 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
 
         // When editing from a task/attempt route, the current panel can point at
         // an outdated attempt after creating a new one. Return to the board.
-        if (location.pathname.startsWith(paths.task(projectId, props.task.id))) {
+        if (
+          location.pathname.startsWith(paths.task(projectId, props.task.id))
+        ) {
           navigate(paths.projectTasks(projectId), { replace: true });
         }
       }
@@ -211,20 +207,20 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   const getSubmitBlockedReason = useCallback(
     (value: TaskFormValues): string | null => {
       if (!value.title.trim().length) {
-        return t('taskFormDialog.disabledReason.titleMissing');
+        return 'Title is required.';
       }
       if (value.autoStart && !forceCreateOnlyRef.current) {
         if (!value.executorProfileId) {
-          return t('taskFormDialog.disabledReason.executorMissing');
+          return 'Select an executor profile to start automatically.';
         }
         if (!value.branch) {
-          return t('taskFormDialog.disabledReason.branchMissing');
+          return 'Select a branch to start automatically.';
         }
       }
 
       return null;
     },
-    [t]
+    []
   );
 
   const validator = (value: TaskFormValues): string | undefined => {
@@ -248,7 +244,8 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
   const canSubmit = useStore(form.store, (state) => state.canSubmit);
   const formValues = useStore(form.store, (state) => state.values);
   const blockedReason =
-    getSubmitBlockedReason(formValues) ?? t('taskFormDialog.disabledReason.generic');
+    getSubmitBlockedReason(formValues) ??
+    'Please complete the required fields.';
 
   // Load images for edit mode
   useEffect(() => {
@@ -406,7 +403,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
               <div className="text-center">
                 <ImageIcon className="h-12 w-12 mx-auto mb-2 text-primary-foreground" />
                 <p className="text-lg font-medium text-primary-foreground">
-                  {t('taskFormDialog.dropImagesHere')}
+                  Drop images here
                 </p>
               </div>
             </div>
@@ -420,7 +417,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
                   id="task-title"
                   value={field.state.value}
                   onChange={(e) => field.handleChange(e.target.value)}
-                  placeholder={t('taskFormDialog.titlePlaceholder')}
+                  placeholder="Task title..."
                   className="text-lg font-semibold placeholder:text-muted-foreground/60 border-none p-0"
                   style={{ fontVariantLigatures: 'none' }}
                   disabled={isSubmitting}
@@ -436,7 +433,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
               {(field) => (
                 <div className="space-y-2">
                   <PlainTextTagTextarea
-                    placeholder={t('taskFormDialog.descriptionPlaceholder')}
+                    placeholder="Add more details (optional). Type @ to insert tags or search files and tasks."
                     value={field.state.value}
                     onChange={(desc) => field.handleChange(desc)}
                     disabled={isSubmitting}
@@ -503,12 +500,15 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
                 size="sm"
                 onClick={dropzoneOpen}
                 className="h-9 w-9 p-0 rounded-none"
-                aria-label={t('taskFormDialog.attachImage')}
+                aria-label="Attach image"
               >
                 <ImageIcon className="h-4 w-4" />
               </Button>
               {showSubmitBlockedReason && !canSubmit && (
-                <p className="text-xs text-destructive whitespace-nowrap" role="alert">
+                <p
+                  className="text-xs text-destructive whitespace-nowrap"
+                  role="alert"
+                >
                   {blockedReason}
                 </p>
               )}
@@ -525,13 +525,13 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
                       onCheckedChange={(checked) => field.handleChange(checked)}
                       disabled={isSubmitting}
                       className="data-[state=checked]:bg-gray-900 dark:data-[state=checked]:bg-gray-100"
-                      aria-label={t('taskFormDialog.startLabel')}
+                      aria-label="Start"
                     />
                     <Label
                       htmlFor="autostart-switch"
                       className="text-sm cursor-pointer"
                     >
-                      {t('taskFormDialog.startLabel')}
+                      Start
                     </Label>
                   </div>
                 )}
@@ -549,14 +549,14 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
                   const buttonText = editMode
                     ? isSubmitting
                       ? values.autoStart
-                        ? t('taskFormDialog.starting')
-                        : t('taskFormDialog.updating')
-                      : t('taskFormDialog.updateTask')
+                        ? 'Starting...'
+                        : 'Updating...'
+                      : 'Update Task'
                     : isSubmitting
                       ? values.autoStart
-                        ? t('taskFormDialog.starting')
-                        : t('taskFormDialog.creating')
-                      : t('taskFormDialog.create');
+                        ? 'Starting...'
+                        : 'Creating...'
+                      : 'Create';
 
                   return (
                     <div className="flex flex-col items-end gap-1">
@@ -595,20 +595,19 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
                 <div className="flex items-center gap-3">
-                  <DialogTitle>
-                    {t('taskFormDialog.discardDialog.title')}
-                  </DialogTitle>
+                  <DialogTitle>Discard unsaved changes?</DialogTitle>
                 </div>
                 <DialogDescription className="text-left pt-2">
-                  {t('taskFormDialog.discardDialog.description')}
+                  You have unsaved changes. Are you sure you want to discard
+                  them?
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter className="gap-2">
                 <Button variant="outline" onClick={handleContinueEditing}>
-                  {t('taskFormDialog.discardDialog.continueEditing')}
+                  Continue Editing
                 </Button>
                 <Button variant="destructive" onClick={handleDiscardChanges}>
-                  {t('taskFormDialog.discardDialog.discardChanges')}
+                  Discard Changes
                 </Button>
               </DialogFooter>
             </DialogContent>

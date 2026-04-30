@@ -25,7 +25,6 @@ import {
   useSensors,
 } from '@dnd-kit/core';
 import { type ReactNode, type Ref, type KeyboardEvent } from 'react';
-import { useTranslation } from 'react-i18next';
 
 import { Plus } from 'lucide-react';
 import type { ClientRect } from '@dnd-kit/core';
@@ -170,8 +169,6 @@ export type KanbanHeaderProps =
     };
 
 export const KanbanHeader = (props: KanbanHeaderProps) => {
-  const { t } = useTranslation('tasks');
-
   if ('children' in props) {
     return props.children;
   }
@@ -207,12 +204,12 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
                   variant="ghost"
                   className="m-0 p-0 h-0 text-foreground/50 hover:text-foreground"
                   onClick={props.onAddTask}
-                  aria-label={t('actions.addTask')}
+                  aria-label="Add task"
                 >
                   <Plus className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="top">{t('actions.addTask')}</TooltipContent>
+              <TooltipContent side="top">Add task</TooltipContent>
             </Tooltip>
           </TooltipProvider>
         )}

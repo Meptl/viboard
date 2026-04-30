@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import { cloneDeep, isEqual } from 'lodash';
 import {
   Card,
@@ -68,7 +67,6 @@ function normalizeProjectFormState(state: ProjectFormState): ProjectFormState {
 export function ProjectSettings() {
   const [searchParams, setSearchParams] = useSearchParams();
   const projectIdParam = searchParams.get('projectId') ?? '';
-  const { t } = useTranslation('settings');
 
   // Fetch all projects
   const {
@@ -171,7 +169,11 @@ export function ProjectSettings() {
   };
 
   const saveProjectSnapshot = useCallback(
-    async (saveSnapshot: ProjectFormState, projectId: string, saveSeq: number) => {
+    async (
+      saveSnapshot: ProjectFormState,
+      projectId: string,
+      saveSeq: number
+    ) => {
       setSaving(true);
       setError(null);
       setSuccess(false);
@@ -209,7 +211,7 @@ export function ProjectSettings() {
         }
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : t('settings.projects.save.error')
+          err instanceof Error ? err.message : 'Failed to save project settings'
         );
         console.error('Error saving project settings:', err);
       } finally {
@@ -218,7 +220,7 @@ export function ProjectSettings() {
         }
       }
     },
-    [t, updateProject]
+    [updateProject]
   );
 
   const triggerSave = useCallback(
@@ -228,7 +230,9 @@ export function ProjectSettings() {
       if (!saveSnapshot) return;
 
       const normalizedSnapshot = normalizeProjectFormState(saveSnapshot);
-      const current = normalizeProjectFormState(projectToFormState(selectedProject));
+      const current = normalizeProjectFormState(
+        projectToFormState(selectedProject)
+      );
       if (isEqual(normalizedSnapshot, current)) return;
       if (!normalizedSnapshot.name || !normalizedSnapshot.git_repo_path) return;
 
@@ -268,12 +272,9 @@ export function ProjectSettings() {
     void triggerSave();
   }, [triggerSave]);
 
-  const handleCopyFilesChange = useCallback(
-    (value: string) => {
-      updateDraft({ copy_files: value });
-    },
-    []
-  );
+  const handleCopyFilesChange = useCallback((value: string) => {
+    updateDraft({ copy_files: value });
+  }, []);
 
   const handleCopyFilesBlur = useCallback(() => {
     void triggerSave();
@@ -283,7 +284,7 @@ export function ProjectSettings() {
     return (
       <div className="flex items-center justify-center py-8">
         <Loader2 className="h-8 w-8 animate-spin" />
-        <span className="ml-2">{t('settings.projects.loading')}</span>
+        <span className="ml-2">Loading projects...</span>
       </div>
     );
   }
@@ -295,7 +296,7 @@ export function ProjectSettings() {
           <AlertDescription>
             {projectsError instanceof Error
               ? projectsError.message
-              : t('settings.projects.loadError')}
+              : 'Failed to load projects.'}
           </AlertDescription>
         </Alert>
       </div>
@@ -312,21 +313,17 @@ export function ProjectSettings() {
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle>{t('settings.projects.title')}</CardTitle>
+          <CardTitle>Project Configuration</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="project-selector">
-              {t('settings.projects.selector.label')}
-            </Label>
+            <Label htmlFor="project-selector">Select Project</Label>
             <Select
               value={selectedProjectId}
               onValueChange={handleProjectSelect}
             >
               <SelectTrigger id="project-selector">
-                <SelectValue
-                  placeholder={t('settings.projects.selector.placeholder')}
-                />
+                <SelectValue placeholder="Choose a project to configure" />
               </SelectTrigger>
               <SelectContent>
                 {projects && projects.length > 0 ? (
@@ -337,7 +334,7 @@ export function ProjectSettings() {
                   ))
                 ) : (
                   <SelectItem value="no-projects" disabled>
-                    {t('settings.projects.selector.noProjects')}
+                    No projects available
                   </SelectItem>
                 )}
               </SelectContent>
@@ -350,31 +347,27 @@ export function ProjectSettings() {
         <>
           <Card>
             <CardHeader>
-              <CardTitle>{t('settings.projects.general.title')}</CardTitle>
+              <CardTitle>General Settings</CardTitle>
               <CardDescription>
-                {t('settings.projects.general.description')}
+                Configure basic project information.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="project-name">
-                  {t('settings.projects.general.name.label')}
-                </Label>
+                <Label htmlFor="project-name">Project Name</Label>
                 <Input
                   id="project-name"
                   type="text"
                   value={draft.name}
                   onChange={(e) => updateDraft({ name: e.target.value })}
                   onBlur={handleTextFieldBlur}
-                  placeholder={t('settings.projects.general.name.placeholder')}
+                  placeholder="Enter project name"
                   required
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="git-repo-path">
-                  {t('settings.projects.general.repoPath.label')}
-                </Label>
+                <Label htmlFor="git-repo-path">Git Repository Path</Label>
                 <div className="flex space-x-2">
                   <Input
                     id="git-repo-path"
@@ -384,9 +377,7 @@ export function ProjectSettings() {
                       updateDraft({ git_repo_path: e.target.value })
                     }
                     onBlur={handleTextFieldBlur}
-                    placeholder={t(
-                      'settings.projects.general.repoPath.placeholder'
-                    )}
+                    placeholder="/path/to/your/existing/repo"
                     required
                     className="flex-1"
                   />
@@ -413,16 +404,15 @@ export function ProjectSettings() {
 
           <Card>
             <CardHeader>
-              <CardTitle>{t('settings.projects.scripts.title')}</CardTitle>
+              <CardTitle>Scripts &amp; Configuration</CardTitle>
               <CardDescription>
-                {t('settings.projects.scripts.description')}
+                Configure setup, development, and cleanup scripts for this
+                project.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="setup-script">
-                  {t('settings.projects.scripts.setup.label')}
-                </Label>
+                <Label htmlFor="setup-script">Setup Script</Label>
                 <AutoExpandingTextarea
                   id="setup-script"
                   value={draft.setup_script}
@@ -435,7 +425,9 @@ export function ProjectSettings() {
                   className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring font-mono"
                 />
                 <p className="text-sm text-muted-foreground">
-                  {t('settings.projects.scripts.setup.helper')}
+                  This script will run after creating the worktree and before
+                  the coding agent starts. Use it for setup tasks like
+                  installing dependencies or preparing the environment.
                 </p>
 
                 <div className="flex items-center space-x-2 pt-2">
@@ -451,18 +443,19 @@ export function ProjectSettings() {
                     htmlFor="parallel-setup-script"
                     className="text-sm font-normal cursor-pointer"
                   >
-                    {t('settings.projects.scripts.setup.parallelLabel')}
+                    Run setup script in parallel with coding agent
                   </Label>
                 </div>
                 <p className="text-sm text-muted-foreground pl-6">
-                  {t('settings.projects.scripts.setup.parallelHelper')}
+                  When enabled, the setup script runs simultaneously with the
+                  coding agent instead of waiting for setup to complete first.
+                  Setup-script environment variables are not guaranteed to be
+                  available to the first coding-agent run.
                 </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="dev-script">
-                  {t('settings.projects.scripts.dev.label')}
-                </Label>
+                <Label htmlFor="dev-script">Dev Server Script</Label>
                 <AutoExpandingTextarea
                   id="dev-script"
                   value={draft.dev_script}
@@ -473,14 +466,14 @@ export function ProjectSettings() {
                   className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring font-mono"
                 />
                 <p className="text-sm text-muted-foreground">
-                  {t('settings.projects.scripts.dev.helper')}
+                  This script can be run from task attempts to start a
+                  development server. Use it to quickly start your project's dev
+                  server for testing changes.
                 </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="cleanup-script">
-                  {t('settings.projects.scripts.cleanup.label')}
-                </Label>
+                <Label htmlFor="cleanup-script">Cleanup Script</Label>
                 <AutoExpandingTextarea
                   id="cleanup-script"
                   value={draft.cleanup_script}
@@ -493,12 +486,15 @@ export function ProjectSettings() {
                   className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-ring font-mono"
                 />
                 <p className="text-sm text-muted-foreground">
-                  {t('settings.projects.scripts.cleanup.helper')}
+                  This script runs after coding agent execution only if changes
+                  were made. Use it for quality assurance tasks like running
+                  linters, formatters, tests, or other validation steps. If no
+                  changes are made, this script is skipped.
                 </p>
               </div>
 
               <div className="space-y-2">
-                <Label>{t('settings.projects.scripts.copyFiles.label')}</Label>
+                <Label>Copy Files</Label>
                 <CopyFilesField
                   value={draft.copy_files}
                   onChange={handleCopyFilesChange}
@@ -506,7 +502,12 @@ export function ProjectSettings() {
                   projectId={selectedProject.id}
                 />
                 <p className="text-sm text-muted-foreground">
-                  {t('settings.projects.scripts.copyFiles.helper')}
+                  Comma-separated list of files to copy from the original
+                  project directory to the worktree. These files will be copied
+                  after the worktree is created but before the setup script
+                  runs. Useful for environment-specific files like .env,
+                  configuration files, and local settings. Make sure these are
+                  gitignored or they could get committed!
                 </p>
               </div>
             </CardContent>
@@ -527,7 +528,7 @@ export function ProjectSettings() {
           {saving && !success && (
             <div className="flex items-center text-sm text-muted-foreground">
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              {t('settings.projects.save.button')}
+              Save
             </div>
           )}
         </>

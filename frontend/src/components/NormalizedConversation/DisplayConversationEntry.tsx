@@ -1,4 +1,3 @@
-import { useTranslation } from 'react-i18next';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import {
   ActionType,
@@ -388,7 +387,6 @@ const PlanPresentationCard: React.FC<{
   statusAppearance = 'default',
   taskAttemptId,
 }) => {
-  const { t } = useTranslation('common');
   const [expanded, toggle] = useExpandable(
     `plan-entry:${expansionKey}`,
     defaultExpanded
@@ -405,11 +403,7 @@ const PlanPresentationCard: React.FC<{
             e.preventDefault();
             toggle();
           }}
-          title={
-            expanded
-              ? t('conversation.planToggle.hide')
-              : t('conversation.planToggle.show')
-          }
+          title={expanded ? 'Hide plan' : 'Show plan'}
           className={cn(
             'w-full px-2 py-1.5 flex items-center gap-1.5 text-left border-b',
             tone.headerBg,
@@ -418,7 +412,7 @@ const PlanPresentationCard: React.FC<{
           )}
         >
           <span className=" min-w-0 truncate">
-            <span className="font-semibold">{t('conversation.plan')}</span>
+            <span className="font-semibold">Plan</span>
           </span>
           <div className="ml-auto flex items-center gap-2">
             <ExpandChevron
@@ -453,8 +447,6 @@ const ToolCallCard: React.FC<{
   forceExpanded?: boolean;
   taskAttemptId?: string;
 }> = ({ entry, expansionKey, forceExpanded = false, taskAttemptId }) => {
-  const { t } = useTranslation('common');
-
   // Determine if this is a NormalizedEntry with tool_use
   const isNormalizedEntry = 'entry_type' in entry;
   const entryType =
@@ -512,9 +504,7 @@ const ToolCallCard: React.FC<{
           e.preventDefault();
           toggle();
         },
-        title: effectiveExpanded
-          ? t('conversation.toolDetailsToggle.hide')
-          : t('conversation.toolDetailsToggle.show'),
+        title: effectiveExpanded ? 'Hide details' : 'Show details',
       }
     : {};
 
@@ -545,7 +535,7 @@ const ToolCallCard: React.FC<{
               {argsText && (
                 <>
                   <div className="font-normal uppercase bg-background border-b border-dashed px-2 py-1">
-                    {t('conversation.args')}
+                    Args
                   </div>
                   <div className="px-2 py-1">{argsText}</div>
                 </>
@@ -554,7 +544,7 @@ const ToolCallCard: React.FC<{
               {output && (
                 <>
                   <div className="font-normal uppercase bg-background border-y border-dashed px-2 py-1">
-                    {t('conversation.output')}
+                    Output
                   </div>
                   <div className="px-2 py-1">
                     <RawLogText content={output} linkifyUrls={linkifyUrls} />
@@ -567,13 +557,13 @@ const ToolCallCard: React.FC<{
               {isTool && actionType && (
                 <>
                   <div className="font-normal uppercase bg-background border-b border-dashed px-2 py-1">
-                    {t('conversation.args')}
+                    Args
                   </div>
                   <div className="px-2 py-1">
                     {renderJson(actionType.arguments)}
                   </div>
                   <div className="font-normal uppercase bg-background border-y border-dashed px-2 py-1">
-                    {t('conversation.result')}
+                    Result
                   </div>
                   <div className="px-2 py-1">
                     {actionType.result?.type.type === 'markdown' &&
@@ -638,7 +628,6 @@ function DisplayConversationEntry({
   executionProcessId,
   taskAttempt,
 }: Props) {
-  const { t } = useTranslation('common');
   const isNormalizedEntry = (
     entry: NormalizedEntry | ProcessStartPayload
   ): entry is NormalizedEntry => 'entry_type' in entry;
@@ -695,9 +684,7 @@ function DisplayConversationEntry({
             className="text-xs mb-1 opacity-70"
             style={{ color: 'hsl(var(--destructive))' }}
           >
-            {t('conversation.deniedByUser', {
-              toolName: feedbackEntry.denied_tool,
-            })}
+            {`${feedbackEntry.denied_tool} denied by user`}
           </div>
           <WYSIWYGEditor
             value={entry.content}

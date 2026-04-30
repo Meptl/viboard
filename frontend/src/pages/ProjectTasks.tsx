@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
+import {
+  Navigate,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -137,7 +141,6 @@ function AttemptHeaderActionsWithGitOps({
 }
 
 export function ProjectTasks() {
-  const { t } = useTranslation(['tasks', 'common']);
   const { taskId, attemptId } = useParams<{
     projectId: string;
     taskId?: string;
@@ -692,7 +695,8 @@ export function ProjectTasks() {
       });
     }
 
-    const { attempted, failed } = await deleteDoneTasksOlderThanDays(cleanupDays);
+    const { attempted, failed } =
+      await deleteDoneTasksOlderThanDays(cleanupDays);
     if (attempted === 0) {
       return;
     }
@@ -725,7 +729,10 @@ export function ProjectTasks() {
         return;
       }
 
-      const cleanupDays = Math.max(0, Math.floor(automaticDoneCleanupDaysForProject));
+      const cleanupDays = Math.max(
+        0,
+        Math.floor(automaticDoneCleanupDaysForProject)
+      );
       const cutoffTime = Date.now() - cleanupDays * 24 * 60 * 60 * 1000;
       const tasksToDelete = doneTasksRef.current.filter(
         (task) => new Date(task.updated_at).getTime() <= cutoffTime
@@ -801,29 +808,21 @@ export function ProjectTasks() {
         }
 
         const shouldAutoStartAttempt =
-          newStatus === 'inprogress' && !!projectId && !!config?.executor_profile;
+          newStatus === 'inprogress' &&
+          !!projectId &&
+          !!config?.executor_profile;
         let existingAttempts = null;
 
         const confirmNewAttemptWarning = async (): Promise<boolean> => {
           let dontShowAgain = false;
           const confirmResult = await ConfirmDialog.show({
-            title: t('newAttemptWarning.title', {
-              defaultValue: 'Start a new attempt?',
-            }),
-            message: t('newAttemptWarning.message', {
-              defaultValue:
-                "This task already has an attempt. If you're looking to continue this conversation, do so in the chat window.",
-            }),
-            confirmText: t('newAttemptWarning.confirmText', {
-              defaultValue: 'Start New Attempt',
-            }),
-            cancelText: t('newAttemptWarning.cancelText', {
-              defaultValue: 'Cancel',
-            }),
+            title: 'Start a new attempt?',
+            message:
+              "This task already has an attempt. If you're looking to continue this conversation, do so in the chat window.",
+            confirmText: 'Start New Attempt',
+            cancelText: 'Cancel',
             variant: 'destructive',
-            checkboxLabel: t('newAttemptWarning.dontShowAgain', {
-              defaultValue: "Don't show again",
-            }),
+            checkboxLabel: "Don't show again",
             onCheckboxChange: (checked) => {
               dontShowAgain = checked;
             },
@@ -900,7 +899,10 @@ export function ProjectTasks() {
                 await updateTaskStatus();
               }
             } catch (stopError) {
-              console.error('Failed to stop running attempt after drag:', stopError);
+              console.error(
+                'Failed to stop running attempt after drag:',
+                stopError
+              );
             } finally {
               setStopInFlightByTaskId((prev) => {
                 const next = { ...prev };
@@ -1002,7 +1004,6 @@ export function ProjectTasks() {
       clearTaskNotifications,
       duplicateOnDrop,
       projectId,
-      t,
       tasksById,
       queryClient,
       updateAndSaveConfig,
@@ -1094,9 +1095,8 @@ export function ProjectTasks() {
   );
 
   const isInitialTasksLoad = isLoading && tasks.length === 0;
-  const isUnderlyingRepoMissing = isUnderlyingRepoNotDetectedError(
-    projectBranchesError
-  );
+  const isUnderlyingRepoMissing =
+    isUnderlyingRepoNotDetectedError(projectBranchesError);
 
   if (isUnderlyingRepoMissing && projectId) {
     return (
@@ -1110,7 +1110,7 @@ export function ProjectTasks() {
         <Alert>
           <AlertTitle className="flex items-center gap-2">
             <AlertTriangle size="16" />
-            {t('common:states.error')}
+            Error
           </AlertTitle>
           <AlertDescription>
             {projectError.message || 'Failed to load project'}
@@ -1121,7 +1121,7 @@ export function ProjectTasks() {
   }
 
   if (projectLoading && isInitialTasksLoad) {
-    return <Loader message={t('loading')} size={32} className="py-8" />;
+    return <Loader message="Loading tasks..." size={32} className="py-8" />;
   }
 
   const kanbanContent =
@@ -1145,10 +1145,12 @@ export function ProjectTasks() {
       <div className="max-w-7xl mx-auto mt-8">
         <Card>
           <CardContent className="text-center py-8">
-            <p className="text-muted-foreground">{t('empty.noTasks')}</p>
+            <p className="text-muted-foreground">
+              No tasks found for this project.
+            </p>
             <Button className="mt-4" onClick={handleCreateNewTask}>
               <Plus className="h-4 w-4 mr-2" />
-              {t('empty.createFirst')}
+              Create First Task
             </Button>
           </CardContent>
         </Card>
@@ -1157,9 +1159,7 @@ export function ProjectTasks() {
       <div className="max-w-7xl mx-auto mt-8">
         <Card>
           <CardContent className="text-center py-8">
-            <p className="text-muted-foreground">
-              {t('empty.noSearchResults')}
-            </p>
+            <p className="text-muted-foreground">No tasks match your search.</p>
           </CardContent>
         </Card>
       </div>
@@ -1207,35 +1207,35 @@ export function ProjectTasks() {
             gitOps={headerGitOps}
             attemptSwitcher={
               attemptDropdownItems.length > 1 ? (
-              <Select
-                value={
-                  attemptDropdownItems.some((item) => item.id === attempt.id)
-                    ? attempt.id
-                    : undefined
-                }
-                onValueChange={(nextAttemptId) => {
-                  if (!projectId) return;
-                  navigateWithSearch(
-                    paths.attempt(projectId, selectedTask.id, nextAttemptId)
-                  );
-                }}
-              >
-                <SelectTrigger
-                  aria-label="Select attempt"
-                  className="h-8 w-auto min-w-[7rem] shrink-0 px-2 pr-1.5"
+                <Select
+                  value={
+                    attemptDropdownItems.some((item) => item.id === attempt.id)
+                      ? attempt.id
+                      : undefined
+                  }
+                  onValueChange={(nextAttemptId) => {
+                    if (!projectId) return;
+                    navigateWithSearch(
+                      paths.attempt(projectId, selectedTask.id, nextAttemptId)
+                    );
+                  }}
                 >
-                  <SelectValue
-                    placeholder={`Attempt ${attemptNumberById.get(attempt.id) ?? '?'}`}
-                  />
-                </SelectTrigger>
-                <SelectContent align="end">
-                  {attemptDropdownItems.map((item) => (
-                    <SelectItem key={item.id} value={item.id}>
-                      {item.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                  <SelectTrigger
+                    aria-label="Select attempt"
+                    className="h-8 w-auto min-w-[7rem] shrink-0 px-2 pr-1.5"
+                  >
+                    <SelectValue
+                      placeholder={`Attempt ${attemptNumberById.get(attempt.id) ?? '?'}`}
+                    />
+                  </SelectTrigger>
+                  <SelectContent align="end">
+                    {attemptDropdownItems.map((item) => (
+                      <SelectItem key={item.id} value={item.id}>
+                        {item.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               ) : null
             }
             onClose={() =>
@@ -1259,7 +1259,7 @@ export function ProjectTasks() {
       <NewCard className="h-full min-h-0 flex flex-col bg-diagonal-lines bg-muted border-0">
         {isAttemptLoading && !attempt ? (
           <div className="h-full flex items-center justify-center p-6">
-            <Loader message={t('common:states.loading')} />
+            <Loader message="Loading..." />
           </div>
         ) : (
           <TaskAttemptPanel attempt={attempt} task={selectedTask}>
@@ -1293,12 +1293,14 @@ export function ProjectTasks() {
       <div className="relative h-full w-full">
         {!attempt ? (
           <div className="h-full flex items-center justify-center p-6">
-            <Loader message={t('common:states.loading')} />
+            <Loader message="Loading..." />
           </div>
         ) : (
           <>
             {effectiveMode === 'preview' && <PreviewPanel />}
-            {effectiveMode === 'diffs' && <DiffsPanel selectedAttempt={attempt} />}
+            {effectiveMode === 'diffs' && (
+              <DiffsPanel selectedAttempt={attempt} />
+            )}
           </>
         )}
       </div>

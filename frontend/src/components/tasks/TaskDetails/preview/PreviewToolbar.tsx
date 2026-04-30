@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { ExternalLink, RefreshCw, Copy, Loader2, Square } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -30,7 +29,6 @@ export function PreviewToolbar({
   onNavigate,
   isStopping,
 }: PreviewToolbarProps) {
-  const { t } = useTranslation('tasks');
   const [draftUrl, setDraftUrl] = useState(url ?? '');
 
   useEffect(() => {
@@ -55,15 +53,13 @@ export function PreviewToolbar({
             <TooltipTrigger asChild>
               <Button
                 variant="icon"
-                aria-label={t('preview.toolbar.refresh')}
+                aria-label="Refresh preview"
                 onClick={onRefresh}
               >
                 <RefreshCw className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="bottom">
-              {t('preview.toolbar.refresh')}
-            </TooltipContent>
+            <TooltipContent side="bottom">Refresh preview</TooltipContent>
           </Tooltip>
         </TooltipProvider>
 
@@ -72,16 +68,14 @@ export function PreviewToolbar({
             <TooltipTrigger asChild>
               <Button
                 variant="icon"
-                aria-label={t('preview.toolbar.copyUrl')}
+                aria-label="Copy URL"
                 onClick={onCopyUrl}
                 disabled={!url}
               >
                 <Copy className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="bottom">
-              {t('preview.toolbar.copyUrl')}
-            </TooltipContent>
+            <TooltipContent side="bottom">Copy URL</TooltipContent>
           </Tooltip>
         </TooltipProvider>
 
@@ -90,7 +84,7 @@ export function PreviewToolbar({
             <TooltipTrigger asChild>
               <Button
                 variant="icon"
-                aria-label={t('preview.toolbar.openInTab')}
+                aria-label="Open in new tab"
                 asChild
                 disabled={!url}
               >
@@ -104,9 +98,7 @@ export function PreviewToolbar({
                 </a>
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="bottom">
-              {t('preview.toolbar.openInTab')}
-            </TooltipContent>
+            <TooltipContent side="bottom">Open in new tab</TooltipContent>
           </Tooltip>
         </TooltipProvider>
 
@@ -117,7 +109,7 @@ export function PreviewToolbar({
             <TooltipTrigger asChild>
               <Button
                 variant="icon"
-                aria-label={t('preview.toolbar.stopDevServer')}
+                aria-label="Stop dev server"
                 onClick={onStop}
                 disabled={isStopping}
               >
@@ -128,9 +120,7 @@ export function PreviewToolbar({
                 )}
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="bottom">
-              {t('preview.toolbar.stopDevServer')}
-            </TooltipContent>
+            <TooltipContent side="bottom">Stop dev server</TooltipContent>
           </Tooltip>
         </TooltipProvider>
       </>
@@ -144,7 +134,7 @@ export function PreviewToolbar({
             value={draftUrl}
             onChange={(e) => setDraftUrl(e.target.value)}
             className="h-8 font-mono text-xs rounded-sm"
-            aria-label={t('preview.toolbar.openInTab')}
+            aria-label="Open in new tab"
             spellCheck={false}
             autoCapitalize="off"
             autoCorrect="off"

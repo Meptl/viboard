@@ -1,5 +1,4 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { PlainTextTagTextarea } from '@/components/ui/plain-text-tag-textarea';
 import { useProject } from '@/contexts/ProjectContext';
 import { cn } from '@/lib/utils';
@@ -32,13 +31,14 @@ export function RetryEditorInline({
   initialContent: string;
   onCancelled?: () => void;
 }) {
-  const { t } = useTranslation(['common']);
   const attemptId = attempt.id;
   const { isAttemptRunning, attemptData } = useAttemptExecution(attemptId);
   const { profiles } = useUserSystem();
   const { projectId } = useProject();
 
-  const [message, setMessage] = useState(() => stripVbContextBlocks(initialContent));
+  const [message, setMessage] = useState(() =>
+    stripVbContextBlocks(initialContent)
+  );
   const [sendError, setSendError] = useState<string | null>(null);
 
   // Extract variant from the process being retried
@@ -77,13 +77,7 @@ export function RetryEditorInline({
       variant: selectedVariant,
       executionProcessId,
     });
-  }, [
-    canSend,
-    retryMutation,
-    message,
-    selectedVariant,
-    executionProcessId,
-  ]);
+  }, [canSend, retryMutation, message, selectedVariant, executionProcessId]);
 
   const handleCmdEnter = useCallback(() => {
     if (canSend && !isSending) {
@@ -175,12 +169,10 @@ export function RetryEditorInline({
             <ImageIcon className="h-3 w-3" />
           </Button>
           <Button variant="outline" onClick={onCancel} disabled={isSending}>
-            <X className="h-3 w-3 mr-1" />{' '}
-            {t('buttons.cancel', { ns: 'common' })}
+            <X className="h-3 w-3 mr-1" /> Cancel
           </Button>
           <Button onClick={onSend} disabled={!canSend || isSending}>
-            <Send className="h-3 w-3 mr-1" />{' '}
-            {t('buttons.send', { ns: 'common', defaultValue: 'Send' })}
+            <Send className="h-3 w-3 mr-1" /> Send
           </Button>
         </div>
       </div>

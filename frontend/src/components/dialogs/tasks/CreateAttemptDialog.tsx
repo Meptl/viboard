@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
 import {
   Dialog,
   DialogContent,
@@ -37,7 +36,6 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
     const modal = useModal();
     const navigate = useNavigateWithSearch();
     const { projectId } = useProject();
-    const { t } = useTranslation('tasks');
     const { profiles, config } = useUserSystem();
     const { createAttempt, isCreating, error } = useAttemptCreation({
       taskId,
@@ -168,9 +166,10 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
       <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>{t('createAttemptDialog.title')}</DialogTitle>
+            <DialogTitle>Create Attempt</DialogTitle>
             <DialogDescription>
-              {t('createAttemptDialog.description')}
+              Start a new attempt with a coding agent. A git worktree and task
+              branch will be created.
             </DialogDescription>
           </DialogHeader>
 
@@ -188,24 +187,21 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
 
             <div className="space-y-2">
               <Label className="text-sm font-medium">
-                {t('createAttemptDialog.baseBranch')}{' '}
-                <span className="text-destructive">*</span>
+                Base branch <span className="text-destructive">*</span>
               </Label>
               <BranchSelector
                 branches={branches}
                 selectedBranch={effectiveBranch}
                 onBranchSelect={setUserSelectedBranch}
                 placeholder={
-                  isLoadingBranches
-                    ? t('createAttemptDialog.loadingBranches')
-                    : t('createAttemptDialog.selectBranch')
+                  isLoadingBranches ? 'Loading branches...' : 'Select branch'
                 }
               />
             </div>
 
             {error && (
               <div className="text-sm text-destructive">
-                {t('createAttemptDialog.error')}
+                Failed to create attempt. Please try again.
               </div>
             )}
           </div>
@@ -216,12 +212,10 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
               onClick={() => modal.hide()}
               disabled={isCreating}
             >
-              {t('common:buttons.cancel')}
+              Cancel
             </Button>
             <Button onClick={handleCreate} disabled={!canCreate}>
-              {isCreating
-                ? t('createAttemptDialog.creating')
-                : t('createAttemptDialog.start')}
+              {isCreating ? 'Creating...' : 'Start'}
             </Button>
           </DialogFooter>
         </DialogContent>

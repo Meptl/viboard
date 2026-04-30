@@ -1,4 +1,3 @@
-import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -30,7 +29,6 @@ export function ActionsDropdown({
   attempt,
   triggerClassName,
 }: ActionsDropdownProps) {
-  const { t } = useTranslation('tasks');
   const { projectId } = useProject();
   const openInEditor = useOpenInEditor(attempt?.id);
 
@@ -121,17 +119,16 @@ export function ActionsDropdown({
                 onMouseDown={stopEventPropagation}
                 onClick={stopEventPropagation}
               >
-                {t('actionsMenu.attempt')}
+                Attempt
               </DropdownMenuLabel>
               <DropdownMenuItem
                 disabled={!attempt?.id}
                 onClick={handleOpenInEditor}
               >
-                {t('actionsMenu.openInIde')}
+                Open attempt in IDE
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={handleCreateNewAttempt}>
-                {t('actionsMenu.createNewAttempt')}
+              <DropdownMenuItem onClick={handleCreateNewAttempt}>
+                Create new attempt
               </DropdownMenuItem>
               {hasTaskActions && (
                 <DropdownMenuSeparator
@@ -150,23 +147,26 @@ export function ActionsDropdown({
                 onMouseDown={stopEventPropagation}
                 onClick={stopEventPropagation}
               >
-                {t('actionsMenu.task')}
+                Task
               </DropdownMenuLabel>
               <DropdownMenuItem disabled={!projectId} onClick={handleEdit}>
-                {t('common:buttons.edit')}
+                Edit
               </DropdownMenuItem>
               <DropdownMenuItem disabled={!projectId} onClick={handleDuplicate}>
-                {t('actionsMenu.duplicate')}
+                Duplicate
               </DropdownMenuItem>
-              <DropdownMenuItem disabled={!task?.id} onClick={handleViewDetails}>
-                {t('actionsMenu.viewProcesses')}
+              <DropdownMenuItem
+                disabled={!task?.id}
+                onClick={handleViewDetails}
+              >
+                Details
               </DropdownMenuItem>
               <DropdownMenuItem
                 disabled={!projectId}
                 onClick={handleDelete}
                 className="text-destructive"
               >
-                {t('common:buttons.delete')}
+                Delete
               </DropdownMenuItem>
             </>
           )}

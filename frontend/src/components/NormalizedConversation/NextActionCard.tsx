@@ -1,4 +1,3 @@
-import { useTranslation } from 'react-i18next';
 import { Settings } from 'lucide-react';
 import { useDiffSummary } from '@/hooks/useDiffSummary';
 import { useUserSystem } from '@/components/ConfigProvider';
@@ -20,8 +19,6 @@ export function NextActionCard({
   execution_processes,
   needsSetup,
 }: NextActionCardProps) {
-  const { t } = useTranslation('tasks');
-
   const { data: attempt } = useQuery({
     queryKey: ['attempt', attemptId],
     queryFn: () => attemptsApi.get(attemptId!),
@@ -39,7 +36,7 @@ export function NextActionCard({
   );
 
   const setupHelpText = canAutoSetup
-    ? t('attempt.setupHelpText', { agent: attempt?.executor })
+    ? `${attempt?.executor} isn't setup correctly. Click 'Run Setup' to install it and login.`
     : null;
 
   // Necessary to prevent this component being displayed beyond fold within Virtualised List
@@ -55,9 +52,7 @@ export function NextActionCard({
       <div
         className={`px-3 py-1 text-background flex ${failed ? 'bg-destructive' : 'bg-foreground'}`}
       >
-        <span className="font-semibold flex-1">
-          {t('attempt.labels.summaryAndActions')}
-        </span>
+        <span className="font-semibold flex-1">Summary</span>
       </div>
 
       {/* Display setup help text when setup is needed */}
@@ -75,11 +70,13 @@ export function NextActionCard({
       >
         {!error && (
           <div className="flex items-center gap-1.5 text-sm shrink-0">
-            <span>{t('diff.filesChanged', { count: fileCount })}</span>
-            <span className="opacity-50">•</span>
-            <span className="text-green-600 dark:text-green-400">
-              +{added}
+            <span>
+              {fileCount === 1
+                ? `${fileCount} file changed`
+                : `${fileCount} files changed`}
             </span>
+            <span className="opacity-50">•</span>
+            <span className="text-green-600 dark:text-green-400">+{added}</span>
             <span className="opacity-50">•</span>
             <span className="text-red-600 dark:text-red-400">-{deleted}</span>
           </div>

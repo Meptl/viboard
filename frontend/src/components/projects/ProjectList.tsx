@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -21,7 +20,6 @@ type RepositoryStatus = 'checking' | 'detected' | 'missing' | 'unknown';
 export function ProjectList() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { t } = useTranslation('projects');
   const {
     data: projects = [],
     isLoading,
@@ -39,9 +37,9 @@ export function ProjectList() {
 
   const errorMessage = useMemo(() => {
     if (mutationError) return mutationError;
-    if (isError) return t('errors.fetchFailed');
+    if (isError) return 'Failed to fetch projects';
     return '';
-  }, [isError, mutationError, t]);
+  }, [isError, mutationError]);
 
   const hasInitialLoadFailure = projects.length === 0 && failureCount > 0;
 
@@ -74,11 +72,11 @@ export function ProjectList() {
       console.error('Failed to create project:', error);
       setMutationError(
         isUnderlyingRepoNotDetectedError(error)
-          ? t('errors.notGitRepository')
-          : t('errors.fetchFailed')
+          ? 'Selected folder is not a Git repository. Choose a folder with an existing .git repository.'
+          : 'Failed to fetch projects'
       );
     }
-  }, [refetch, t]);
+  }, [refetch]);
 
   // Semantic keyboard shortcut for creating new project
   useKeyCreate(handleCreateProject, { scope: Scope.PROJECTS });
@@ -185,7 +183,9 @@ export function ProjectList() {
         console.error('Failed to open project:', error);
         setMutationError('Failed to validate repository path');
       } finally {
-        setOpeningProjectId((current) => (current === project.id ? null : current));
+        setOpeningProjectId((current) =>
+          current === project.id ? null : current
+        );
       }
     },
     [navigate, repositoryStatusByProjectId]
@@ -195,12 +195,14 @@ export function ProjectList() {
     <div className="space-y-6 p-8 pb-16 md:pb-8 h-full overflow-auto">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
-          <p className="text-muted-foreground">{t('subtitle')}</p>
+          <h1 className="text-3xl font-bold tracking-tight">Projects</h1>
+          <p className="text-muted-foreground">
+            Manage your projects and track their progress
+          </p>
         </div>
         <Button onClick={handleCreateProject}>
           <Plus className="mr-2 h-4 w-4" />
-          {t('createProject')}
+          Create Project
         </Button>
       </div>
 
@@ -213,18 +215,14 @@ export function ProjectList() {
           <CardContent className="py-10 text-center">
             <p className="text-sm text-destructive">{errorMessage}</p>
             <div className="mt-4 flex items-center justify-center gap-3">
-              <Button
-                type="button"
-                size="sm"
-                onClick={() => void refetch()}
-              >
+              <Button type="button" size="sm" onClick={() => void refetch()}>
                 <RefreshCw className="mr-2 h-4 w-4" />
-                {t('common:buttons.retry')}
+                Retry
               </Button>
               {isFetching ? (
                 <span className="inline-flex items-center text-sm text-muted-foreground">
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {t('loading')}
+                  Loading projects...
                 </span>
               ) : null}
             </div>
@@ -233,16 +231,16 @@ export function ProjectList() {
       ) : isLoading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          {t('loading')}
+          Loading projects...
         </div>
       ) : isError ? (
         <Card>
           <CardContent className="py-10 text-center">
-            <p className="text-sm text-destructive">{t('errors.fetchFailed')}</p>
+            <p className="text-sm text-destructive">Failed to fetch projects</p>
             <div className="mt-4 flex items-center justify-center gap-3">
               <Button type="button" size="sm" onClick={() => void refetch()}>
                 <RefreshCw className="mr-2 h-4 w-4" />
-                {t('common:buttons.retry')}
+                Retry
               </Button>
             </div>
           </CardContent>
@@ -253,13 +251,13 @@ export function ProjectList() {
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-muted">
               <Plus className="h-6 w-6" />
             </div>
-            <h3 className="mt-4 text-lg font-semibold">{t('empty.title')}</h3>
+            <h3 className="mt-4 text-lg font-semibold">No projects yet</h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              {t('empty.description')}
+              Get started by creating your first project.
             </p>
             <Button className="mt-4" onClick={handleCreateProject}>
               <Plus className="mr-2 h-4 w-4" />
-              {t('empty.createFirst')}
+              Create your first project
             </Button>
           </CardContent>
         </Card>
@@ -284,7 +282,7 @@ export function ProjectList() {
       {isFetching && !isLoading && !hasInitialLoadFailure ? (
         <div className="flex items-center justify-center text-muted-foreground text-sm">
           <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-          {t('loading')}
+          Loading projects...
         </div>
       ) : null}
     </div>

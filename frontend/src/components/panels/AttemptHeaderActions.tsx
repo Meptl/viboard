@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Eye, FileDiff, X } from 'lucide-react';
 import { Button } from '../ui/button';
 import {
@@ -34,10 +33,10 @@ export const AttemptHeaderActions = ({
   gitOps,
   attemptSwitcher,
 }: AttemptHeaderActionsProps) => {
-  const { t } = useTranslation('tasks');
   const isPreviewMode = mode !== 'diffs';
   const isDiffMode = mode === 'diffs';
   const nextMode: LayoutMode = isPreviewMode ? 'diffs' : 'preview';
+  const nextModeLabel = isPreviewMode ? 'Diffs' : 'Preview';
 
   return (
     <>
@@ -49,7 +48,7 @@ export const AttemptHeaderActions = ({
                 <Button
                   variant="icon"
                   onClick={() => onModeChange(nextMode)}
-                  aria-label={`Switch to ${t(`attemptHeaderActions.${nextMode}`)}`}
+                  aria-label={`Switch to ${nextModeLabel}`}
                   className={`h-7 w-7 transition-all duration-200 ${
                     isPreviewMode ? 'rounded-full' : 'rounded-sm'
                   }`}
@@ -61,9 +60,7 @@ export const AttemptHeaderActions = ({
                   )}
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="bottom">
-                {t(`attemptHeaderActions.${nextMode}`)}
-              </TooltipContent>
+              <TooltipContent side="bottom">{nextModeLabel}</TooltipContent>
             </Tooltip>
           </TooltipProvider>
           {attempt && gitOps && (

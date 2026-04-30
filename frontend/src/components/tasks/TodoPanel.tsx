@@ -3,7 +3,6 @@ import { useEntries } from '@/contexts/EntriesContext';
 import { usePinnedTodos } from '@/hooks/usePinnedTodos';
 import { Card } from '../ui/card';
 import { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 
 const TODO_PANEL_OPEN_KEY = 'todo-panel-open';
 
@@ -19,7 +18,6 @@ function getStatusIcon(status?: string) {
 }
 
 function TodoPanel() {
-  const { t } = useTranslation('tasks');
   const { entries } = useEntries();
   const { todos } = usePinnedTodos(entries);
   const [isOpen, setIsOpen] = useState(() => {
@@ -41,7 +39,11 @@ function TodoPanel() {
     >
       <summary className="list-none cursor-pointer">
         <Card className="bg-muted p-3 text-sm flex items-center justify-between">
-          <span>{t('todos.title', { count: todos.length })}</span>
+          <span>
+            {todos.length === 1
+              ? `Todos (${todos.length})`
+              : `Todos (${todos.length})`}
+          </span>
           <ChevronUp
             aria-hidden
             className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180"

@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Plus, Edit2, Trash2, Loader2 } from 'lucide-react';
 import { tagsApi } from '@/lib/api';
@@ -12,7 +11,6 @@ interface TagManagerProps {
 }
 
 export function TagManager({ projectId, hideHeader = false }: TagManagerProps) {
-  const { t } = useTranslation('settings');
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -57,11 +55,7 @@ export function TagManager({ projectId, hideHeader = false }: TagManagerProps) {
   const handleDelete = useCallback(
     async (tag: Tag) => {
       if (
-        !confirm(
-          t('settings.general.tags.manager.deleteConfirm', {
-            tagName: tag.tag_name,
-          })
-        )
+        !confirm(`Are you sure you want to delete the tag "${tag.tag_name}"?`)
       ) {
         return;
       }
@@ -73,7 +67,7 @@ export function TagManager({ projectId, hideHeader = false }: TagManagerProps) {
         console.error('Failed to delete tag:', err);
       }
     },
-    [fetchTags, t]
+    [fetchTags]
   );
 
   if (loading) {
@@ -88,21 +82,20 @@ export function TagManager({ projectId, hideHeader = false }: TagManagerProps) {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         {!hideHeader ? (
-          <h3 className="text-lg font-semibold">
-            {t('settings.general.tags.manager.title')}
-          </h3>
+          <h3 className="text-lg font-semibold">Task Tags</h3>
         ) : (
           <div />
         )}
         <Button onClick={() => handleOpenDialog()} size="sm">
           <Plus className="h-4 w-4 mr-2" />
-          {t('settings.general.tags.manager.addTag')}
+          Add Tag
         </Button>
       </div>
 
       {tags.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground">
-          {t('settings.general.tags.manager.noTags')}
+          No tags yet. Create reusable text snippets for common task
+          descriptions. Use @tag_name in any task.
         </div>
       ) : (
         <div className="border rounded-lg overflow-hidden">
@@ -111,13 +104,11 @@ export function TagManager({ projectId, hideHeader = false }: TagManagerProps) {
               <thead className="border-b bg-muted/50 sticky top-0">
                 <tr>
                   <th className="text-left p-2 text-sm font-medium">
-                    {t('settings.general.tags.manager.table.tagName')}
+                    Tag Name
                   </th>
-                  <th className="text-left p-2 text-sm font-medium">
-                    {t('settings.general.tags.manager.table.content')}
-                  </th>
+                  <th className="text-left p-2 text-sm font-medium">Content</th>
                   <th className="text-right p-2 text-sm font-medium">
-                    {t('settings.general.tags.manager.table.actions')}
+                    Actions
                   </th>
                 </tr>
               </thead>
@@ -145,9 +136,7 @@ export function TagManager({ projectId, hideHeader = false }: TagManagerProps) {
                           size="icon"
                           className="h-7 w-7"
                           onClick={() => handleOpenDialog(tag)}
-                          title={t(
-                            'settings.general.tags.manager.actions.editTag'
-                          )}
+                          title="Edit tag"
                         >
                           <Edit2 className="h-3 w-3" />
                         </Button>
@@ -156,9 +145,7 @@ export function TagManager({ projectId, hideHeader = false }: TagManagerProps) {
                           size="icon"
                           className="h-7 w-7"
                           onClick={() => handleDelete(tag)}
-                          title={t(
-                            'settings.general.tags.manager.actions.deleteTag'
-                          )}
+                          title="Delete tag"
                         >
                           <Trash2 className="h-3 w-3" />
                         </Button>

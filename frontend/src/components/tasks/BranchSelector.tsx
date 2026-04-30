@@ -1,6 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback, memo } from 'react';
 import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
-import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button.tsx';
 import { ArrowDown, GitBranch as GitBranchIcon, Search } from 'lucide-react';
 import {
@@ -48,7 +47,6 @@ const BranchRow = memo(function BranchRow({
   onSelect,
   disabledTooltip,
 }: RowProps) {
-  const { t } = useTranslation(['common']);
   const classes =
     (isSelected ? 'bg-accent text-accent-foreground ' : '') +
     (isDisabled ? 'opacity-50 cursor-not-allowed ' : '') +
@@ -70,14 +68,10 @@ const BranchRow = memo(function BranchRow({
         </span>
         <div className="flex gap-1 flex-shrink-0">
           {branch.is_current && (
-            <span className="text-xs bg-background px-1 rounded">
-              {t('branchSelector.badges.current')}
-            </span>
+            <span className="text-xs bg-background px-1 rounded">current</span>
           )}
           {branch.is_remote && (
-            <span className="text-xs bg-background px-1 rounded">
-              {t('branchSelector.badges.remote')}
-            </span>
+            <span className="text-xs bg-background px-1 rounded">remote</span>
           )}
         </div>
       </div>
@@ -109,15 +103,14 @@ function BranchSelector({
   excludeCurrentBranch = false,
   disabledTooltip,
 }: Props) {
-  const { t } = useTranslation(['common']);
   const [branchSearchTerm, setBranchSearchTerm] = useState('');
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const virtuosoRef = useRef<VirtuosoHandle>(null);
 
-  const effectivePlaceholder = placeholder ?? t('branchSelector.placeholder');
-  const defaultDisabledTooltip = t('branchSelector.currentDisabled');
+  const effectivePlaceholder = placeholder ?? 'Select a branch';
+  const defaultDisabledTooltip = 'Cannot select the current branch';
 
   const filteredBranches = useMemo(() => {
     let filtered = branches;
@@ -228,7 +221,7 @@ function BranchSelector({
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 ref={searchInputRef}
-                placeholder={t('branchSelector.searchPlaceholder')}
+                placeholder="Search branches..."
                 value={branchSearchTerm}
                 onChange={(e) => setBranchSearchTerm(e.target.value)}
                 onKeyDown={(e) => {
@@ -266,7 +259,7 @@ function BranchSelector({
           <DropdownMenuSeparator />
           {filteredBranches.length === 0 ? (
             <div className="p-2 text-sm text-muted-foreground text-center">
-              {t('branchSelector.empty')}
+              No branches found
             </div>
           ) : (
             <Virtuoso

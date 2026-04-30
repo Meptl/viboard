@@ -1,4 +1,3 @@
-import { useTranslation } from 'react-i18next';
 import { Terminal, ChevronDown } from 'lucide-react';
 import ProcessLogsViewer, {
   ProcessLogsViewerContent,
@@ -24,8 +23,6 @@ export function DevServerLogsView({
   logs,
   error,
 }: DevServerLogsViewProps) {
-  const { t } = useTranslation('tasks');
-
   if (!latestDevServerProcess) {
     return null;
   }
@@ -45,18 +42,14 @@ export function DevServerLogsView({
           <div className="flex items-center gap-2">
             <Terminal className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm font-medium text-foreground">
-              {t('preview.logs.title')}
+              Dev Server Logs
             </span>
           </div>
           <div className="flex items-center text-sm">
             <ChevronDown
               className={`h-4 w-4 mr-1 ${showToggleText ? 'transition-transform' : ''} ${showLogs ? '' : 'rotate-180'}`}
             />
-            {showToggleText
-              ? showLogs
-                ? t('preview.logs.hide')
-                : t('preview.logs.show')
-              : t('preview.logs.hide')}
+            {showToggleText ? (showLogs ? 'Hide' : 'Show') : 'Hide'}
           </div>
         </div>
       </summary>

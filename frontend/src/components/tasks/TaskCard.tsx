@@ -8,7 +8,6 @@ import { useNavigateWithSearch } from '@/hooks';
 import { paths } from '@/lib/paths';
 import { attemptsApi } from '@/lib/api';
 import { TaskCardHeader } from './TaskCardHeader';
-import { useTranslation } from 'react-i18next';
 
 type Task = TaskWithAttemptStatus;
 
@@ -29,7 +28,6 @@ export function TaskCard({
   isOpen,
   projectId,
 }: TaskCardProps) {
-  const { t } = useTranslation('tasks');
   const navigate = useNavigateWithSearch();
   const [isNavigatingToParent, setIsNavigatingToParent] = useState(false);
 
@@ -106,7 +104,7 @@ export function TaskCard({
                   onPointerDown={(e) => e.stopPropagation()}
                   onMouseDown={(e) => e.stopPropagation()}
                   disabled={isNavigatingToParent}
-                  title={t('navigateToParent')}
+                  title="Navigate to parent task attempt"
                 >
                   <Link className="h-4 w-4" />
                 </Button>

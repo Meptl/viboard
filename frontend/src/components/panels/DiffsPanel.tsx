@@ -9,7 +9,6 @@ import {
   type RefObject,
   type ReactNode,
 } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Loader } from '@/components/ui/loader';
 import { Button } from '@/components/ui/button';
 import DiffViewSwitch from '@/components/DiffViewSwitch';
@@ -98,14 +97,13 @@ function metadataToDisplayDiff(metadata: DiffMetadata): Diff {
 }
 
 export function DiffsPanel({ selectedAttempt }: DiffsPanelProps) {
-  const { t } = useTranslation('tasks');
   const { comments } = useReview();
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
   const [hasInitialized, setHasInitialized] = useState(false);
   const [hasUserAdjustedCollapse, setHasUserAdjustedCollapse] = useState(false);
-  const [loadedDiffs, setLoadedDiffs] = useState<Record<string, LoadedDiffRecord>>(
-    {}
-  );
+  const [loadedDiffs, setLoadedDiffs] = useState<
+    Record<string, LoadedDiffRecord>
+  >({});
   const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set());
   const [processedStatsIds, setProcessedStatsIds] = useState<Set<string>>(
     new Set()
@@ -114,7 +112,8 @@ export function DiffsPanel({ selectedAttempt }: DiffsPanelProps) {
     Record<string, Record<string, ReviewDraft>>
   >({});
   const loadedDraftAttemptIdRef = useRef<string | null>(null);
-  const [hasCompletedFirstPageLoad, setHasCompletedFirstPageLoad] = useState(false);
+  const [hasCompletedFirstPageLoad, setHasCompletedFirstPageLoad] =
+    useState(false);
   const previousMetadataByIdRef = useRef<Record<string, DiffMetadataSignature>>(
     {}
   );
@@ -125,8 +124,11 @@ export function DiffsPanel({ selectedAttempt }: DiffsPanelProps) {
     selectedAttempt?.id ?? null,
     !diffStreamContext
   );
-  const { diffs: metadataDiffs, isComplete, error } =
-    diffStreamContext ?? fallbackDiffStream;
+  const {
+    diffs: metadataDiffs,
+    isComplete,
+    error,
+  } = diffStreamContext ?? fallbackDiffStream;
   const loading =
     !!selectedAttempt &&
     !hasCompletedFirstPageLoad &&
@@ -261,7 +263,10 @@ export function DiffsPanel({ selectedAttempt }: DiffsPanelProps) {
       .get(attemptId)
       .then((draft) => {
         if (!mounted) return;
-        const nextDraftsByFile: Record<string, Record<string, ReviewDraft>> = {};
+        const nextDraftsByFile: Record<
+          string,
+          Record<string, ReviewDraft>
+        > = {};
         for (const comment of draft?.review_comment_drafts ?? []) {
           const side = deserializeSplitSide(comment.side);
           const filePath = comment.file_path;
@@ -541,7 +546,7 @@ export function DiffsPanel({ selectedAttempt }: DiffsPanelProps) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-4 m-4">
         <div className="text-red-800 text-sm">
-          {t('diff.errorLoadingDiff', { error })}
+          {`Failed to load diff: ${error}`}
         </div>
       </div>
     );
@@ -564,7 +569,6 @@ export function DiffsPanel({ selectedAttempt }: DiffsPanelProps) {
       processedStatsIds={processedStatsIds}
       draftsByFile={draftsByFile}
       setDraftForFile={setDraftForFile}
-      t={t}
     />
   );
 }
@@ -589,7 +593,6 @@ interface DiffsPanelContentProps {
     key: string,
     draft: ReviewDraft | null
   ) => void;
-  t: (key: string, params?: Record<string, unknown>) => string;
 }
 
 function DiffsPanelContent({
@@ -608,12 +611,12 @@ function DiffsPanelContent({
   processedStatsIds,
   draftsByFile,
   setDraftForFile,
-  t,
 }: DiffsPanelContentProps) {
   const listRootRef = useRef<HTMLDivElement>(null);
 
   const omittedFileCount = useMemo(
-    () => diffs.reduce((count, diff) => count + (diff.contentOmitted ? 1 : 0), 0),
+    () =>
+      diffs.reduce((count, diff) => count + (diff.contentOmitted ? 1 : 0), 0),
     [diffs]
   );
 
@@ -634,9 +637,7 @@ function DiffsPanelContent({
                       onClick={handleCollapseAll}
                       aria-pressed={allCollapsed}
                       aria-label={
-                        allCollapsed
-                          ? t('diff.expandAll')
-                          : t('diff.collapseAll')
+                        allCollapsed ? 'Expand all diffs' : 'Collapse all diffs'
                       }
                     >
                       {allCollapsed ? (
@@ -647,7 +648,7 @@ function DiffsPanelContent({
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom">
-                    {allCollapsed ? t('diff.expandAll') : t('diff.collapseAll')}
+                    {allCollapsed ? 'Expand all diffs' : 'Collapse all diffs'}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -659,7 +660,9 @@ function DiffsPanelContent({
               className="text-sm text-muted-foreground whitespace-nowrap"
               aria-live="polite"
             >
-              {t('diff.filesChanged', { count: fileCount })}{' '}
+              {fileCount === 1
+                ? `${fileCount} file changed`
+                : `${fileCount} files changed`}{' '}
               <span className="text-green-600 dark:text-green-500">
                 +{added}
               </span>{' '}
@@ -696,7 +699,7 @@ function DiffsPanelContent({
           </div>
         ) : diffs.length === 0 ? (
           <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
-            {t('diff.noChanges')}
+            No changes have been made yet
           </div>
         ) : (
           diffs.map((diff, idx) => {
@@ -725,7 +728,9 @@ function DiffsPanelContent({
                     }
                   }}
                   selectedAttempt={selectedAttempt}
-                  draftsForFile={draftsByFile[filePath] ?? EMPTY_DRAFTS_FOR_FILE}
+                  draftsForFile={
+                    draftsByFile[filePath] ?? EMPTY_DRAFTS_FOR_FILE
+                  }
                   setDraftForFile={setDraftForFile}
                   loadingContent={loadingIds.has(id)}
                   statsProcessed={processedStatsIds.has(id)}

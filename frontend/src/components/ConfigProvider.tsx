@@ -3,7 +3,6 @@ import {
   ReactNode,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
 } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -15,7 +14,6 @@ import {
 } from 'shared/types';
 import type { ExecutorConfig } from 'shared/types';
 import { configApi } from '../lib/api';
-import { updateLanguageFromConfig } from '../i18n/config';
 
 interface UserSystemState {
   config: Config | null;
@@ -76,13 +74,6 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
       string,
       BaseAgentCapability[]
     > | null) || null;
-
-  // Sync language with i18n when config changes
-  useEffect(() => {
-    if (config?.language) {
-      updateLanguageFromConfig(config.language);
-    }
-  }, [config?.language]);
 
   const updateConfig = useCallback(
     (updates: Partial<Config>) => {

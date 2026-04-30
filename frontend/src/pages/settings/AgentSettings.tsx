@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { cloneDeep, isEqual } from 'lodash';
 import {
   Card,
@@ -42,7 +41,6 @@ import type {
 type ExecutorsMap = Record<string, Record<string, Record<string, unknown>>>;
 
 export function AgentSettings() {
-  const { t } = useTranslation(['settings', 'common']);
   // Use profiles hook for server state
   const {
     profilesContent: serverProfilesContent,
@@ -128,19 +126,27 @@ export function AgentSettings() {
 
     setExecutorError(null);
 
-    updateAndSaveConfig({ executor_profile: snapshot }).then((saved) => {
-      if (!saved) {
-        setExecutorError(t('settings.general.save.error'));
-        return;
-      }
-      if (saveSeq === executorSaveSeqRef.current) {
-        reloadSystem();
-      }
-    }).catch((err) => {
-      setExecutorError(t('settings.general.save.error'));
-      console.error('Error saving executor profile:', err);
-    });
-  }, [config?.executor_profile, executorDirty, executorDraft, reloadSystem, t, updateAndSaveConfig]);
+    updateAndSaveConfig({ executor_profile: snapshot })
+      .then((saved) => {
+        if (!saved) {
+          setExecutorError('Failed to save configuration');
+          return;
+        }
+        if (saveSeq === executorSaveSeqRef.current) {
+          reloadSystem();
+        }
+      })
+      .catch((err) => {
+        setExecutorError('Failed to save configuration');
+        console.error('Error saving executor profile:', err);
+      });
+  }, [
+    config?.executor_profile,
+    executorDirty,
+    executorDraft,
+    reloadSystem,
+    updateAndSaveConfig,
+  ]);
 
   // Open create dialog
   const openCreateDialog = async () => {
@@ -202,7 +208,7 @@ export function AgentSettings() {
       reloadSystem();
     } catch (err: unknown) {
       console.error('Failed to save new configuration:', err);
-      setSaveError(t('settings.agents.errors.saveConfigFailed'));
+      setSaveError('Failed to save configuration. Please try again.');
     }
   };
 
@@ -288,7 +294,7 @@ export function AgentSettings() {
         reloadSystem();
       } catch (saveError: unknown) {
         console.error('Failed to save deletion to backend:', saveError);
-        setSaveError(t('settings.agents.errors.deleteFailed'));
+        setSaveError('Failed to delete configuration. Please try again.');
       }
     } catch (error) {
       console.error('Error deleting configuration:', error);
@@ -353,7 +359,7 @@ export function AgentSettings() {
       reloadSystem();
     } catch (err: unknown) {
       console.error('Failed to save profiles:', err);
-      setSaveError(t('settings.agents.errors.saveConfigFailed'));
+      setSaveError('Failed to save configuration. Please try again.');
     }
   };
 
@@ -361,7 +367,7 @@ export function AgentSettings() {
     return (
       <div className="flex items-center justify-center py-8">
         <Loader2 className="h-8 w-8 animate-spin" />
-        <span className="ml-2">{t('settings.agents.loading')}</span>
+        <span className="ml-2">Loading agent configurations...</span>
       </div>
     );
   }
@@ -392,13 +398,11 @@ export function AgentSettings() {
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle>{t('settings.general.taskExecution.title')}</CardTitle>
+          <CardTitle>Default Coding Agent</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="executor">
-              {t('settings.general.taskExecution.executor.label')}
-            </Label>
+            <Label htmlFor="executor">Default Agent Configuration</Label>
             <div className="grid grid-cols-2 gap-2">
               <Select
                 value={executorDraft?.executor ?? ''}
@@ -418,11 +422,7 @@ export function AgentSettings() {
                 disabled={!profiles}
               >
                 <SelectTrigger id="executor">
-                  <SelectValue
-                    placeholder={t(
-                      'settings.general.taskExecution.executor.placeholder'
-                    )}
-                  />
+                  <SelectValue placeholder="Select profile" />
                 </SelectTrigger>
                 <SelectContent>
                   {profiles &&
@@ -453,8 +453,7 @@ export function AgentSettings() {
                           className="w-full h-10 px-2 flex items-center justify-between"
                         >
                           <span className="text-sm truncate flex-1 text-left">
-                            {currentProfileVariant?.variant ||
-                              t('settings.general.taskExecution.defaultLabel')}
+                            {currentProfileVariant?.variant || 'Default'}
                           </span>
                           <ChevronDown className="h-4 w-4 ml-1 flex-shrink-0" />
                         </Button>
@@ -493,7 +492,7 @@ export function AgentSettings() {
                       disabled
                     >
                       <span className="text-sm truncate flex-1 text-left">
-                        {t('settings.general.taskExecution.defaultLabel')}
+                        Default
                       </span>
                     </Button>
                   );
@@ -508,17 +507,18 @@ export function AgentSettings() {
 
       <Card>
         <CardHeader>
-          <CardTitle>{t('settings.agents.title')}</CardTitle>
-          <CardDescription>{t('settings.agents.description')}</CardDescription>
+          <CardTitle>Coding Agent Configurations</CardTitle>
+          <CardDescription>
+            Customize the behavior of coding agents with different
+            configurations.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {localParsedProfiles && localParsedProfiles.executors ? (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="executor-type">
-                    {t('settings.agents.editor.agentLabel')}
-                  </Label>
+                  <Label htmlFor="executor-type">Agent</Label>
                   <Select
                     value={selectedExecutorType}
                     onValueChange={(value) => {
@@ -528,11 +528,7 @@ export function AgentSettings() {
                     }}
                   >
                     <SelectTrigger id="executor-type">
-                      <SelectValue
-                        placeholder={t(
-                          'settings.agents.editor.agentPlaceholder'
-                        )}
-                      />
+                      <SelectValue placeholder="Select executor type" />
                     </SelectTrigger>
                     <SelectContent>
                       {Object.keys(localParsedProfiles.executors).map(
@@ -547,9 +543,7 @@ export function AgentSettings() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="configuration">
-                    {t('settings.agents.editor.configLabel')}
-                  </Label>
+                  <Label htmlFor="configuration">Configuration</Label>
                   <div className="flex gap-2">
                     <Select
                       value={selectedConfiguration}
@@ -565,11 +559,7 @@ export function AgentSettings() {
                       }
                     >
                       <SelectTrigger id="configuration">
-                        <SelectValue
-                          placeholder={t(
-                            'settings.agents.editor.configPlaceholder'
-                          )}
-                        />
+                        <SelectValue placeholder="Select configuration" />
                       </SelectTrigger>
                       <SelectContent>
                         {Object.keys(
@@ -581,7 +571,7 @@ export function AgentSettings() {
                           </SelectItem>
                         ))}
                         <SelectItem value="__create__">
-                          {t('settings.agents.editor.createNew')}
+                          Create new...
                         </SelectItem>
                       </SelectContent>
                     </Select>
@@ -603,13 +593,11 @@ export function AgentSettings() {
                           localParsedProfiles.executors[selectedExecutorType] ||
                             {}
                         ).length <= 1
-                          ? t('settings.agents.editor.deleteTitle')
-                          : t('settings.agents.editor.deleteButton', {
-                              name: selectedConfiguration,
-                            })
+                          ? 'Cannot delete the last configuration'
+                          : `Delete ${selectedConfiguration}`
                       }
                     >
-                      {t('settings.agents.editor.deleteText')}
+                      Delete
                     </Button>
                   </div>
                 </div>
@@ -651,7 +639,7 @@ export function AgentSettings() {
           ) : (
             <Alert variant="destructive">
               <AlertDescription>
-                {t('settings.agents.errors.saveFailed')}
+                Failed to save agent configurations. Please try again.
               </AlertDescription>
             </Alert>
           )}

@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import {
   Dialog,
   DialogContent,
@@ -64,7 +63,6 @@ function GitActionsDialogContent({
 const GitActionsDialogImpl = NiceModal.create<GitActionsDialogProps>(
   ({ attemptId, projectId: providedProjectId }) => {
     const modal = useModal();
-    const { t } = useTranslation('tasks');
     const { project } = useProject();
 
     const effectiveProjectId = providedProjectId ?? project?.id;
@@ -95,7 +93,7 @@ const GitActionsDialogImpl = NiceModal.create<GitActionsDialogProps>(
       <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{t('git.actions.title')}</DialogTitle>
+            <DialogTitle>Git Actions</DialogTitle>
           </DialogHeader>
 
           {isLoading ? (

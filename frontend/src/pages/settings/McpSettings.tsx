@@ -1,11 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -32,7 +26,6 @@ import { mcpServersApi } from '@/lib/api';
 import { McpConfigStrategyGeneral } from '@/lib/mcpStrategies';
 
 export function McpSettings() {
-  const { t } = useTranslation('settings');
   const { config, profiles } = useUserSystem();
   const [mcpServers, setMcpServers] = useState('{}');
   const [mcpConfig, setMcpConfig] = useState<McpConfig | null>(null);
@@ -122,13 +115,9 @@ export function McpSettings() {
         McpConfigStrategyGeneral.validateFullConfig(mcpConfig, parsedConfig);
       } catch (err) {
         if (err instanceof SyntaxError) {
-          setMcpError(t('settings.mcp.errors.invalidJson'));
+          setMcpError('Invalid JSON format');
         } else {
-          setMcpError(
-            err instanceof Error
-              ? err.message
-              : t('settings.mcp.errors.validationError')
-          );
+          setMcpError(err instanceof Error ? err.message : 'Validation error');
         }
       }
     }
@@ -174,18 +163,18 @@ export function McpSettings() {
           setTimeout(() => setSuccess(false), 3000);
         } catch (mcpErr) {
           if (mcpErr instanceof SyntaxError) {
-            setMcpError(t('settings.mcp.errors.invalidJson'));
+            setMcpError('Invalid JSON format');
           } else {
             setMcpError(
               mcpErr instanceof Error
                 ? mcpErr.message
-                : t('settings.mcp.errors.saveFailed')
+                : 'Failed to save MCP servers'
             );
           }
         }
       }
     } catch (err) {
-      setMcpError(t('settings.mcp.errors.applyFailed'));
+      setMcpError('Failed to apply MCP server configuration');
       console.error('Error applying MCP servers:', err);
     } finally {
       setMcpApplying(false);
@@ -207,7 +196,7 @@ export function McpSettings() {
       setMcpError(
         err instanceof Error
           ? err.message
-          : t('settings.mcp.errors.addServerFailed')
+          : 'Failed to add preconfigured server'
       );
     }
   };
@@ -232,9 +221,7 @@ export function McpSettings() {
     return (
       <div className="py-8">
         <Alert variant="destructive">
-          <AlertDescription>
-            {t('settings.mcp.errors.loadFailed')}
-          </AlertDescription>
+          <AlertDescription>Failed to load configuration.</AlertDescription>
         </Alert>
       </div>
     );
@@ -245,7 +232,7 @@ export function McpSettings() {
       {mcpError && (
         <Alert variant="destructive">
           <AlertDescription>
-            {t('settings.mcp.errors.mcpError', { error: mcpError })}
+            {`MCP Configuration Error: ${mcpError}`}
           </AlertDescription>
         </Alert>
       )}
@@ -254,7 +241,7 @@ export function McpSettings() {
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <CardTitle>{t('settings.mcp.title')}</CardTitle>
+              <CardTitle>MCP Server Configuration</CardTitle>
             </div>
             <Button
               onClick={handleApplyMcpServers}
@@ -263,15 +250,13 @@ export function McpSettings() {
             >
               {mcpApplying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {success && <span className="mr-2">✓</span>}
-              {success ? t('settings.mcp.save.success') : t('settings.mcp.save.button')}
+              {success ? 'Settings Saved!' : 'Save'}
             </Button>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="mcp-executor">
-              {t('settings.mcp.labels.agent')}
-            </Label>
+            <Label htmlFor="mcp-executor">Agent</Label>
             <Select
               value={
                 selectedProfile
@@ -286,9 +271,7 @@ export function McpSettings() {
               }}
             >
               <SelectTrigger id="mcp-executor">
-                <SelectValue
-                  placeholder={t('settings.mcp.labels.agentPlaceholder')}
-                />
+                <SelectValue placeholder="Select executor" />
               </SelectTrigger>
               <SelectContent>
                 {profiles &&
@@ -308,12 +291,14 @@ export function McpSettings() {
               <div className="flex">
                 <div className="ml-3">
                   <h3 className="text-sm font-medium text-amber-800 dark:text-amber-200">
-                    {t('settings.mcp.errors.notSupported')}
+                    MCP Not Supported
                   </h3>
                   <div className="mt-2 text-sm text-amber-700 dark:text-amber-300">
                     <p>{mcpError}</p>
                     <p className="mt-1">
-                      {t('settings.mcp.errors.supportMessage')}
+                      To use MCP servers, please select a different executor
+                      that supports MCP (Claude, Gemini, Codex, or Opencode)
+                      above.
                     </p>
                   </div>
                 </div>
@@ -321,19 +306,15 @@ export function McpSettings() {
             </div>
           ) : (
             <div className="space-y-2">
-              <Label htmlFor="mcp-servers">
-                {t('settings.mcp.labels.serverConfig')}
-              </Label>
+              <Label htmlFor="mcp-servers">Server Configuration (JSON)</Label>
               <JSONEditor
                 id="mcp-servers"
                 placeholder={
                   mcpLoading
-                    ? t('settings.mcp.save.loading')
+                    ? 'Loading current MCP server configuration...'
                     : '{\n  "server-name": {\n    "type": "stdio",\n    "command": "your-command",\n    "args": ["arg1", "arg2"]\n  }\n}'
                 }
-                value={
-                  mcpLoading ? t('settings.mcp.loading.jsonEditor') : mcpServers
-                }
+                value={mcpLoading ? 'Loading MCP configuration...' : mcpServers}
                 onChange={handleMcpServersChange}
                 disabled={mcpLoading}
                 minHeight={300}
@@ -345,10 +326,10 @@ export function McpSettings() {
               )}
               <div className="text-sm text-muted-foreground">
                 {mcpLoading ? (
-                  t('settings.mcp.loading.configuration')
+                  'Loading MCP configuration...'
                 ) : (
                   <span>
-                    {t('settings.mcp.labels.saveLocation')}
+                    Changes will be saved to:
                     {mcpConfigPath && (
                       <span className="ml-2 font-mono text-xs">
                         {mcpConfigPath}
@@ -361,9 +342,10 @@ export function McpSettings() {
               {mcpConfig?.preconfigured &&
                 typeof mcpConfig.preconfigured === 'object' && (
                   <div className="pt-4">
-                    <Label>{t('settings.mcp.labels.popularServers')}</Label>
+                    <Label>Popular servers</Label>
                     <p className="text-sm text-muted-foreground mb-2">
-                      {t('settings.mcp.labels.serverHelper')}
+                      Click a card to insert that MCP Server into the JSON
+                      above.
                     </p>
 
                     <div className="relative overflow-hidden rounded-xl border bg-background">

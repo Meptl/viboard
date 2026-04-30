@@ -1,5 +1,4 @@
 import type { FocusEventHandler } from 'react';
-import { useTranslation } from 'react-i18next';
 import { MultiFileSearchTextarea } from '@/components/ui/multi-file-search-textarea';
 
 interface CopyFilesFieldProps {
@@ -17,14 +16,12 @@ export function CopyFilesField({
   projectId,
   disabled = false,
 }: CopyFilesFieldProps) {
-  const { t } = useTranslation('projects');
-
   return (
     <MultiFileSearchTextarea
       value={value}
       onChange={onChange}
       onBlur={onBlur}
-      placeholder={t('copyFilesPlaceholderWithSearch')}
+      placeholder="File paths or glob patterns (e.g., .env, config/*.json)"
       rows={3}
       disabled={disabled}
       className="w-full px-3 py-2 text-sm border border-input bg-background text-foreground disabled:opacity-50 rounded-md resize-vertical focus:outline-none focus:ring-2 focus:ring-ring"

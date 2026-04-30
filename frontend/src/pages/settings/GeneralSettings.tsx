@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { cloneDeep, merge, isEqual } from 'lodash';
 import {
   Card,
@@ -21,13 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, Volume2 } from 'lucide-react';
-import {
-  EditorType,
-  SoundFile,
-  ThemeMode,
-  UiLanguage,
-} from 'shared/types';
-import { getLanguageOptions } from '@/i18n/languages';
+import { EditorType, SoundFile, ThemeMode } from 'shared/types';
 
 import { toPrettyCase } from '@/utils/string';
 import { useEditorAvailability } from '@/hooks/useEditorAvailability';
@@ -37,15 +30,6 @@ import { useUserSystem } from '@/components/ConfigProvider';
 import { TagManager } from '@/components/TagManager';
 
 export function GeneralSettings() {
-  const { t } = useTranslation(['settings', 'common']);
-
-  // Get language options with proper display names
-  const languageOptions = getLanguageOptions(
-    t('language.browserDefault', {
-      ns: 'common',
-      defaultValue: 'Browser Default',
-    })
-  );
   const {
     config,
     loading,
@@ -66,29 +50,22 @@ export function GeneralSettings() {
   // Check editor availability when draft editor changes
   const editorAvailability = useEditorAvailability(draft?.editor.editor_type);
 
-  const validateBranchPrefix = useCallback(
-    (prefix: string): string | null => {
-      if (!prefix) return null; // empty allowed
-      if (prefix.includes('/'))
-        return t('settings.general.git.branchPrefix.errors.slash');
-      if (prefix.startsWith('.'))
-        return t('settings.general.git.branchPrefix.errors.startsWithDot');
-      if (prefix.endsWith('.') || prefix.endsWith('.lock'))
-        return t('settings.general.git.branchPrefix.errors.endsWithDot');
-      if (prefix.includes('..') || prefix.includes('@{'))
-        return t('settings.general.git.branchPrefix.errors.invalidSequence');
-      if (/[ \t~^:?*[\\]/.test(prefix))
-        return t('settings.general.git.branchPrefix.errors.invalidChars');
-      // Control chars check
-      for (let i = 0; i < prefix.length; i++) {
-        const code = prefix.charCodeAt(i);
-        if (code < 0x20 || code === 0x7f)
-          return t('settings.general.git.branchPrefix.errors.controlChars');
-      }
-      return null;
-    },
-    [t]
-  );
+  const validateBranchPrefix = useCallback((prefix: string): string | null => {
+    if (!prefix) return null; // empty allowed
+    if (prefix.includes('/')) return "Prefix cannot contain '/'.";
+    if (prefix.startsWith('.')) return "Prefix cannot start with '.'.";
+    if (prefix.endsWith('.') || prefix.endsWith('.lock'))
+      return "Prefix cannot end with '.' or '.lock'.";
+    if (prefix.includes('..') || prefix.includes('@{'))
+      return 'Contains invalid sequence (.., @{).';
+    if (/[ \t~^:?*[\\]/.test(prefix)) return 'Contains invalid characters.';
+    // Control chars check
+    for (let i = 0; i < prefix.length; i++) {
+      const code = prefix.charCodeAt(i);
+      if (code < 0x20 || code === 0x7f) return 'Contains control characters.';
+    }
+    return null;
+  }, []);
 
   // When config loads or changes externally, update draft only if not dirty
   useEffect(() => {
@@ -142,7 +119,7 @@ export function GeneralSettings() {
       try {
         const saved = await updateAndSaveConfig(saveSnapshot);
         if (!saved) {
-          setError(t('settings.general.save.error'));
+          setError('Failed to save configuration');
           return;
         }
 
@@ -151,21 +128,13 @@ export function GeneralSettings() {
           setDirty(false);
         }
       } catch (err) {
-        setError(t('settings.general.save.error'));
+        setError('Failed to save configuration');
         console.error('Error saving config:', err);
       }
     }, 400);
 
     return () => window.clearTimeout(timer);
-  }, [
-    branchPrefixError,
-    config,
-    dirty,
-    draft,
-    setTheme,
-    t,
-    updateAndSaveConfig,
-  ]);
+  }, [branchPrefixError, config, dirty, draft, setTheme, updateAndSaveConfig]);
 
   const resetDisclaimer = async () => {
     if (!config) return;
@@ -176,7 +145,7 @@ export function GeneralSettings() {
     return (
       <div className="flex items-center justify-center py-8">
         <Loader2 className="h-8 w-8 animate-spin" />
-        <span className="ml-2">{t('settings.general.loading')}</span>
+        <span className="ml-2">Loading settings...</span>
       </div>
     );
   }
@@ -185,7 +154,7 @@ export function GeneralSettings() {
     return (
       <div className="py-8">
         <Alert variant="destructive">
-          <AlertDescription>{t('settings.general.loadError')}</AlertDescription>
+          <AlertDescription>Failed to load configuration.</AlertDescription>
         </Alert>
       </div>
     );
@@ -201,13 +170,11 @@ export function GeneralSettings() {
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle>{t('settings.general.appearance.title')}</CardTitle>
+          <CardTitle>Appearance</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="theme">
-              {t('settings.general.appearance.theme.label')}
-            </Label>
+            <Label htmlFor="theme">Theme</Label>
             <Select
               value={draft?.theme}
               onValueChange={(value: ThemeMode) =>
@@ -215,11 +182,7 @@ export function GeneralSettings() {
               }
             >
               <SelectTrigger id="theme">
-                <SelectValue
-                  placeholder={t(
-                    'settings.general.appearance.theme.placeholder'
-                  )}
-                />
+                <SelectValue placeholder="Select theme" />
               </SelectTrigger>
               <SelectContent>
                 {Object.values(ThemeMode).map((theme) => (
@@ -230,45 +193,16 @@ export function GeneralSettings() {
               </SelectContent>
             </Select>
           </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="language">
-              {t('settings.general.appearance.language.label')}
-            </Label>
-            <Select
-              value={draft?.language}
-              onValueChange={(value: UiLanguage) =>
-                updateDraft({ language: value })
-              }
-            >
-              <SelectTrigger id="language">
-                <SelectValue
-                  placeholder={t(
-                    'settings.general.appearance.language.placeholder'
-                  )}
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {languageOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle>{t('settings.general.editor.title')}</CardTitle>
+          <CardTitle>Editor</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="editor-type">
-              {t('settings.general.editor.type.label')}
-            </Label>
+            <Label htmlFor="editor-type">Editor Type</Label>
             <Select
               value={draft?.editor.editor_type}
               onValueChange={(value: EditorType) =>
@@ -278,9 +212,7 @@ export function GeneralSettings() {
               }
             >
               <SelectTrigger id="editor-type">
-                <SelectValue
-                  placeholder={t('settings.general.editor.type.placeholder')}
-                />
+                <SelectValue placeholder="Select editor" />
               </SelectTrigger>
               <SelectContent>
                 {Object.values(EditorType).map((editor) => (
@@ -297,7 +229,7 @@ export function GeneralSettings() {
             )}
 
             <p className="text-sm text-muted-foreground">
-              {t('settings.general.editor.type.helper')}
+              Choose your preferred code editor interface.
             </p>
           </div>
 
@@ -305,16 +237,11 @@ export function GeneralSettings() {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="custom-command-workspace">
-                  {t('settings.general.editor.customCommand.workspaceLabel', {
-                    defaultValue: 'Workspace Open Command',
-                  })}
+                  Workspace Open Command
                 </Label>
                 <Input
                   id="custom-command-workspace"
-                  placeholder={t(
-                    'settings.general.editor.customCommand.workspacePlaceholder',
-                    { defaultValue: 'konsole --workdir %repo_root%' }
-                  )}
+                  placeholder="konsole --workdir %repo_root%"
                   value={draft?.editor.custom_ide_dir_cmd || ''}
                   onChange={(e) =>
                     updateDraft({
@@ -327,20 +254,10 @@ export function GeneralSettings() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="custom-command-file">
-                  {t('settings.general.editor.customCommand.fileLabel', {
-                    defaultValue: 'File Open Command',
-                  })}
-                </Label>
+                <Label htmlFor="custom-command-file">File Open Command</Label>
                 <Input
                   id="custom-command-file"
-                  placeholder={t(
-                    'settings.general.editor.customCommand.filePlaceholder',
-                    {
-                      defaultValue:
-                        'konsole --workdir %repo_root% -e nvim %file%',
-                    }
-                  )}
+                  placeholder="konsole --workdir %repo_root% -e nvim %file%"
                   value={draft?.editor.custom_ide_file_cmd || ''}
                   onChange={(e) =>
                     updateDraft({
@@ -361,13 +278,11 @@ export function GeneralSettings() {
             <>
               <div className="space-y-2">
                 <Label htmlFor="remote-ssh-host">
-                  {t('settings.general.editor.remoteSsh.host.label')}
+                  Remote SSH Host (Optional)
                 </Label>
                 <Input
                   id="remote-ssh-host"
-                  placeholder={t(
-                    'settings.general.editor.remoteSsh.host.placeholder'
-                  )}
+                  placeholder="e.g., hostname or IP address"
                   value={draft?.editor.remote_ssh_host || ''}
                   onChange={(e) =>
                     updateDraft({
@@ -379,20 +294,20 @@ export function GeneralSettings() {
                   }
                 />
                 <p className="text-sm text-muted-foreground">
-                  {t('settings.general.editor.remoteSsh.host.helper')}
+                  Set this if Viboard is running on a remote server. When set,
+                  clicking "Open in Editor" will generate a URL to open your
+                  editor via SSH instead of spawning a local command.
                 </p>
               </div>
 
               {draft?.editor.remote_ssh_host && (
                 <div className="space-y-2">
                   <Label htmlFor="remote-ssh-user">
-                    {t('settings.general.editor.remoteSsh.user.label')}
+                    Remote SSH User (Optional)
                   </Label>
                   <Input
                     id="remote-ssh-user"
-                    placeholder={t(
-                      'settings.general.editor.remoteSsh.user.placeholder'
-                    )}
+                    placeholder="e.g., username"
                     value={draft?.editor.remote_ssh_user || ''}
                     onChange={(e) =>
                       updateDraft({
@@ -404,7 +319,8 @@ export function GeneralSettings() {
                     }
                   />
                   <p className="text-sm text-muted-foreground">
-                    {t('settings.general.editor.remoteSsh.user.helper')}
+                    SSH username for the remote connection. If not set, VS Code
+                    will use your SSH config or prompt you.
                   </p>
                 </div>
               )}
@@ -415,17 +331,15 @@ export function GeneralSettings() {
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle>{t('settings.general.git.title')}</CardTitle>
+          <CardTitle>Git</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="git-branch-prefix">
-              {t('settings.general.git.branchPrefix.label')}
-            </Label>
+            <Label htmlFor="git-branch-prefix">Branch Prefix</Label>
             <Input
               id="git-branch-prefix"
               type="text"
-              placeholder={t('settings.general.git.branchPrefix.placeholder')}
+              placeholder="vb"
               value={draft?.git_branch_prefix ?? ''}
               onChange={(e) => {
                 const value = e.target.value.trim();
@@ -439,21 +353,19 @@ export function GeneralSettings() {
               <p className="text-sm text-destructive">{branchPrefixError}</p>
             )}
             <p className="text-sm text-muted-foreground">
-              {t('settings.general.git.branchPrefix.helper')}{' '}
+              Prefix for auto-generated branch names. Leave empty for no prefix.{' '}
               {draft?.git_branch_prefix ? (
                 <>
-                  {t('settings.general.git.branchPrefix.preview')}{' '}
+                  Preview:{' '}
                   <code className="text-xs bg-muted px-1 py-0.5 rounded">
-                    {t('settings.general.git.branchPrefix.previewWithPrefix', {
-                      prefix: draft.git_branch_prefix,
-                    })}
+                    {`${draft.git_branch_prefix}/1a2b-task-name`}
                   </code>
                 </>
               ) : (
                 <>
-                  {t('settings.general.git.branchPrefix.preview')}{' '}
+                  Preview:{' '}
                   <code className="text-xs bg-muted px-1 py-0.5 rounded">
-                    {t('settings.general.git.branchPrefix.previewNoPrefix')}
+                    1a2b-task-name
                   </code>
                 </>
               )}
@@ -464,25 +376,15 @@ export function GeneralSettings() {
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle>
-            {t('settings.general.taskCreation.title', {
-              defaultValue: 'Task Creation Guidance',
-            })}
-          </CardTitle>
+          <CardTitle>Task Creation Guidance</CardTitle>
           <CardDescription>
-            {t('settings.general.taskCreation.description', {
-              defaultValue:
-                'These descriptions are given to agents when they are tasked with creating tasks in viboard.',
-            })}
+            These descriptions are given to agents when they are tasked with
+            creating tasks in viboard.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="global-task-title-prompt">
-              {t('settings.general.taskCreation.titlePrompt.label', {
-                defaultValue: 'Title guidance',
-              })}
-            </Label>
+            <Label htmlFor="global-task-title-prompt">Title guidance</Label>
             <Input
               id="global-task-title-prompt"
               type="text"
@@ -490,20 +392,13 @@ export function GeneralSettings() {
               onChange={(e) =>
                 updateDraft({ task_title_prompt: e.target.value || null })
               }
-              placeholder={t(
-                'settings.general.taskCreation.titlePrompt.placeholder',
-                {
-                  defaultValue: 'Succinct 2-5 words',
-                }
-              )}
+              placeholder="Succinct 2-5 words"
             />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="global-task-description-prompt">
-              {t('settings.general.taskCreation.descriptionPrompt.label', {
-                defaultValue: 'Description guidance',
-              })}
+              Description guidance
             </Label>
             <Input
               id="global-task-description-prompt"
@@ -514,12 +409,7 @@ export function GeneralSettings() {
                   task_description_prompt: e.target.value || null,
                 })
               }
-              placeholder={t(
-                'settings.general.taskCreation.descriptionPrompt.placeholder',
-                {
-                  defaultValue: 'Do not write tests',
-                }
-              )}
+              placeholder="Do not write tests"
             />
           </div>
         </CardContent>
@@ -527,7 +417,7 @@ export function GeneralSettings() {
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle>{t('settings.general.notifications.title')}</CardTitle>
+          <CardTitle>Notifications</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center space-x-2">
@@ -545,18 +435,16 @@ export function GeneralSettings() {
             />
             <div className="space-y-0.5">
               <Label htmlFor="sound-enabled" className="cursor-pointer">
-                {t('settings.general.notifications.sound.label')}
+                Sound Notifications
               </Label>
               <p className="text-sm text-muted-foreground">
-                {t('settings.general.notifications.sound.helper')}
+                Play a sound when task attempts finish running.
               </p>
             </div>
           </div>
           {draft?.notifications.sound_enabled && (
             <div className="ml-6 space-y-2">
-              <Label htmlFor="sound-file">
-                {t('settings.general.notifications.sound.fileLabel')}
-              </Label>
+              <Label htmlFor="sound-file">Sound</Label>
               <div className="flex gap-2">
                 <Select
                   value={draft.notifications.sound_file}
@@ -570,11 +458,7 @@ export function GeneralSettings() {
                   }
                 >
                   <SelectTrigger id="sound-file" className="flex-1">
-                    <SelectValue
-                      placeholder={t(
-                        'settings.general.notifications.sound.filePlaceholder'
-                      )}
-                    />
+                    <SelectValue placeholder="Select sound" />
                   </SelectTrigger>
                   <SelectContent>
                     {Object.values(SoundFile).map((soundFile) => (
@@ -610,10 +494,11 @@ export function GeneralSettings() {
             />
             <div className="space-y-0.5">
               <Label htmlFor="badge-notifications" className="cursor-pointer">
-                {t('settings.general.notifications.badge.label')}
+                Badge Notifications
               </Label>
               <p className="text-sm text-muted-foreground">
-                {t('settings.general.notifications.badge.helper')}
+                Show the red badge on the bell icon when there are unread task
+                notifications.
               </p>
             </div>
           </div>
@@ -632,10 +517,11 @@ export function GeneralSettings() {
             />
             <div className="space-y-0.5">
               <Label htmlFor="toast-notifications" className="cursor-pointer">
-                {t('settings.general.notifications.toast.label')}
+                Toast Notifications
               </Label>
               <p className="text-sm text-muted-foreground">
-                {t('settings.general.notifications.toast.helper')}
+                Show in-app toast notifications when task attempts finish while
+                the app is focused.
               </p>
             </div>
           </div>
@@ -654,10 +540,11 @@ export function GeneralSettings() {
             />
             <div className="space-y-0.5">
               <Label htmlFor="system-notifications" className="cursor-pointer">
-                {t('settings.general.notifications.system.label')}
+                System Notifications
               </Label>
               <p className="text-sm text-muted-foreground">
-                {t('settings.general.notifications.system.helper')}
+                Show system notifications when task attempts finish while the
+                app is not focused.
               </p>
             </div>
           </div>
@@ -666,7 +553,7 @@ export function GeneralSettings() {
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle>{t('settings.general.taskTemplates.title')}</CardTitle>
+          <CardTitle>Tags</CardTitle>
         </CardHeader>
         <CardContent>
           <TagManager />
@@ -675,20 +562,18 @@ export function GeneralSettings() {
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle>{t('settings.general.safety.title')}</CardTitle>
+          <CardTitle>Safety &amp; Disclaimers</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium">
-                {t('settings.general.safety.disclaimer.title')}
-              </p>
+              <p className="font-medium">Disclaimer Acknowledgment</p>
               <p className="text-sm text-muted-foreground">
-                {t('settings.general.safety.disclaimer.description')}
+                Reset the safety disclaimer.
               </p>
             </div>
             <Button variant="outline" onClick={resetDisclaimer}>
-              {t('settings.general.safety.disclaimer.button')}
+              Reset
             </Button>
           </div>
           <div className="flex items-center space-x-2">
@@ -704,10 +589,7 @@ export function GeneralSettings() {
                 htmlFor="show-new-attempt-drag-warning"
                 className="cursor-pointer"
               >
-                {t('settings.general.safety.newAttemptWarning.label', {
-                  defaultValue:
-                    'Show warning before starting a new attempt from drag-and-drop',
-                })}
+                Show warning before starting a new attempt from drag-and-drop
               </Label>
             </div>
           </div>

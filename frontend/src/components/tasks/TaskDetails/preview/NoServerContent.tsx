@@ -1,13 +1,5 @@
 import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import {
-  Play,
-  Edit3,
-  Square,
-  SquareTerminal,
-  Save,
-  X,
-} from 'lucide-react';
+import { Play, Edit3, Square, SquareTerminal, Save, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -36,7 +28,6 @@ export function NoServerContent({
   stopDevServer,
   project,
 }: NoServerContentProps) {
-  const { t } = useTranslation('tasks');
   const [devScriptInput, setDevScriptInput] = useState('');
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isEditingExistingScript, setIsEditingExistingScript] = useState(false);
@@ -66,13 +57,13 @@ export function NoServerContent({
   const handleSaveDevScript = async (startAfterSave?: boolean) => {
     setSaveError(null);
     if (!project) {
-      setSaveError(t('preview.devScript.errors.notLoaded'));
+      setSaveError('Project not loaded');
       return;
     }
 
     const script = devScriptInput.trim();
     if (!script) {
-      setSaveError(t('preview.devScript.errors.empty'));
+      setSaveError('Dev script cannot be empty');
       return;
     }
 
@@ -129,7 +120,7 @@ export function NoServerContent({
             <h3 className="text-lg font-medium text-foreground mb-2">
               {isEditingExistingScript
                 ? 'Editting dev script'
-                : t('preview.noServer.title')}
+                : 'No dev server running'}
             </h3>
           </div>
 
@@ -151,12 +142,12 @@ export function NoServerContent({
                 {runningDevServer ? (
                   <>
                     <Square className="h-4 w-4" />
-                    {t('preview.toolbar.stopDevServer')}
+                    Stop dev server
                   </>
                 ) : (
                   <>
                     <Play className="h-4 w-4" />
-                    {t('preview.noServer.startButton')}
+                    Start Dev Server
                   </>
                 )}
               </Button>
@@ -169,7 +160,7 @@ export function NoServerContent({
                   className="gap-1"
                 >
                   <Edit3 className="h-3 w-3" />
-                  {t('preview.noServer.editButton')}
+                  Edit Dev Script
                 </Button>
               )}
             </div>
@@ -201,7 +192,7 @@ export function NoServerContent({
                         className="gap-1"
                       >
                         <Save className="h-3 w-3" />
-                        {t('preview.devScript.saveChanges')}
+                        Save Changes
                       </Button>
                       <Button
                         size="sm"
@@ -211,7 +202,7 @@ export function NoServerContent({
                         className="gap-1"
                       >
                         <X className="h-3 w-3" />
-                        {t('preview.devScript.cancel')}
+                        Cancel
                       </Button>
                     </>
                   ) : (
@@ -223,7 +214,7 @@ export function NoServerContent({
                         className="gap-1"
                       >
                         <Play className="h-4 w-4" />
-                        {t('preview.devScript.saveAndStart')}
+                        Save &amp; Start
                       </Button>
                       <Button
                         size="sm"
@@ -233,7 +224,7 @@ export function NoServerContent({
                         className="gap-1"
                       >
                         <Save className="h-3 w-3" />
-                        {t('preview.devScript.saveOnly')}
+                        Save Only
                       </Button>
                     </>
                   )}
@@ -241,7 +232,6 @@ export function NoServerContent({
               </div>
             </div>
           )}
-
         </div>
       </div>
     </div>

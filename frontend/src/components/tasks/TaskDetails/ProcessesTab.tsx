@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
 import {
   Play,
   Square,
@@ -24,7 +23,6 @@ interface ProcessesTabProps {
 }
 
 function ProcessesTab({ attemptId }: ProcessesTabProps) {
-  const { t } = useTranslation('tasks');
   const {
     executionProcesses,
     executionProcessesById,
@@ -155,7 +153,7 @@ function ProcessesTab({ attemptId }: ProcessesTabProps) {
       <div className="flex-1 flex items-center justify-center text-muted-foreground">
         <div className="text-center">
           <Cog className="h-12 w-12 mx-auto mb-4 opacity-50" />
-          <p>{t('processes.selectAttempt')}</p>
+          <p>Select an attempt to view execution processes.</p>
         </div>
       </div>
     );
@@ -167,19 +165,19 @@ function ProcessesTab({ attemptId }: ProcessesTabProps) {
         <div className="flex-1 overflow-auto px-4 pb-20 pt-4">
           {processesError && (
             <div className="mb-3 text-sm text-destructive">
-              {t('processes.errorLoadingUpdates')}
-              {!isConnected && ` ${t('processes.reconnecting')}`}
+              Failed to load live updates for processes.
+              {!isConnected && ' Reconnecting...'}
             </div>
           )}
           {processesLoading && executionProcesses.length === 0 ? (
             <div className="flex items-center justify-center text-muted-foreground py-10">
-              <p>{t('processes.loading')}</p>
+              <p>Loading execution processes...</p>
             </div>
           ) : executionProcesses.length === 0 ? (
             <div className="flex items-center justify-center text-muted-foreground py-10">
               <div className="text-center">
                 <Cog className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>{t('processes.noProcesses')}</p>
+                <p>No execution processes found for this attempt.</p>
               </div>
             </div>
           ) : (
@@ -207,19 +205,19 @@ function ProcessesTab({ attemptId }: ProcessesTabProps) {
                           className="text-sm text-muted-foreground mt-1 truncate"
                           title={process.id}
                         >
-                          {t('processes.processId', { id: process.id })}
+                          {`Process ID: ${process.id}`}
                         </p>
                         {process.dropped && (
                           <span
                             className="inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200"
-                            title={t('processes.deletedTooltip')}
+                            title="Deleted by restore: timeline was restored to a checkpoint and later executions were removed"
                           >
-                            {t('processes.deleted')}
+                            Deleted
                           </span>
                         )}
                         {
                           <p className="text-sm text-muted-foreground mt-1">
-                            {t('processes.agent')}{' '}
+                            Agent:{' '}
                             {process.executor_action.typ.type ===
                               'CodingAgentInitialRequest' ||
                             process.executor_action.typ.type ===
@@ -245,9 +243,7 @@ function ProcessesTab({ attemptId }: ProcessesTabProps) {
                       </span>
                       {process.exit_code !== null && (
                         <p className="text-xs text-muted-foreground mt-1">
-                          {t('processes.exit', {
-                            code: process.exit_code.toString(),
-                          })}
+                          {`Exit: ${process.exit_code.toString()}`}
                         </p>
                       )}
                     </div>
@@ -255,15 +251,11 @@ function ProcessesTab({ attemptId }: ProcessesTabProps) {
                   <div className="mt-3 text-xs text-muted-foreground">
                     <div className="flex justify-between">
                       <span>
-                        {t('processes.started', {
-                          date: formatDate(process.started_at),
-                        })}
+                        {`Started: ${formatDate(process.started_at)}`}
                       </span>
                       {process.completed_at && (
                         <span>
-                          {t('processes.completed', {
-                            date: formatDate(process.completed_at),
-                          })}
+                          {`Completed: ${formatDate(process.completed_at)}`}
                         </span>
                       )}
                     </div>
@@ -276,9 +268,7 @@ function ProcessesTab({ attemptId }: ProcessesTabProps) {
       ) : (
         <div className="flex-1 flex flex-col min-h-0">
           <div className="flex items-center justify-between px-4 py-2 border-b flex-shrink-0">
-            <h2 className="text-lg font-semibold">
-              {t('processes.detailsTitle')}
-            </h2>
+            <h2 className="text-lg font-semibold">Process Details</h2>
             <div className="flex items-center gap-2">
               <button
                 onClick={handleCopyLogs}
@@ -291,14 +281,14 @@ function ProcessesTab({ attemptId }: ProcessesTabProps) {
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                 }`}
               >
-                {copied ? t('processes.logsCopied') : t('processes.copyLogs')}
+                {copied ? 'Copied!' : 'Copy logs'}
               </button>
               <button
                 onClick={() => setSelectedProcessId(null)}
                 className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-md border border-border transition-colors"
               >
                 <ArrowLeft className="h-4 w-4" />
-                {t('processes.backToList')}
+                Back to list
               </button>
             </div>
           </div>
@@ -307,11 +297,11 @@ function ProcessesTab({ attemptId }: ProcessesTabProps) {
               <ProcessLogsViewerContent logs={logs} error={logsError} />
             ) : loadingProcessId === selectedProcessId ? (
               <div className="text-center text-muted-foreground">
-                <p>{t('processes.loadingDetails')}</p>
+                <p>Loading process details...</p>
               </div>
             ) : (
               <div className="text-center text-muted-foreground">
-                <p>{t('processes.errorLoadingDetails')}</p>
+                <p>Failed to load process details. Please try again.</p>
               </div>
             )}
           </div>

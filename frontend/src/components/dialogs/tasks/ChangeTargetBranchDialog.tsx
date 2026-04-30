@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import {
   Dialog,
   DialogContent,
@@ -28,7 +27,6 @@ const ChangeTargetBranchDialogImpl =
   NiceModal.create<ChangeTargetBranchDialogProps>(
     ({ branches, isChangingTargetBranch: isChangingTargetBranch = false }) => {
       const modal = useModal();
-      const { t } = useTranslation(['tasks', 'common']);
       const [selectedBranch, setSelectedBranch] = useState<string>('');
 
       const handleConfirm = () => {
@@ -56,24 +54,22 @@ const ChangeTargetBranchDialogImpl =
         <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>
-                {t('branches.changeTarget.dialog.title')}
-              </DialogTitle>
+              <DialogTitle>Change target branch</DialogTitle>
               <DialogDescription>
-                {t('branches.changeTarget.dialog.description')}
+                Choose a new target branch for the task attempt.
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4">
               <div className="space-y-2">
                 <label htmlFor="base-branch" className="text-sm font-medium">
-                  {t('rebase.dialog.targetLabel')}
+                  Target Branch
                 </label>
                 <BranchSelector
                   branches={branches}
                   selectedBranch={selectedBranch}
                   onBranchSelect={setSelectedBranch}
-                  placeholder={t('branches.changeTarget.dialog.placeholder')}
+                  placeholder="Select a target branch"
                   excludeCurrentBranch={false}
                 />
               </div>
@@ -85,15 +81,13 @@ const ChangeTargetBranchDialogImpl =
                 onClick={handleCancel}
                 disabled={isChangingTargetBranch}
               >
-                {t('common:buttons.cancel')}
+                Cancel
               </Button>
               <Button
                 onClick={handleConfirm}
                 disabled={isChangingTargetBranch || !selectedBranch}
               >
-                {isChangingTargetBranch
-                  ? t('branches.changeTarget.dialog.inProgress')
-                  : t('branches.changeTarget.dialog.action')}
+                {isChangingTargetBranch ? 'Changing...' : 'Change Branch'}
               </Button>
             </DialogFooter>
           </DialogContent>

@@ -23,7 +23,6 @@ import { Project } from 'shared/types';
 import { useEffect, useRef } from 'react';
 import { useOpenProjectInEditor } from '@/hooks/useOpenProjectInEditor';
 import { projectsApi } from '@/lib/api';
-import { useTranslation } from 'react-i18next';
 
 type RepositoryStatus = 'checking' | 'detected' | 'missing' | 'unknown';
 
@@ -50,7 +49,6 @@ function ProjectCard({
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const handleOpenInEditor = useOpenProjectInEditor(project);
-  const { t } = useTranslation('projects');
 
   useEffect(() => {
     if (isFocused && ref.current) {
@@ -86,7 +84,7 @@ function ProjectCard({
 
   return (
     <Card
-      className={`hover:shadow-md transition-shadow cursor-pointer focus:ring-2 focus:ring-primary outline-none border`}
+      className="hover:shadow-md transition-shadow cursor-pointer focus:ring-2 focus:ring-primary outline-none border"
       onClick={() => onOpen()}
       tabIndex={isFocused ? 0 : -1}
       ref={ref}
@@ -114,7 +112,7 @@ function ProjectCard({
                   }}
                 >
                   <FolderOpen className="mr-2 h-4 w-4" />
-                  {t('openInIDE')}
+                  Open in IDE
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={(e) => {
@@ -133,7 +131,7 @@ function ProjectCard({
                   className="text-destructive"
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
-                  {t('common:buttons.delete')}
+                  Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -141,9 +139,7 @@ function ProjectCard({
         </div>
         <CardDescription className="flex items-center">
           <Calendar className="mr-1 h-3 w-3" />
-          {t('createdDate', {
-            date: new Date(project.created_at).toLocaleDateString(),
-          })}
+          {`Created ${new Date(project.created_at).toLocaleDateString()}`}
         </CardDescription>
       </CardHeader>
     </Card>

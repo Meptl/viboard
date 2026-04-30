@@ -1,7 +1,6 @@
 import * as React from 'react';
 import { Slot } from '@radix-ui/react-slot';
 import { MoreHorizontal } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
 
 import { cn } from '@/lib/utils';
 
@@ -93,7 +92,6 @@ const BreadcrumbEllipsis = ({
   className,
   ...props
 }: React.ComponentProps<'span'>) => {
-  const { t } = useTranslation('common');
   return (
     <span
       role="presentation"
@@ -102,7 +100,7 @@ const BreadcrumbEllipsis = ({
       {...props}
     >
       <MoreHorizontal className="h-4 w-4" />
-      <span className="sr-only">{t('breadcrumb.more')}</span>
+      <span className="sr-only">More</span>
     </span>
   );
 };

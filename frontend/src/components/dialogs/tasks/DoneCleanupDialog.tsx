@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
-import { useTranslation } from 'react-i18next';
 import { defineModal } from '@/lib/modals';
 import {
   Dialog,
@@ -50,8 +49,9 @@ const DoneCleanupDialogImpl = NiceModal.create<DoneCleanupDialogProps>(
     onSaveAutomaticCleanup,
   }) => {
     const modal = useModal();
-    const { t } = useTranslation('tasks');
-    const [daysInput, setDaysInput] = useState(String(normalizeDays(defaultDays)));
+    const [daysInput, setDaysInput] = useState(
+      String(normalizeDays(defaultDays))
+    );
     const [autoEnabled, setAutoEnabled] = useState(automaticCleanupEnabled);
     const [autoDaysInput, setAutoDaysInput] = useState(
       String(normalizeDays(automaticCleanupDays))
@@ -138,9 +138,7 @@ const DoneCleanupDialogImpl = NiceModal.create<DoneCleanupDialogProps>(
       try {
         setIsSubmitting(true);
         const nextOlderThanDays =
-          autoDaysValue === null
-            ? initialAutoDays
-            : autoDaysValue;
+          autoDaysValue === null ? initialAutoDays : autoDaysValue;
         await onSaveAutomaticCleanup?.({
           enabled: autoEnabled,
           olderThanDays: nextOlderThanDays,
@@ -172,15 +170,18 @@ const DoneCleanupDialogImpl = NiceModal.create<DoneCleanupDialogProps>(
     };
 
     return (
-      <Dialog open={modal.visible} onOpenChange={(open) => !open && handleCancel()}>
+      <Dialog
+        open={modal.visible}
+        onOpenChange={(open) => !open && handleCancel()}
+      >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t('doneCleanup.title')}</DialogTitle>
+            <DialogTitle>Clean up done tasks</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="done-cleanup-days">{t('doneCleanup.daysLabel')}</Label>
+              <Label htmlFor="done-cleanup-days">Older than (days)</Label>
               <Input
                 id="done-cleanup-days"
                 type="number"
@@ -192,10 +193,7 @@ const DoneCleanupDialogImpl = NiceModal.create<DoneCleanupDialogProps>(
             </div>
 
             <p className="text-sm text-muted-foreground">
-              {t('doneCleanup.eligibleCount', {
-                count: eligibleCount,
-                total: doneTasks.length,
-              })}
+              {`${eligibleCount} of ${doneTasks.length} done tasks will be deleted.`}
             </p>
 
             <div className="space-y-2">
@@ -211,12 +209,8 @@ const DoneCleanupDialogImpl = NiceModal.create<DoneCleanupDialogProps>(
                   className="cursor-pointer font-medium"
                 >
                   {autoEnabled
-                    ? t('doneCleanup.autoLabelEnabled', {
-                        defaultValue: 'Automatic cleanup older than (days)',
-                      })
-                    : t('doneCleanup.autoLabel', {
-                        defaultValue: 'Automatic cleanup',
-                      })}
+                    ? 'Automatic cleanup older than (days)'
+                    : 'Automatic cleanup'}
                 </Label>
                 {autoEnabled ? (
                   <Input
@@ -243,9 +237,7 @@ const DoneCleanupDialogImpl = NiceModal.create<DoneCleanupDialogProps>(
                       : 'ml-auto bg-transparent text-muted-foreground'
                   }
                 >
-                  {t('doneCleanup.saveAutomatic', {
-                    defaultValue: 'Save',
-                  })}
+                  Save
                 </Button>
               </div>
             </div>
@@ -254,18 +246,24 @@ const DoneCleanupDialogImpl = NiceModal.create<DoneCleanupDialogProps>(
           <DialogFooter>
             {autoSaved ? (
               <span className="mr-auto self-center text-sm text-muted-foreground">
-                {t('doneCleanup.saved', { defaultValue: 'Saved.' })}
+                Saved.
               </span>
             ) : null}
-            <Button variant="outline" onClick={handleCancel} disabled={isSubmitting}>
-              {t('doneCleanup.cancel')}
+            <Button
+              variant="outline"
+              onClick={handleCancel}
+              disabled={isSubmitting}
+            >
+              Cancel
             </Button>
             <Button
               variant="destructive"
               onClick={handleConfirm}
-              disabled={isSubmitting || daysValue === null || eligibleCount === 0}
+              disabled={
+                isSubmitting || daysValue === null || eligibleCount === 0
+              }
             >
-              {t('doneCleanup.confirm')}
+              Delete tasks
             </Button>
           </DialogFooter>
         </DialogContent>

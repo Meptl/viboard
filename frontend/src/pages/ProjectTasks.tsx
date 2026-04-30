@@ -92,7 +92,7 @@ const TASK_STATUSES = [
   'cancelled',
 ] as const;
 const AUTO_DONE_CLEANUP_INTERVAL_MS = 30 * 60 * 1000;
-const SAME_STATUS_DUPLICATE_MIN_DISTANCE_PX = 36;
+const DUPLICATE_DRAG_MIN_DISTANCE_PX = 36;
 
 const normalizeStatus = (status: string): TaskStatus =>
   status.toLowerCase() as TaskStatus;
@@ -818,7 +818,7 @@ export function ProjectTasks() {
       if (isSameStatus) {
         if (
           !shouldDuplicate ||
-          getDragDistance(event.delta) < SAME_STATUS_DUPLICATE_MIN_DISTANCE_PX
+          getDragDistance(event.delta) < DUPLICATE_DRAG_MIN_DISTANCE_PX
         ) {
           setDuplicateOnDrop(false);
           return;
@@ -1093,7 +1093,7 @@ export function ProjectTasks() {
       const dragDistance = getDragDistance(delta);
       if (
         duplicateOnDrop &&
-        dragDistance < SAME_STATUS_DUPLICATE_MIN_DISTANCE_PX
+        dragDistance < DUPLICATE_DRAG_MIN_DISTANCE_PX
       ) {
         setDropPreview(null);
         return;
@@ -1113,7 +1113,7 @@ export function ProjectTasks() {
       const isSameStatusDuplicate =
         duplicateOnDrop &&
         targetStatus === currentStatus &&
-        dragDistance >= SAME_STATUS_DUPLICATE_MIN_DISTANCE_PX;
+        dragDistance >= DUPLICATE_DRAG_MIN_DISTANCE_PX;
 
       if (targetStatus === currentStatus && !isSameStatusDuplicate) {
         setDropPreview(null);

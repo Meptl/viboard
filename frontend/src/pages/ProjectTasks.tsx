@@ -152,6 +152,7 @@ export function ProjectTasks() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [dropPreview, setDropPreview] = useState<DropPreview>(null);
   const [duplicateOnDrop, setDuplicateOnDrop] = useState(false);
+  const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
   const [optimisticStatusByTaskId, setOptimisticStatusByTaskId] = useState<
     Record<string, TaskStatus>
   >({});
@@ -768,15 +769,23 @@ export function ProjectTasks() {
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
       setDropPreview(null);
+      setDraggingTaskId(null);
       const { active, over } = event;
-      if (!over || !active.data.current) return;
+      const shouldDuplicate = duplicateOnDrop;
+      if (!over || !active.data.current) {
+        setDuplicateOnDrop(false);
+        return;
+      }
 
       const draggedTaskId = active.id as string;
       const newStatus = over.id as Task['status'];
       const task = tasksById[draggedTaskId];
-      if (!task || task.status === newStatus) return;
+      if (!task || task.status === newStatus) {
+        setDuplicateOnDrop(false);
+        return;
+      }
 
-      if (duplicateOnDrop) {
+      if (shouldDuplicate) {
         try {
           await tasksApi.create({
             project_id: task.project_id,
@@ -1013,10 +1022,12 @@ export function ProjectTasks() {
   const clearDropPreview = useCallback(() => {
     setDropPreview(null);
     setDuplicateOnDrop(false);
+    setDraggingTaskId(null);
   }, []);
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
     setDropPreview(null);
+    setDraggingTaskId(String(event.active.id));
     const activatorEvent = event.activatorEvent;
     if (activatorEvent instanceof MouseEvent) {
       setDuplicateOnDrop(activatorEvent.shiftKey);
@@ -1178,6 +1189,8 @@ export function ProjectTasks() {
           disableDoneCleanup={doneTasks.length === 0}
           projectId={projectId!}
           dropPreview={dropPreview}
+          duplicateDragTaskId={draggingTaskId}
+          duplicateDragActive={duplicateOnDrop}
         />
       </div>
     );

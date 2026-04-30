@@ -17,6 +17,7 @@ import type {
 } from '@dnd-kit/core';
 import {
   DndContext,
+  DragOverlay,
   PointerSensor,
   rectIntersection,
   useDraggable,
@@ -85,6 +86,7 @@ export type KanbanCardProps = Pick<Feature, 'id' | 'name'> & {
   onKeyDown?: (e: KeyboardEvent) => void;
   isOpen?: boolean;
   dragDisabled?: boolean;
+  keepInPlaceWhileDragging?: boolean;
 };
 
 export const KanbanCard = ({
@@ -100,6 +102,7 @@ export const KanbanCard = ({
   onKeyDown,
   isOpen,
   dragDisabled = false,
+  keepInPlaceWhileDragging = false,
 }: KanbanCardProps) => {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
@@ -134,10 +137,11 @@ export const KanbanCard = ({
       onClick={onClick}
       onKeyDown={onKeyDown}
       style={{
-        zIndex: isDragging ? 1000 : 1,
-        transform: transform
-          ? `translateX(${transform.x}px) translateY(${transform.y}px)`
-          : 'none',
+        zIndex: isDragging && !keepInPlaceWhileDragging ? 1000 : 1,
+        transform:
+          transform && !(isDragging && keepInPlaceWhileDragging)
+            ? `translateX(${transform.x}px) translateY(${transform.y}px)`
+            : 'none',
       }}
     >
       {children ?? <p className="m-0 font-medium text-sm">{name}</p>}
@@ -283,6 +287,7 @@ export type KanbanProviderProps = {
   onDragStart?: (event: DragStartEvent) => void;
   onDragOver?: (event: DragOverEvent) => void;
   onDragCancel?: (event: DragCancelEvent) => void;
+  dragOverlay?: ReactNode;
   className?: string;
 };
 
@@ -292,6 +297,7 @@ export const KanbanProvider = ({
   onDragStart,
   onDragOver,
   onDragCancel,
+  dragOverlay,
   className,
 }: KanbanProviderProps) => {
   const sensors = useSensors(
@@ -318,6 +324,7 @@ export const KanbanProvider = ({
       >
         {children}
       </div>
+      <DragOverlay dropAnimation={null}>{dragOverlay}</DragOverlay>
     </DndContext>
   );
 };

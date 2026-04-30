@@ -1,7 +1,6 @@
 use std::{future::Future, path::PathBuf, str::FromStr};
 
 use db::models::{
-    merge::Merge,
     project::Project,
     tag::Tag,
     task::{CreateTask, Task, TaskStatus, TaskWithAttemptStatus, UpdateTask},
@@ -105,12 +104,6 @@ pub struct TaskSummary {
     pub created_at: String,
     #[schemars(description = "When the task was last updated")]
     pub updated_at: String,
-    #[schemars(description = "Whether the task has an in-progress execution attempt")]
-    pub has_in_progress_attempt: Option<bool>,
-    #[schemars(description = "Whether the task has a merged execution attempt")]
-    pub has_merged_attempt: Option<bool>,
-    #[schemars(description = "Whether the last execution attempt failed")]
-    pub last_attempt_failed: Option<bool>,
 }
 
 impl TaskSummary {
@@ -121,9 +114,6 @@ impl TaskSummary {
             status: task.status.to_string(),
             created_at: task.created_at.to_rfc3339(),
             updated_at: task.updated_at.to_rfc3339(),
-            has_in_progress_attempt: Some(task.has_in_progress_attempt),
-            has_merged_attempt: Some(task.has_merged_attempt),
-            last_attempt_failed: Some(task.last_attempt_failed),
         }
     }
 }
@@ -142,16 +132,12 @@ pub struct TaskDetails {
     pub created_at: String,
     #[schemars(description = "When the task was last updated")]
     pub updated_at: String,
-    #[schemars(description = "Whether the task has an in-progress execution attempt")]
-    pub has_in_progress_attempt: Option<bool>,
-    #[schemars(description = "Whether the task has a merged execution attempt")]
-    pub has_merged_attempt: Option<bool>,
-    #[schemars(description = "Whether the last execution attempt failed")]
-    pub last_attempt_failed: Option<bool>,
+    #[schemars(description = "Merge records for this task")]
+    pub merges: Vec<TaskMergeSummary>,
 }
 
 impl TaskDetails {
-    fn from_task(task: Task) -> Self {
+    fn from_task(task: Task, merges: Vec<crate::routes::tasks::TaskMergeInfo>) -> Self {
         Self {
             id: task.id.to_string(),
             title: task.title,
@@ -159,9 +145,10 @@ impl TaskDetails {
             status: task.status.to_string(),
             created_at: task.created_at.to_rfc3339(),
             updated_at: task.updated_at.to_rfc3339(),
-            has_in_progress_attempt: None,
-            has_merged_attempt: None,
-            last_attempt_failed: None,
+            merges: merges
+                .into_iter()
+                .map(TaskMergeSummary::from_task_merge_info)
+                .collect(),
         }
     }
 }
@@ -223,16 +210,8 @@ pub struct ListTaskAttemptsRequest {
     pub task_id: Uuid,
 }
 
-#[derive(Debug, Deserialize, schemars::JsonSchema)]
-pub struct GetTaskMergesRequest {
-    #[schemars(description = "The ID of the task to retrieve merges for")]
-    pub task_id: Uuid,
-}
-
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 pub struct TaskMergeSummary {
-    #[schemars(description = "The unique identifier of the merge record")]
-    pub id: String,
     #[schemars(description = "The task attempt that produced this merge")]
     pub task_attempt_id: String,
     #[schemars(description = "The merged commit SHA")]
@@ -244,22 +223,14 @@ pub struct TaskMergeSummary {
 }
 
 impl TaskMergeSummary {
-    fn from_merge(merge: Merge) -> Self {
+    fn from_task_merge_info(merge: crate::routes::tasks::TaskMergeInfo) -> Self {
         Self {
-            id: merge.id.to_string(),
             task_attempt_id: merge.task_attempt_id.to_string(),
             merge_commit: merge.merge_commit,
             target_branch_name: merge.target_branch_name,
             created_at: merge.created_at.to_rfc3339(),
         }
     }
-}
-
-#[derive(Debug, Serialize, schemars::JsonSchema)]
-pub struct GetTaskMergesResponse {
-    pub task_id: String,
-    pub merges: Vec<TaskMergeSummary>,
-    pub count: usize,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
@@ -837,31 +808,6 @@ impl TaskServer {
         TaskServer::success(&response)
     }
 
-    #[tool(description = "List merge records for a given task. `task_id` is required!")]
-    async fn get_task_merges(
-        &self,
-        Parameters(GetTaskMergesRequest { task_id }): Parameters<GetTaskMergesRequest>,
-    ) -> Result<CallToolResult, ErrorData> {
-        let url = self.url(&format!("/api/tasks/{task_id}/merges"));
-        let merges: Vec<Merge> = match self.send_json(self.client.get(&url)).await {
-            Ok(merges) => merges,
-            Err(e) => return Ok(e),
-        };
-
-        let merge_summaries = merges
-            .into_iter()
-            .map(TaskMergeSummary::from_merge)
-            .collect::<Vec<_>>();
-
-        let response = GetTaskMergesResponse {
-            task_id: task_id.to_string(),
-            count: merge_summaries.len(),
-            merges: merge_summaries,
-        };
-
-        TaskServer::success(&response)
-    }
-
     #[tool(
         description = "Update an existing task/ticket's title, description, or status. `project_id` and `task_id` are required! `title`, `description`, and `status` are optional."
     )]
@@ -903,11 +849,21 @@ impl TaskServer {
         };
         let url = self.url(&format!("/api/tasks/{}", task_id));
         let updated_task: Task = match self.send_json(self.client.put(&url).json(&payload)).await {
-            Ok(t) => t,
+            Ok(task) => task,
             Err(e) => return Ok(e),
         };
 
-        let details = TaskDetails::from_task(updated_task);
+        let get_url = self.url(&format!("/api/tasks/{}", updated_task.id));
+        let updated_task_with_merges: crate::routes::tasks::TaskWithMerges =
+            match self.send_json(self.client.get(&get_url)).await {
+                Ok(task) => task,
+                Err(e) => return Ok(e),
+            };
+
+        let details = TaskDetails::from_task(
+            updated_task_with_merges.task,
+            updated_task_with_merges.merges,
+        );
         let repsonse = UpdateTaskResponse { task: details };
         TaskServer::success(&repsonse)
     }
@@ -942,12 +898,13 @@ impl TaskServer {
         Parameters(GetTaskRequest { task_id }): Parameters<GetTaskRequest>,
     ) -> Result<CallToolResult, ErrorData> {
         let url = self.url(&format!("/api/tasks/{}", task_id));
-        let task: Task = match self.send_json(self.client.get(&url)).await {
+        let task_with_merges: crate::routes::tasks::TaskWithMerges =
+            match self.send_json(self.client.get(&url)).await {
             Ok(t) => t,
             Err(e) => return Ok(e),
         };
 
-        let details = TaskDetails::from_task(task);
+        let details = TaskDetails::from_task(task_with_merges.task, task_with_merges.merges);
         let response = GetTaskResponse { task: details };
 
         TaskServer::success(&response)
@@ -974,7 +931,7 @@ impl TaskServer {
 #[tool_handler(router = self.tool_router_with_latest_guidance())]
 impl ServerHandler for TaskServer {
     fn get_info(&self) -> ServerInfo {
-        let mut instruction = "A task and project management server. If you need to create or update tickets or tasks then use these tools. Most of them absolutely require that you pass the `project_id` of the project that you are currently working on. You can get project ids by using `list projects`. Call `list_tasks` to fetch the `task_ids` of all the tasks in a project`.. TOOLS: 'list_projects', 'list_tasks', 'create_task', 'create_attempt', 'list_attempts', 'get_task_merges', 'get_task', 'get_attempt_diff', 'update_task', 'delete_task'. Make sure to pass `project_id` or `task_id`/`attempt_id` where required. You can use list tools to get the available ids.".to_string();
+        let mut instruction = "A task and project management server. If you need to create or update tickets or tasks then use these tools. Most of them absolutely require that you pass the `project_id` of the project that you are currently working on. You can get project ids by using `list projects`. Call `list_tasks` to fetch the `task_ids` of all the tasks in a project`.. TOOLS: 'list_projects', 'list_tasks', 'create_task', 'create_attempt', 'list_attempts', 'get_task', 'get_attempt_diff', 'update_task', 'delete_task'. Make sure to pass `project_id` or `task_id`/`attempt_id` where required. You can use list tools to get the available ids.".to_string();
 
         if self.context.is_some() {
             let context_instruction = "Use 'get_context' to fetch project/task/attempt metadata for the active Vibe Kanban attempt when available.";

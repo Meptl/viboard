@@ -98,17 +98,38 @@ async fn handle_tasks_ws(
 
 pub async fn get_task(
     Extension(task): Extension<Task>,
-    State(_deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<Task>>, ApiError> {
-    Ok(ResponseJson(ApiResponse::success(task)))
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<TaskWithMerges>>, ApiError> {
+    let merges = Merge::find_by_task_id(&deployment.db().pool, task.id).await?;
+    Ok(ResponseJson(ApiResponse::success(TaskWithMerges {
+        task,
+        merges: merges.into_iter().map(TaskMergeInfo::from_merge).collect(),
+    })))
 }
 
-pub async fn get_task_merges(
-    Extension(task): Extension<Task>,
-    State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<Vec<Merge>>>, ApiError> {
-    let merges = Merge::find_by_task_id(&deployment.db().pool, task.id).await?;
-    Ok(ResponseJson(ApiResponse::success(merges)))
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TaskWithMerges {
+    pub task: Task,
+    pub merges: Vec<TaskMergeInfo>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TaskMergeInfo {
+    pub task_attempt_id: Uuid,
+    pub merge_commit: String,
+    pub target_branch_name: String,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+}
+
+impl TaskMergeInfo {
+    fn from_merge(merge: Merge) -> Self {
+        Self {
+            task_attempt_id: merge.task_attempt_id,
+            merge_commit: merge.merge_commit,
+            target_branch_name: merge.target_branch_name,
+            created_at: merge.created_at,
+        }
+    }
 }
 
 pub async fn create_task(
@@ -380,7 +401,6 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
 
     let task_id_router = Router::new()
         .route("/", get(get_task))
-        .route("/merges", get(get_task_merges))
         .merge(task_actions_router)
         .layer(from_fn_with_state(deployment.clone(), load_task_middleware));
 

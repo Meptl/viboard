@@ -214,7 +214,7 @@ function AgentsSidebar() {
   return (
     <aside className="h-full min-h-0 w-80 shrink-0 border-l-2 bg-muted/20 py-2">
       <div className="h-full min-h-0 flex flex-col">
-        <section className="flex-1 min-h-0 bg-background overflow-hidden">
+        <section className="flex-[0.5] min-h-0 bg-background overflow-hidden">
           <header className="border-b px-3 py-2">
             <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Agents
@@ -290,7 +290,7 @@ function AgentsSidebar() {
 
         <div className="h-px bg-border" aria-hidden="true" />
 
-        <section className="flex-1 min-h-0 bg-muted/30 overflow-hidden">
+        <section className="flex-[1.5] min-h-0 bg-muted/30 overflow-hidden">
           <div
             className="border-b bg-muted/40 px-2 py-1.5"
             role="tablist"

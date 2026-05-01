@@ -12,6 +12,7 @@ use local_deployment::Deployment;
 use uuid::Uuid;
 
 use crate::DeploymentImpl;
+use crate::routes::projects::apply_project_settings;
 
 pub async fn load_project_middleware(
     State(deployment): State<DeploymentImpl>,
@@ -20,7 +21,7 @@ pub async fn load_project_middleware(
     next: Next,
 ) -> Result<Response, StatusCode> {
     // Load the project from the database
-    let project = match Project::find_by_id(&deployment.db().pool, project_id).await {
+    let mut project = match Project::find_by_id(&deployment.db().pool, project_id).await {
         Ok(Some(project)) => project,
         Ok(None) => {
             tracing::warn!("Project {} not found", project_id);
@@ -31,6 +32,10 @@ pub async fn load_project_middleware(
             return Err(StatusCode::INTERNAL_SERVER_ERROR);
         }
     };
+    {
+        let config = deployment.config().read().await;
+        apply_project_settings(&mut project, &config);
+    }
 
     // Insert the project as an extension
     let mut request = request;

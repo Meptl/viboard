@@ -14,6 +14,7 @@ use db::models::{
 };
 use ignore::WalkBuilder;
 use local_deployment::Deployment;
+use services::services::config::{ProjectSettings, save_config_to_file};
 use services::services::{
     file_search_cache::{
         CacheError, SETTINGS_FUZZY_SCORE_THRESHOLD, SETTINGS_MAX_RESULTS, SearchMode, SearchQuery,
@@ -29,14 +30,34 @@ use crate::{DeploymentImpl, error::ApiError, middleware::load_project_middleware
 pub async fn get_projects(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<Vec<Project>>>, ApiError> {
-    let projects = Project::find_all(&deployment.db().pool).await?;
+    let mut projects = Project::find_all(&deployment.db().pool).await?;
+    {
+        let config = deployment.config().read().await;
+        for project in &mut projects {
+            apply_project_settings(project, &config);
+        }
+    }
     Ok(ResponseJson(ApiResponse::success(projects)))
 }
 
 pub async fn get_project(
-    Extension(project): Extension<Project>,
+    Extension(mut project): Extension<Project>,
+    State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<Project>>, ApiError> {
+    {
+        let config = deployment.config().read().await;
+        apply_project_settings(&mut project, &config);
+    }
     Ok(ResponseJson(ApiResponse::success(project)))
+}
+
+pub fn apply_project_settings(project: &mut Project, config: &services::services::config::Config) {
+    let settings = config.project_settings(project.id);
+    project.setup_script = settings.setup_script;
+    project.dev_script = settings.dev_script;
+    project.cleanup_script = settings.cleanup_script;
+    project.copy_files = settings.copy_files;
+    project.parallel_setup_script = settings.parallel_setup_script;
 }
 
 pub async fn get_project_branches(
@@ -62,6 +83,13 @@ pub async fn create_project(
         parallel_setup_script,
         use_existing_repo,
     } = payload;
+    let project_settings = ProjectSettings::from_scripts(
+        setup_script.clone(),
+        dev_script.clone(),
+        cleanup_script.clone(),
+        copy_files.clone(),
+        parallel_setup_script.unwrap_or(false),
+    );
     tracing::debug!("Creating project '{}'", name);
 
     // Validate and setup git repository
@@ -143,17 +171,31 @@ pub async fn create_project(
             name,
             git_repo_path: path.to_string_lossy().to_string(),
             use_existing_repo,
-            setup_script,
-            dev_script,
-            cleanup_script,
-            copy_files,
-            parallel_setup_script,
+            setup_script: None,
+            dev_script: None,
+            cleanup_script: None,
+            copy_files: None,
+            parallel_setup_script: Some(false),
         },
         id,
     )
     .await
     {
         Ok(project) => {
+            let mut config = deployment.config().write().await;
+            config.set_project_settings(
+                project.id,
+                project_settings,
+            );
+            if let Err(e) = save_config_to_file(&config, &utils::assets::config_path()).await {
+                tracing::error!("Failed to persist project settings to config.json: {}", e);
+                return Err(e.into());
+            }
+            drop(config);
+
+            let mut project = project;
+            let config = deployment.config().read().await;
+            apply_project_settings(&mut project, &config);
             // Track project creation event
 
             Ok(ResponseJson(ApiResponse::success(project)))
@@ -210,15 +252,33 @@ pub async fn update_project(
         existing_project.id,
         name.unwrap_or(existing_project.name),
         git_repo_path.to_string_lossy().to_string(),
-        setup_script,
-        dev_script,
-        cleanup_script,
-        copy_files,
-        parallel_setup_script.unwrap_or(existing_project.parallel_setup_script),
+        None,
+        None,
+        None,
+        None,
+        false,
     )
     .await
     {
-        Ok(project) => Ok(ResponseJson(ApiResponse::success(project))),
+        Ok(mut project) => {
+            let mut config = deployment.config().write().await;
+            config.set_project_settings(
+                existing_project.id,
+                ProjectSettings::from_scripts(
+                    setup_script,
+                    dev_script,
+                    cleanup_script,
+                    copy_files,
+                    parallel_setup_script.unwrap_or(false),
+                ),
+            );
+            if let Err(e) = save_config_to_file(&config, &utils::assets::config_path()).await {
+                tracing::error!("Failed to persist project settings to config.json: {}", e);
+                return Err(StatusCode::INTERNAL_SERVER_ERROR);
+            }
+            apply_project_settings(&mut project, &config);
+            Ok(ResponseJson(ApiResponse::success(project)))
+        }
         Err(e) => {
             tracing::error!("Failed to update project: {}", e);
             Err(StatusCode::INTERNAL_SERVER_ERROR)

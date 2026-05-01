@@ -52,6 +52,7 @@ use uuid::Uuid;
 
 use crate::{
     DeploymentImpl, error::ApiError, middleware::load_task_attempt_middleware,
+    routes::projects::apply_project_settings,
     routes::task_attempts::util::ensure_worktree_path,
 };
 
@@ -482,10 +483,14 @@ pub async fn follow_up(
         .ok_or(SqlxError::RowNotFound)?;
 
     // Get parent project
-    let project = task
+    let mut project = task
         .parent_project(&deployment.db().pool)
         .await?
         .ok_or(SqlxError::RowNotFound)?;
+    {
+        let config = deployment.config().read().await;
+        apply_project_settings(&mut project, &config);
+    }
 
     // If retry settings provided, perform replace-logic before proceeding
     if let Some(proc_id) = payload.retry_process_id {
@@ -1273,9 +1278,13 @@ pub async fn change_target_branch(
         .parent_task(&deployment.db().pool)
         .await?
         .ok_or(ApiError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
-    let project = Project::find_by_id(&deployment.db().pool, task.project_id)
+    let mut project = Project::find_by_id(&deployment.db().pool, task.project_id)
         .await?
         .ok_or(ApiError::Project(ProjectError::ProjectNotFound))?;
+    {
+        let config = deployment.config().read().await;
+        apply_project_settings(&mut project, &config);
+    }
     let pool = &deployment.db().pool;
     match deployment
         .git()
@@ -1351,9 +1360,13 @@ pub async fn rename_branch(
         .await?
         .ok_or(ApiError::TaskAttempt(TaskAttemptError::TaskNotFound))?;
 
-    let project = Project::find_by_id(pool, task.project_id)
+    let mut project = Project::find_by_id(pool, task.project_id)
         .await?
         .ok_or(ApiError::Project(ProjectError::ProjectNotFound))?;
+    {
+        let config = deployment.config().read().await;
+        apply_project_settings(&mut project, &config);
+    }
 
     if deployment
         .git()
@@ -1523,10 +1536,14 @@ pub async fn start_dev_server(
         .ok_or(SqlxError::RowNotFound)?;
 
     // Get parent project
-    let project = task
+    let mut project = task
         .parent_project(&deployment.db().pool)
         .await?
         .ok_or(SqlxError::RowNotFound)?;
+    {
+        let config = deployment.config().read().await;
+        apply_project_settings(&mut project, &config);
+    }
 
     // Stop any existing dev servers for this project
     let existing_dev_servers =

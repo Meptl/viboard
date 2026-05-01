@@ -943,9 +943,13 @@ impl LocalContainerService {
         .await?;
 
         // Get project for cleanup script
-        let project = Project::find_by_id(&self.db.pool, ctx.task.project_id)
+        let mut project = Project::find_by_id(&self.db.pool, ctx.task.project_id)
             .await?
             .ok_or_else(|| ContainerError::Other(anyhow!("Project not found")))?;
+        {
+            let settings = self.config.read().await.project_settings(project.id);
+            project.cleanup_script = settings.cleanup_script;
+        }
 
         let cleanup_action = self.cleanup_action(project.cleanup_script);
 
@@ -1022,10 +1026,14 @@ impl ContainerService for LocalContainerService {
             LocalContainerService::dir_name_from_task_attempt(&task_attempt.id, &task.title);
         let worktree_path = WorktreeManager::get_worktree_base_dir().join(&worktree_dir_name);
 
-        let project = task
+        let mut project = task
             .parent_project(&self.db.pool)
             .await?
             .ok_or(sqlx::Error::RowNotFound)?;
+        {
+            let settings = self.config.read().await.project_settings(project.id);
+            project.copy_files = settings.copy_files;
+        }
 
         WorktreeManager::create_worktree(
             &project.git_repo_path,

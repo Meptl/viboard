@@ -1622,10 +1622,14 @@ pub async fn run_setup_script(
         .ok_or(SqlxError::RowNotFound)?;
 
     // Get parent project
-    let project = task
+    let mut project = task
         .parent_project(&deployment.db().pool)
         .await?
         .ok_or(SqlxError::RowNotFound)?;
+    {
+        let config = deployment.config().read().await;
+        apply_project_settings(&mut project, &config);
+    }
 
     let Some(setup_script) = project
         .setup_script

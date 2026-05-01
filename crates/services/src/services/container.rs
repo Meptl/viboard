@@ -41,6 +41,7 @@ use utils::{
 use uuid::Uuid;
 
 use crate::services::{
+    config::Config,
     execution_process,
     git::{GitService, GitServiceError},
     notification::NotificationService,
@@ -83,6 +84,8 @@ pub trait ContainerService {
     fn git(&self) -> &GitService;
 
     fn notification_service(&self) -> &NotificationService;
+
+    fn config(&self) -> &Arc<RwLock<Config>>;
 
     fn task_attempt_to_current_dir(&self, task_attempt: &TaskAttempt) -> PathBuf;
 
@@ -632,10 +635,16 @@ pub trait ContainerService {
         }
 
         // Get parent project
-        let project = task
+        let mut project = task
             .parent_project(&self.db().pool)
             .await?
             .ok_or(SqlxError::RowNotFound)?;
+        {
+            let settings = self.config().read().await.project_settings(project.id);
+            project.setup_script = settings.setup_script;
+            project.parallel_setup_script = settings.parallel_setup_script;
+            project.cleanup_script = settings.cleanup_script;
+        }
 
         // // Get latest version of task attempt
         let task_attempt = TaskAttempt::find_by_id(&self.db().pool, task_attempt.id)

@@ -1008,6 +1008,10 @@ impl ContainerService for LocalContainerService {
         &self.notification_service
     }
 
+    fn config(&self) -> &Arc<RwLock<Config>> {
+        &self.config
+    }
+
     async fn git_branch_prefix(&self) -> String {
         self.config.read().await.git_branch_prefix.clone()
     }

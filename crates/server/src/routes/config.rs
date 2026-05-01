@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::time::Duration;
 
 use axum::{
     Json, Router,
@@ -8,6 +9,7 @@ use axum::{
     response::{Json as ResponseJson, Response},
     routing::{get, put},
 };
+use reqwest::header::{AUTHORIZATION, HeaderMap, HeaderValue};
 use executors::{
     executors::{
         AvailabilityInfo, BaseAgentCapability, BaseCodingAgent, StandardCodingAgentExecutor,
@@ -30,6 +32,7 @@ pub fn router() -> Router<DeploymentImpl> {
     Router::new()
         .route("/info", get(get_user_system_info))
         .route("/config", put(update_config))
+        .route("/openclaw/health", get(check_openclaw_health))
         .route("/sounds/{sound}", get(get_sound))
         .route("/profiles", get(get_profiles).put(update_profiles))
         .route(
@@ -244,4 +247,74 @@ async fn check_agent_availability(
     };
 
     ResponseJson(ApiResponse::success(info))
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct OpenClawHealthResponse {
+    pub ok: bool,
+    pub status_code: Option<u16>,
+    pub message: String,
+}
+
+async fn check_openclaw_health(
+    State(deployment): State<DeploymentImpl>,
+) -> ResponseJson<ApiResponse<OpenClawHealthResponse>> {
+    let config = deployment.config().read().await.clone();
+    let gateway_url = config.openclaw.gateway_url.trim().trim_end_matches('/');
+    let gateway_key = config.openclaw.gateway_key.trim();
+
+    if gateway_url.is_empty() || gateway_key.is_empty() {
+        return ResponseJson(ApiResponse::success(OpenClawHealthResponse {
+            ok: false,
+            status_code: None,
+            message: "Gateway URL or key is missing in settings.".to_string(),
+        }));
+    }
+
+    let mut headers = HeaderMap::new();
+    let auth_value = format!("Bearer {gateway_key}");
+    let Ok(auth_header) = HeaderValue::from_str(&auth_value) else {
+        return ResponseJson(ApiResponse::success(OpenClawHealthResponse {
+            ok: false,
+            status_code: None,
+            message: "Invalid gateway key header value.".to_string(),
+        }));
+    };
+    headers.insert(AUTHORIZATION, auth_header);
+
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(5))
+        .default_headers(headers)
+        .build();
+
+    let Ok(client) = client else {
+        return ResponseJson(ApiResponse::success(OpenClawHealthResponse {
+            ok: false,
+            status_code: None,
+            message: "Failed to build HTTP client for OpenClaw health check.".to_string(),
+        }));
+    };
+
+    let url = format!("{gateway_url}/health");
+    match client.get(url).send().await {
+        Ok(response) => {
+            let status = response.status();
+            let ok = status.is_success();
+            let message = if ok {
+                "Connected".to_string()
+            } else {
+                format!("Gateway responded with {} {}.", status.as_u16(), status)
+            };
+            ResponseJson(ApiResponse::success(OpenClawHealthResponse {
+                ok,
+                status_code: Some(status.as_u16()),
+                message,
+            }))
+        }
+        Err(err) => ResponseJson(ApiResponse::success(OpenClawHealthResponse {
+            ok: false,
+            status_code: None,
+            message: err.to_string(),
+        })),
+    }
 }

@@ -83,6 +83,11 @@ export type Err<E> = { success: false; error: E | undefined; message?: string };
 export type Result<T, E> = Ok<T> | Err<E>;
 
 export type TaskNotificationOutcome = 'merged' | 'failed' | 'completed';
+export interface OpenClawHealthResponse {
+  ok: boolean;
+  status_code: number | null;
+  message: string;
+}
 
 export interface TaskNotificationRecord {
   id: string;
@@ -555,6 +560,12 @@ export const configApi = {
       `/api/agents/check-availability?executor=${encodeURIComponent(agent)}`
     );
     return handleApiResponse<AvailabilityInfo>(response);
+  },
+  checkOpenClawHealth: async (): Promise<OpenClawHealthResponse> => {
+    const response = await makeRequest('/api/openclaw/health', {
+      cache: 'no-store',
+    });
+    return handleApiResponse<OpenClawHealthResponse>(response);
   },
 };
 

@@ -215,6 +215,50 @@ export function GeneralSettings() {
         </CardContent>
       </Card>
 
+      <Card id="openclaw-settings">
+        <CardHeader className="pb-3">
+          <CardTitle>OpenClaw Gateway</CardTitle>
+          <CardDescription>
+            Configure the gateway connection used by the OpenClaw sidebar.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="openclaw-gateway-url">Gateway URL</Label>
+            <Input
+              id="openclaw-gateway-url"
+              placeholder="http://127.0.0.1:18789"
+              value={draft?.openclaw.gateway_url || ''}
+              onChange={(e) =>
+                updateDraft({
+                  openclaw: {
+                    ...draft!.openclaw,
+                    gateway_url: e.target.value,
+                  },
+                })
+              }
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="openclaw-gateway-key">Gateway Key</Label>
+            <Input
+              id="openclaw-gateway-key"
+              type="password"
+              placeholder="OpenClaw gateway token"
+              value={draft?.openclaw.gateway_key || ''}
+              onChange={(e) =>
+                updateDraft({
+                  openclaw: {
+                    ...draft!.openclaw,
+                    gateway_key: e.target.value,
+                  },
+                })
+              }
+            />
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader className="pb-3">
           <CardTitle>Editor</CardTitle>

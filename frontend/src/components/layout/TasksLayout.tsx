@@ -11,6 +11,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useProject } from '@/contexts/ProjectContext';
 import { projectsApi } from '@/lib/api';
+import { PlainTextTagTextarea } from '@/components/ui/plain-text-tag-textarea';
 import { cn } from '@/lib/utils';
 
 export type LayoutMode = 'preview' | 'diffs' | null;
@@ -204,11 +205,15 @@ function AgentsSidebar() {
     },
   });
 
-  const onSend = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const sendDraftMessage = async () => {
     const text = draftMessage.trim();
     if (!text || !projectId || !selectedSessionKey || sendMutation.isPending) return;
     await sendMutation.mutateAsync(text);
+  };
+
+  const onSend = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    await sendDraftMessage();
   };
 
   return (
@@ -368,12 +373,18 @@ function AgentsSidebar() {
                   )}
                 </div>
                 <form onSubmit={onSend} className="space-y-2">
-                  <textarea
+                  <PlainTextTagTextarea
                     value={draftMessage}
-                    onChange={(e) => setDraftMessage(e.target.value)}
+                    onChange={setDraftMessage}
+                    onCmdEnter={() => {
+                      void sendDraftMessage();
+                    }}
                     className="w-full min-h-20 border bg-background px-2 py-1.5 text-xs"
                     placeholder="Send a message to this session..."
                     disabled={!selectedSessionKey || sendMutation.isPending}
+                    projectId={projectId}
+                    rows={4}
+                    maxRows={10}
                   />
                   <button
                     type="submit"

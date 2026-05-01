@@ -295,6 +295,38 @@ export const projectsApi = {
     const response = await makeRequest(`/api/projects/${id}/openclaw/agents`);
     return handleApiResponse(response);
   },
+
+  getOpenclawSessionHistory: async (
+    id: string,
+    sessionKey: string
+  ): Promise<{
+    session_key: string;
+    messages: Array<{
+      role: string;
+      content: string;
+      timestamp?: number;
+    }>;
+  }> => {
+    const response = await makeRequest(
+      `/api/projects/${id}/openclaw/agents/${encodeURIComponent(sessionKey)}/history`
+    );
+    return handleApiResponse(response);
+  },
+
+  sendOpenclawSessionMessage: async (
+    id: string,
+    sessionKey: string,
+    text: string
+  ): Promise<unknown> => {
+    const response = await makeRequest(
+      `/api/projects/${id}/openclaw/agents/${encodeURIComponent(sessionKey)}/send`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ text }),
+      }
+    );
+    return handleApiResponse(response);
+  },
 };
 
 // Task Management APIs

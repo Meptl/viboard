@@ -1,7 +1,7 @@
-import { ReactNode, useMemo, useState } from 'react';
+import { FormEvent, ReactNode, useEffect, useMemo, useState } from 'react';
 import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useProject } from '@/contexts/ProjectContext';
 import { projectsApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
@@ -142,6 +142,8 @@ function flattenAgentTree(sessions: OpenClawAgentSession[]): AgentNode[] {
 function AgentsSidebar() {
   const tabs = ['Memory', 'Crons', 'Chat', 'Configs'] as const;
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number]>('Memory');
+  const [selectedSessionKey, setSelectedSessionKey] = useState<string | null>(null);
+  const [draftMessage, setDraftMessage] = useState('');
   const { projectId } = useProject();
 
   const agentsQuery = useQuery({
@@ -156,6 +158,44 @@ function AgentsSidebar() {
     () => flattenAgentTree(agentsQuery.data?.sessions ?? []),
     [agentsQuery.data?.sessions]
   );
+  const selectedSession = useMemo(
+    () =>
+      flatAgents.find(({ session }) => session.session_key === selectedSessionKey)
+        ?.session ?? null,
+    [flatAgents, selectedSessionKey]
+  );
+
+  useEffect(() => {
+    if (selectedSessionKey && flatAgents.some(({ session }) => session.session_key === selectedSessionKey)) {
+      return;
+    }
+    setSelectedSessionKey(flatAgents[0]?.session.session_key ?? null);
+  }, [flatAgents, selectedSessionKey]);
+
+  const chatHistoryQuery = useQuery({
+    queryKey: ['openclaw-session-history', projectId, selectedSessionKey],
+    queryFn: () =>
+      projectsApi.getOpenclawSessionHistory(projectId!, selectedSessionKey!),
+    enabled: !!projectId && !!selectedSessionKey && activeTab === 'Chat',
+    staleTime: 2_000,
+    refetchInterval: activeTab === 'Chat' ? 5_000 : false,
+  });
+
+  const sendMutation = useMutation({
+    mutationFn: (text: string) =>
+      projectsApi.sendOpenclawSessionMessage(projectId!, selectedSessionKey!, text),
+    onSuccess: () => {
+      setDraftMessage('');
+      void chatHistoryQuery.refetch();
+    },
+  });
+
+  const onSend = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const text = draftMessage.trim();
+    if (!text || !projectId || !selectedSessionKey || sendMutation.isPending) return;
+    await sendMutation.mutateAsync(text);
+  };
 
   return (
     <aside className="h-full min-h-0 w-80 shrink-0 border-l-2 bg-muted/20 py-2">
@@ -197,8 +237,14 @@ function AgentsSidebar() {
                 return (
                   <div
                     key={session.session_key}
-                    className="rounded-md border bg-background px-2 py-1.5"
+                    className={cn(
+                      'rounded-md border bg-background px-2 py-1.5 cursor-pointer transition-colors',
+                      selectedSessionKey === session.session_key
+                        ? 'border-primary/40 bg-primary/5'
+                        : 'hover:bg-muted/40'
+                    )}
                     style={{ marginLeft: `${depth * 10}px` }}
+                    onClick={() => setSelectedSessionKey(session.session_key)}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <p className="truncate text-xs">{label}</p>
@@ -260,17 +306,84 @@ function AgentsSidebar() {
             </div>
           </div>
           <div className="h-full overflow-y-auto p-3">
-            <section className="bg-muted/30 p-3 space-y-2">
-              <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                {activeTab}
-              </h3>
-              <div className="rounded-md border bg-muted/30 px-2 py-1.5 text-xs text-muted-foreground">
-                OpenClaw integration pending
-              </div>
-              <div className="rounded-md border bg-muted/30 px-2 py-1.5 text-xs text-muted-foreground">
-                Skeleton panel only
-              </div>
-            </section>
+            {activeTab === 'Chat' ? (
+              <section className="rounded-lg border bg-background p-2 h-full min-h-0 flex flex-col gap-2">
+                <h3 className="px-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Chat
+                </h3>
+                <div className="px-1 text-[11px] text-muted-foreground truncate">
+                  {selectedSession?.display_name ||
+                    selectedSession?.label ||
+                    selectedSession?.session_key ||
+                    'No session selected'}
+                </div>
+                <div className="flex-1 min-h-0 overflow-y-auto rounded-md border bg-muted/20 p-2 space-y-2">
+                  {!selectedSessionKey ? (
+                    <div className="text-xs text-muted-foreground">
+                      Select an agent session to view chat history.
+                    </div>
+                  ) : chatHistoryQuery.isLoading ? (
+                    <div className="text-xs text-muted-foreground">
+                      Loading chat history...
+                    </div>
+                  ) : chatHistoryQuery.isError ? (
+                    <div className="text-xs text-muted-foreground">
+                      Failed to load chat history.
+                    </div>
+                  ) : (chatHistoryQuery.data?.messages?.length ?? 0) === 0 ? (
+                    <div className="text-xs text-muted-foreground">
+                      No chat messages yet.
+                    </div>
+                  ) : (
+                    chatHistoryQuery.data?.messages.map((msg, idx) => (
+                      <div
+                        key={`${msg.timestamp ?? 0}-${idx}`}
+                        className={cn(
+                          'rounded-md border px-2 py-1.5 text-xs whitespace-pre-wrap',
+                          msg.role === 'user'
+                            ? 'bg-primary/5 border-primary/20'
+                            : 'bg-background'
+                        )}
+                      >
+                        <p className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+                          {msg.role}
+                        </p>
+                        <p>{msg.content}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <form onSubmit={onSend} className="space-y-2">
+                  <textarea
+                    value={draftMessage}
+                    onChange={(e) => setDraftMessage(e.target.value)}
+                    className="w-full min-h-20 rounded-md border bg-background px-2 py-1.5 text-xs"
+                    placeholder="Send a message to this session..."
+                    disabled={!selectedSessionKey || sendMutation.isPending}
+                  />
+                  <button
+                    type="submit"
+                    disabled={
+                      !selectedSessionKey ||
+                      !draftMessage.trim() ||
+                      sendMutation.isPending
+                    }
+                    className="w-full rounded-md bg-primary px-2 py-1.5 text-xs font-semibold text-primary-foreground disabled:opacity-50"
+                  >
+                    {sendMutation.isPending ? 'Sending...' : 'Send'}
+                  </button>
+                </form>
+              </section>
+            ) : (
+              <section className="rounded-lg border bg-background p-3 space-y-2">
+                <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  {activeTab}
+                </h3>
+                <div className="rounded-md border bg-muted/30 px-2 py-1.5 text-xs text-muted-foreground">
+                  OpenClaw integration pending
+                </div>
+              </section>
+            )}
           </div>
         </section>
       </div>

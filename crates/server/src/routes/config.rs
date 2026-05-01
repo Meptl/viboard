@@ -1,5 +1,4 @@
-use std::collections::HashMap;
-use std::time::Duration;
+use std::{collections::HashMap, time::Duration};
 
 use axum::{
     Json, Router,
@@ -9,7 +8,6 @@ use axum::{
     response::{Json as ResponseJson, Response},
     routing::{get, put},
 };
-use reqwest::header::{AUTHORIZATION, HeaderMap, HeaderValue};
 use executors::{
     executors::{
         AvailabilityInfo, BaseAgentCapability, BaseCodingAgent, StandardCodingAgentExecutor,
@@ -17,6 +15,7 @@ use executors::{
     profile::{ExecutorConfigs, ExecutorProfileId},
 };
 use local_deployment::{Deployment, DeploymentError};
+use reqwest::header::{AUTHORIZATION, HeaderMap, HeaderValue};
 use serde::{Deserialize, Serialize};
 use services::services::config::{
     Config, SoundFile,

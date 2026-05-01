@@ -236,7 +236,7 @@ function AgentsSidebar() {
                     className={cn(
                       'rounded-md px-2 py-1 text-[11px] uppercase tracking-wide transition-colors',
                       isActive
-                        ? 'bg-primary/10 text-primary'
+                        ? 'bg-primary/10 font-semibold text-primary'
                         : 'text-muted-foreground hover:text-foreground'
                     )}
                     onClick={() => setActiveTab(tab)}

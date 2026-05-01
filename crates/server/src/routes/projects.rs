@@ -352,7 +352,7 @@ async fn list_openclaw_agents(
 async fn get_openclaw_session_history(
     Extension(_project): Extension<Project>,
     State(deployment): State<DeploymentImpl>,
-    axum::extract::Path(session_key): axum::extract::Path<String>,
+    axum::extract::Path((_, session_key)): axum::extract::Path<(String, String)>,
 ) -> Result<ResponseJson<ApiResponse<OpenClawSessionChatResponse>>, ApiError> {
     let openclaw_settings = {
         let config = deployment.config().read().await;
@@ -402,7 +402,7 @@ async fn get_openclaw_session_history(
 async fn send_openclaw_session_message(
     Extension(_project): Extension<Project>,
     State(deployment): State<DeploymentImpl>,
-    axum::extract::Path(session_key): axum::extract::Path<String>,
+    axum::extract::Path((_, session_key)): axum::extract::Path<(String, String)>,
     Json(payload): Json<OpenClawSendMessageRequest>,
 ) -> Result<ResponseJson<ApiResponse<serde_json::Value>>, ApiError> {
     let text = payload.text.trim();

@@ -4,6 +4,7 @@ use axum::{
     middleware::Next,
     response::Response,
 };
+use std::collections::HashMap;
 use db::models::{
     execution_process::ExecutionProcess, project::Project, tag::Tag, task::Task,
     task_attempt::TaskAttempt,
@@ -15,10 +16,15 @@ use crate::{DeploymentImpl, routes::projects::apply_project_settings};
 
 pub async fn load_project_middleware(
     State(deployment): State<DeploymentImpl>,
-    Path(project_id): Path<Uuid>,
+    Path(params): Path<HashMap<String, String>>,
     request: Request,
     next: Next,
 ) -> Result<Response, StatusCode> {
+    let project_id = params
+        .get("id")
+        .and_then(|id| Uuid::parse_str(id).ok())
+        .ok_or(StatusCode::BAD_REQUEST)?;
+
     // Load the project from the database
     let mut project = match Project::find_by_id(&deployment.db().pool, project_id).await {
         Ok(Some(project)) => project,

@@ -158,9 +158,9 @@ function AgentsSidebar() {
   );
 
   return (
-    <aside className="h-full min-h-0 w-80 shrink-0 border-l bg-muted/20 p-2">
-      <div className="h-full min-h-0 flex flex-col gap-2">
-        <section className="flex-1 min-h-0 rounded-xl border bg-background overflow-hidden">
+    <aside className="h-full min-h-0 w-80 shrink-0 border-l bg-muted/20 py-2">
+      <div className="h-full min-h-0 flex flex-col">
+        <section className="flex-1 min-h-0 bg-background overflow-hidden">
           <header className="border-b px-3 py-2">
             <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Agents
@@ -218,9 +218,11 @@ function AgentsSidebar() {
           </div>
         </section>
 
-        <section className="flex-1 min-h-0 rounded-xl border bg-background overflow-hidden">
+        <div className="h-px bg-border" aria-hidden="true" />
+
+        <section className="flex-1 min-h-0 bg-muted/30 overflow-hidden">
           <div
-            className="border-b bg-background/80 px-2 py-1.5"
+            className="border-b bg-muted/40 px-2 py-1.5"
             role="tablist"
             aria-label="Agents workspace tabs"
           >
@@ -248,7 +250,7 @@ function AgentsSidebar() {
             </div>
           </div>
           <div className="h-full overflow-y-auto p-3">
-            <section className="rounded-lg border bg-background p-3 space-y-2">
+            <section className="bg-muted/30 p-3 space-y-2">
               <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 {activeTab}
               </h3>

@@ -160,9 +160,13 @@ export type DirectoryEntry = { name: string, path: string, is_directory: boolean
 
 export type DirectoryListResponse = { entries: Array<DirectoryEntry>, current_path: string, };
 
-export type Config = { config_version: string, theme: ThemeMode, executor_profile: ExecutorProfileId, disclaimer_acknowledged: boolean, notifications: NotificationConfig, editor: EditorConfig, workspace_dir: string | null, show_new_attempt_drag_warning: boolean, language: UiLanguage, git_branch_prefix: string, showcases: ShowcaseState, done_task_cleanup_days: number, automatic_done_task_cleanup_days_by_project: { [key in string]?: number }, task_title_prompt: string | null, task_description_prompt: string | null, project_local_tags: { [key in string]?: Array<Tag> }, };
+export type Config = { config_version: string, theme: ThemeMode, executor_profile: ExecutorProfileId, disclaimer_acknowledged: boolean, notifications: NotificationConfig, editor: EditorConfig, workspace_dir: string | null, show_new_attempt_drag_warning: boolean, language: UiLanguage, git_branch_prefix: string, showcases: ShowcaseState, done_task_cleanup_days: number, automatic_done_task_cleanup_days_by_project: { [key in string]?: number }, task_title_prompt: string | null, task_description_prompt: string | null, openclaw: OpenClawSettings, project_local_tags: { [key in string]?: Array<Tag> }, project_settings: { [key in string]?: ProjectSettings }, };
 
 export type NotificationConfig = { sound_enabled: boolean, system_enabled: boolean, badge_enabled: boolean, toast_enabled: boolean, sound_file: SoundFile, };
+
+export type ProjectSettings = { setup_script: string | null, dev_script: string | null, cleanup_script: string | null, copy_files: string | null, parallel_setup_script?: boolean, };
+
+export type OpenClawSettings = { gateway_url: string, gateway_key: string, };
 
 export enum ThemeMode { LIGHT = "LIGHT", DARK = "DARK", SYSTEM = "SYSTEM" }
 

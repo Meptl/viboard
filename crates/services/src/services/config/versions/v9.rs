@@ -1,4 +1,8 @@
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    fs,
+    path::{Path, PathBuf},
+};
 
 use anyhow::Error;
 use db::models::tag::Tag;
@@ -34,6 +38,12 @@ fn default_task_description_prompt() -> Option<String> {
     None
 }
 
+fn default_openclaw_settings() -> OpenClawSettings {
+    detect_openclaw_settings()
+}
+
+const OPENCLAW_DEFAULT_GATEWAY_URL: &str = "http://127.0.0.1:18789";
+
 #[derive(Clone, Debug, Serialize, Deserialize, TS)]
 pub struct NotificationConfig {
     pub sound_enabled: bool,
@@ -55,6 +65,87 @@ impl Default for NotificationConfig {
             toast_enabled: default_toast_enabled(),
             sound_file: SoundFile::AbstractSound4,
         }
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+pub struct OpenClawSettings {
+    pub gateway_url: String,
+    pub gateway_key: String,
+}
+
+impl Default for OpenClawSettings {
+    fn default() -> Self {
+        default_openclaw_settings()
+    }
+}
+
+fn detect_openclaw_settings() -> OpenClawSettings {
+    let mut settings = OpenClawSettings {
+        gateway_url: OPENCLAW_DEFAULT_GATEWAY_URL.to_string(),
+        gateway_key: String::new(),
+    };
+
+    if let Some(systemd_token) = read_openclaw_token_from_systemd() {
+        settings.gateway_key = systemd_token;
+    }
+
+    let Some(home_dir) = std::env::var_os("HOME").map(PathBuf::from) else {
+        return settings;
+    };
+    let openclaw_config_path = home_dir.join(".openclaw").join("openclaw.json");
+    let Ok(raw_config) = fs::read_to_string(openclaw_config_path) else {
+        return settings;
+    };
+    let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&raw_config) else {
+        return settings;
+    };
+
+    if let Some(port) = parsed
+        .get("gateway")
+        .and_then(|gateway| gateway.get("port"))
+        .and_then(serde_json::Value::as_u64)
+    {
+        settings.gateway_url = format!("http://127.0.0.1:{port}");
+    }
+
+    if settings.gateway_key.is_empty()
+        && let Some(config_token) = parsed
+            .get("gateway")
+            .and_then(|gateway| gateway.get("auth"))
+            .and_then(|auth| auth.get("token"))
+            .and_then(serde_json::Value::as_str)
+    {
+        settings.gateway_key = config_token.to_string();
+    }
+
+    settings
+}
+
+fn read_openclaw_token_from_systemd() -> Option<String> {
+    let home_dir = std::env::var_os("HOME").map(PathBuf::from)?;
+    let service_paths = [
+        home_dir.join(".config/systemd/user/openclaw-gateway.service"),
+        PathBuf::from("/etc/systemd/system/openclaw-gateway.service"),
+    ];
+
+    for service_path in service_paths {
+        if let Some(token) = read_openclaw_token_line(&service_path) {
+            return Some(token);
+        }
+    }
+
+    None
+}
+
+fn read_openclaw_token_line(service_path: &Path) -> Option<String> {
+    let service_content = fs::read_to_string(service_path).ok()?;
+    let (_, suffix) = service_content.split_once("OPENCLAW_GATEWAY_TOKEN=")?;
+    let token = suffix.split_whitespace().next()?.trim();
+    if token.is_empty() {
+        None
+    } else {
+        Some(token.to_string())
     }
 }
 
@@ -83,6 +174,8 @@ pub struct Config {
     pub task_title_prompt: Option<String>,
     #[serde(default = "default_task_description_prompt")]
     pub task_description_prompt: Option<String>,
+    #[serde(default = "default_openclaw_settings")]
+    pub openclaw: OpenClawSettings,
     #[serde(default)]
     pub project_local_tags: HashMap<String, Vec<Tag>>,
     #[serde(default)]
@@ -157,6 +250,7 @@ impl Config {
             automatic_done_task_cleanup_days_by_project: HashMap::new(),
             task_title_prompt: default_task_title_prompt(),
             task_description_prompt: default_task_description_prompt(),
+            openclaw: default_openclaw_settings(),
             project_local_tags: HashMap::new(),
             project_settings: HashMap::new(),
         }
@@ -173,6 +267,11 @@ impl From<String> for Config {
         if let Ok(config) = serde_json::from_str::<Config>(&raw_config)
             && config.config_version == "v9"
         {
+            if config.openclaw.gateway_url.trim().is_empty() {
+                let mut with_discovery = config;
+                with_discovery.openclaw = default_openclaw_settings();
+                return with_discovery;
+            }
             return config;
         }
 
@@ -207,6 +306,7 @@ impl Default for Config {
             automatic_done_task_cleanup_days_by_project: HashMap::new(),
             task_title_prompt: default_task_title_prompt(),
             task_description_prompt: default_task_description_prompt(),
+            openclaw: default_openclaw_settings(),
             project_local_tags: HashMap::new(),
             project_settings: HashMap::new(),
         }

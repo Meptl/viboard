@@ -19,7 +19,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, Volume2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Volume2 } from 'lucide-react';
 import { EditorType, SoundFile, ThemeMode } from 'shared/types';
 
 import { toPrettyCase } from '@/utils/string';
@@ -45,6 +45,7 @@ export function GeneralSettings() {
   const [branchPrefixError, setBranchPrefixError] = useState<string | null>(
     null
   );
+  const [showOpenClawKey, setShowOpenClawKey] = useState(false);
   const latestDraftRef = useRef(draft);
   const saveSeqRef = useRef(0);
   const { setTheme } = useTheme();
@@ -388,6 +389,68 @@ export function GeneralSettings() {
                 </>
               )}
             </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle>OpenClaw</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="openclaw-gateway-url">Gateway URL</Label>
+            <Input
+              id="openclaw-gateway-url"
+              type="text"
+              placeholder="http://127.0.0.1:18789"
+              value={draft?.openclaw.gateway_url ?? ''}
+              onChange={(e) =>
+                updateDraft({
+                  openclaw: {
+                    ...draft!.openclaw,
+                    gateway_url: e.target.value,
+                  },
+                })
+              }
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="openclaw-gateway-key">Gateway Key</Label>
+            <div className="flex gap-2">
+              <Input
+                id="openclaw-gateway-key"
+                type={showOpenClawKey ? 'text' : 'password'}
+                value={draft?.openclaw.gateway_key ?? ''}
+                onChange={(e) =>
+                  updateDraft({
+                    openclaw: {
+                      ...draft!.openclaw,
+                      gateway_key: e.target.value,
+                    },
+                  })
+                }
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowOpenClawKey((prev) => !prev)}
+                aria-label={showOpenClawKey ? 'Hide gateway key' : 'Show gateway key'}
+              >
+                {showOpenClawKey ? (
+                  <>
+                    <EyeOff className="h-4 w-4" />
+                    <span className="ml-2">Hide</span>
+                  </>
+                ) : (
+                  <>
+                    <Eye className="h-4 w-4" />
+                    <span className="ml-2">Show</span>
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

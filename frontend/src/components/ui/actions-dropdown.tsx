@@ -7,7 +7,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Pin, PinOff } from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
 import type { TaskWithAttemptStatus, TaskAttempt } from 'shared/types';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
 import { DeleteTaskConfirmationDialog } from '@/components/dialogs/tasks/DeleteTaskConfirmationDialog';
@@ -178,17 +178,7 @@ export function ActionsDropdown({
                 disabled={!task?.id || updateTask.isPending}
                 onClick={handleTogglePin}
               >
-                {task?.pinned ? (
-                  <>
-                    <PinOff className="mr-2 h-4 w-4" />
-                    Unpin
-                  </>
-                ) : (
-                  <>
-                    <Pin className="mr-2 h-4 w-4" />
-                    Pin
-                  </>
-                )}
+                {task?.pinned ? 'Unpin' : 'Pin'}
               </DropdownMenuItem>
               <DropdownMenuItem
                 disabled={!projectId}

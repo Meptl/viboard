@@ -8,6 +8,7 @@ const readline = require('node:readline/promises');
 const { stdin, stdout } = require('node:process');
 
 const OPENCLAW_CONFIG = path.join(os.homedir(), '.openclaw', 'openclaw.json');
+const REQUIRED_HTTP_TOOLS = ['cron', 'gateway', 'sessions_spawn'];
 
 function printHelp() {
   console.log(`Usage:
@@ -81,6 +82,15 @@ function ensureConfigShape(parsed) {
     ? existing.filter(value => typeof value === 'string' && value.trim())
     : [];
 
+  config.gateway.tools =
+    config.gateway.tools && typeof config.gateway.tools === 'object'
+      ? config.gateway.tools
+      : {};
+  const existingAllow = config.gateway.tools.allow;
+  config.gateway.tools.allow = Array.isArray(existingAllow)
+    ? existingAllow.filter(value => typeof value === 'string' && value.trim())
+    : [];
+
   return config;
 }
 
@@ -122,6 +132,7 @@ async function main() {
 
   const config = ensureConfigShape(json);
   const currentOrigins = new Set(config.gateway.controlUi.allowedOrigins);
+  const currentToolsAllow = new Set(config.gateway.tools.allow);
 
   const requestedOrigins = [];
   const sortedPorts = [...parsedArgs.ports].sort((a, b) => a - b);
@@ -134,20 +145,42 @@ async function main() {
 
   const added = requestedOrigins.filter(origin => !currentOrigins.has(origin));
   for (const origin of requestedOrigins) currentOrigins.add(origin);
+  const addedTools = REQUIRED_HTTP_TOOLS.filter(tool => !currentToolsAllow.has(tool));
+  for (const tool of REQUIRED_HTTP_TOOLS) currentToolsAllow.add(tool);
 
   config.gateway.controlUi.allowedOrigins = [...currentOrigins].sort();
+  config.gateway.tools.allow = [...currentToolsAllow].sort();
 
   if (parsedArgs.dryRun) {
-    console.log(`[dry-run] Would add ${added.length} origin(s) to ${OPENCLAW_CONFIG}`);
+    console.log(`[dry-run] Would update ${OPENCLAW_CONFIG}`);
+    if (added.length === 0 && addedTools.length === 0) {
+      console.log('No changes needed; requested origins and gateway tool permissions are already present.');
+      return;
+    }
     if (added.length > 0) {
+      console.log(`Origins to add (${added.length}):`);
       for (const origin of added) console.log(`  + ${origin}`);
+    }
+    if (addedTools.length > 0) {
+      console.log(`Gateway tool permissions to add (${addedTools.length}):`);
+      for (const tool of addedTools) console.log(`  + ${tool}`);
     }
     return;
   }
 
-  console.log(`Planned update: ${added.length} new origin(s) in ${OPENCLAW_CONFIG}`);
+  if (added.length === 0 && addedTools.length === 0) {
+    console.log('No changes needed; requested origins and gateway tool permissions are already present.');
+    return;
+  }
+
+  console.log(`Planned update in ${OPENCLAW_CONFIG}:`);
   if (added.length > 0) {
+    console.log(`Origins to add (${added.length}):`);
     for (const origin of added) console.log(`  + ${origin}`);
+  }
+  if (addedTools.length > 0) {
+    console.log(`Gateway tool permissions to add (${addedTools.length}):`);
+    for (const tool of addedTools) console.log(`  + ${tool}`);
   }
 
   const isInteractive = stdin.isTTY && stdout.isTTY;
@@ -174,11 +207,13 @@ async function main() {
   }
 
   console.log(`Updated ${OPENCLAW_CONFIG}`);
-  if (added.length === 0) {
-    console.log('No changes needed; all requested origins were already present.');
-  } else {
+  if (added.length > 0) {
     console.log(`Added ${added.length} origin(s):`);
     for (const origin of added) console.log(`  + ${origin}`);
+  }
+  if (addedTools.length > 0) {
+    console.log(`Added ${addedTools.length} gateway tool permission(s):`);
+    for (const tool of addedTools) console.log(`  + ${tool}`);
   }
   const restartAnswer = await rl.question('Restart OpenClaw gateway now? [Y/n] ');
   const shouldRestart = !/^(n|no)$/i.test(restartAnswer.trim());

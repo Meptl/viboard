@@ -19,14 +19,10 @@ use serde::{Deserialize, Serialize};
 use services::services::config::{
     Config, SoundFile,
     editor::{EditorConfig, EditorType},
-    project_local_override_paths,
     save_config_to_file,
 };
 use ts_rs::TS;
-use utils::{
-    assets::{config_path, project_local_config_path},
-    response::ApiResponse,
-};
+use utils::{assets::config_path, response::ApiResponse};
 
 use crate::{DeploymentImpl, error::ApiError};
 
@@ -75,8 +71,6 @@ pub struct UserSystemInfo {
     #[serde(flatten)]
     pub profiles: ExecutorConfigs,
     pub environment: Environment,
-    pub project_local_config_path: Option<String>,
-    pub project_local_override_paths: Vec<String>,
     /// Capabilities supported per executor (e.g., { "CLAUDE_CODE": ["SESSION_FORK"] })
     pub capabilities: HashMap<String, Vec<BaseAgentCapability>>,
 }
@@ -92,9 +86,6 @@ async fn get_user_system_info(
         config: config.clone(),
         profiles: ExecutorConfigs::get_cached(),
         environment: Environment::new(),
-        project_local_config_path: project_local_config_path()
-            .map(|path| path.display().to_string()),
-        project_local_override_paths: project_local_override_paths(),
         capabilities: {
             let mut caps: HashMap<String, Vec<BaseAgentCapability>> = HashMap::new();
             let profs = ExecutorConfigs::get_cached();

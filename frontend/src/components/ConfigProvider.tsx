@@ -20,8 +20,6 @@ interface UserSystemState {
   environment: Environment | null;
   profiles: Record<string, ExecutorConfig> | null;
   capabilities: Record<string, BaseAgentCapability[]> | null;
-  projectLocalConfigPath: string | null;
-  projectLocalOverridePaths: string[];
 }
 
 interface UserSystemContextType {
@@ -38,8 +36,6 @@ interface UserSystemContextType {
   environment: Environment | null;
   profiles: Record<string, ExecutorConfig> | null;
   capabilities: Record<string, BaseAgentCapability[]> | null;
-  projectLocalConfigPath: string | null;
-  projectLocalOverridePaths: string[];
   setEnvironment: (env: Environment | null) => void;
   setProfiles: (profiles: Record<string, ExecutorConfig> | null) => void;
   setCapabilities: (caps: Record<string, BaseAgentCapability[]> | null) => void;
@@ -78,11 +74,6 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
       string,
       BaseAgentCapability[]
     > | null) || null;
-  const projectLocalConfigPath = userSystemInfo?.project_local_config_path || null;
-  const projectLocalOverridePaths = useMemo(
-    () => userSystemInfo?.project_local_override_paths || [],
-    [userSystemInfo?.project_local_override_paths]
-  );
 
   const updateConfig = useCallback(
     (updates: Partial<Config>) => {
@@ -179,15 +170,11 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
         environment,
         profiles,
         capabilities,
-        projectLocalConfigPath,
-        projectLocalOverridePaths,
       },
       config,
       environment,
       profiles,
       capabilities,
-      projectLocalConfigPath,
-      projectLocalOverridePaths,
       updateConfig,
       saveConfig,
       updateAndSaveConfig,
@@ -202,8 +189,6 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
       environment,
       profiles,
       capabilities,
-      projectLocalConfigPath,
-      projectLocalOverridePaths,
       updateConfig,
       saveConfig,
       updateAndSaveConfig,

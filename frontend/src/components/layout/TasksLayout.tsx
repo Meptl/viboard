@@ -237,7 +237,7 @@ function RightWorkArea({
   return (
     <div className="h-full min-h-0 flex">
       {mainContent}
-      <AgentsSidebarSkeleton />
+      {mode !== 'diffs' && <AgentsSidebarSkeleton />}
     </div>
   );
 }

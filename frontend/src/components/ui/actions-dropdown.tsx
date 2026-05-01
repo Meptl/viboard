@@ -7,7 +7,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, Pin, PinOff } from 'lucide-react';
 import type { TaskWithAttemptStatus, TaskAttempt } from 'shared/types';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
 import { DeleteTaskConfirmationDialog } from '@/components/dialogs/tasks/DeleteTaskConfirmationDialog';
@@ -17,6 +17,7 @@ import { useProject } from '@/contexts/ProjectContext';
 import { openTaskForm } from '@/lib/openTaskForm';
 import { cn } from '@/lib/utils';
 import { attemptsApi } from '@/lib/api';
+import { useTaskMutations } from '@/hooks/useTaskMutations';
 
 interface ActionsDropdownProps {
   task?: TaskWithAttemptStatus | null;
@@ -30,6 +31,7 @@ export function ActionsDropdown({
   triggerClassName,
 }: ActionsDropdownProps) {
   const { projectId } = useProject();
+  const { updateTask } = useTaskMutations();
   const openInEditor = useOpenInEditor(attempt?.id);
 
   const hasAttemptActions = Boolean(attempt);
@@ -93,6 +95,17 @@ export function ActionsDropdown({
     if (!task?.id) return;
     CreateAttemptDialog.show({
       taskId: task.id,
+    });
+  };
+
+  const handleTogglePin = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!task?.id) return;
+    updateTask.mutate({
+      taskId: task.id,
+      data: {
+        pinned: !task.pinned,
+      },
     });
   };
 
@@ -160,6 +173,22 @@ export function ActionsDropdown({
                 onClick={handleViewDetails}
               >
                 Details
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!task?.id || updateTask.isPending}
+                onClick={handleTogglePin}
+              >
+                {task?.pinned ? (
+                  <>
+                    <PinOff className="mr-2 h-4 w-4" />
+                    Unpin
+                  </>
+                ) : (
+                  <>
+                    <Pin className="mr-2 h-4 w-4" />
+                    Pin
+                  </>
+                )}
               </DropdownMenuItem>
               <DropdownMenuItem
                 disabled={!projectId}

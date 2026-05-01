@@ -235,6 +235,7 @@ pub async fn update_task(
     let parent_task_attempt = payload
         .parent_task_attempt
         .or(existing_task.parent_task_attempt);
+    let pinned = payload.pinned.unwrap_or(existing_task.pinned);
 
     let task = Task::update(
         &deployment.db().pool,
@@ -244,6 +245,7 @@ pub async fn update_task(
         description,
         status.clone(),
         parent_task_attempt,
+        pinned,
     )
     .await?;
 

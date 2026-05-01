@@ -845,6 +845,7 @@ impl TaskServer {
             description: expanded_description,
             status,
             parent_task_attempt: None,
+            pinned: None,
             image_ids: None,
         };
         let url = self.url(&format!("/api/tasks/{}", task_id));

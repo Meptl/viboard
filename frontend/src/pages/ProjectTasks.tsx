@@ -543,7 +543,10 @@ export function ProjectTasks() {
   }, [hasSearch, normalizedSearch, tasks]);
 
   const doneTasks = useMemo(
-    () => tasks.filter((task) => normalizeStatus(task.status) === 'done'),
+    () =>
+      tasks.filter(
+        (task) => normalizeStatus(task.status) === 'done' && !task.pinned
+      ),
     [tasks]
   );
 

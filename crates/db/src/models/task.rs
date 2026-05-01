@@ -30,6 +30,7 @@ pub struct Task {
     pub description: Option<String>,
     pub status: TaskStatus,
     pub parent_task_attempt: Option<Uuid>, // Foreign key to parent TaskAttempt
+    pub pinned: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -102,6 +103,7 @@ struct TaskWithAttemptStatusRow {
     description: Option<String>,
     status: TaskStatus,
     parent_task_attempt: Option<Uuid>,
+    pinned: bool,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
     has_in_progress_attempt: i64,
@@ -115,6 +117,7 @@ pub struct UpdateTask {
     pub description: Option<String>,
     pub status: Option<TaskStatus>,
     pub parent_task_attempt: Option<Uuid>,
+    pub pinned: Option<bool>,
     pub image_ids: Option<Vec<Uuid>>,
 }
 
@@ -165,6 +168,7 @@ impl Task {
   t.description,
   t.status                        AS status,
   t.parent_task_attempt           AS parent_task_attempt,
+  t.pinned                        AS pinned,
   t.created_at                    AS created_at,
   t.updated_at                    AS updated_at,
 
@@ -216,6 +220,7 @@ ORDER BY t.created_at DESC"#,
                     description: rec.description,
                     status: rec.status,
                     parent_task_attempt: rec.parent_task_attempt,
+                    pinned: rec.pinned,
                     created_at: rec.created_at,
                     updated_at: rec.updated_at,
                 },
@@ -234,9 +239,10 @@ ORDER BY t.created_at DESC"#,
         max_cancelled_at: DateTime<Utc>,
     ) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as::<_, Task>(
-            r#"SELECT id, project_id, title, description, status, parent_task_attempt, created_at, updated_at
+            r#"SELECT id, project_id, title, description, status, parent_task_attempt, pinned, created_at, updated_at
                FROM tasks
                WHERE status = $1
+                 AND pinned = 0
                  AND datetime(COALESCE(cancelled_at, updated_at)) <= datetime($2)
                ORDER BY datetime(COALESCE(cancelled_at, updated_at)) ASC"#,
         )
@@ -248,7 +254,7 @@ ORDER BY t.created_at DESC"#,
 
     pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as::<_, Task>(
-            r#"SELECT id, project_id, title, description, status, parent_task_attempt, created_at, updated_at
+            r#"SELECT id, project_id, title, description, status, parent_task_attempt, pinned, created_at, updated_at
                FROM tasks 
                WHERE id = $1"#,
         )
@@ -259,7 +265,7 @@ ORDER BY t.created_at DESC"#,
 
     pub async fn find_by_rowid(pool: &SqlitePool, rowid: i64) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as::<_, Task>(
-            r#"SELECT id, project_id, title, description, status, parent_task_attempt, created_at, updated_at
+            r#"SELECT id, project_id, title, description, status, parent_task_attempt, pinned, created_at, updated_at
                FROM tasks 
                WHERE rowid = $1"#,
         )
@@ -285,7 +291,7 @@ ORDER BY t.created_at DESC"#,
                    $6,
                    CASE WHEN $5 = 'cancelled' THEN CURRENT_TIMESTAMP ELSE NULL END
                )
-               RETURNING id, project_id, title, description, status, parent_task_attempt, created_at, updated_at"#,
+               RETURNING id, project_id, title, description, status, parent_task_attempt, pinned, created_at, updated_at"#,
         )
         .bind(task_id)
         .bind(data.project_id)
@@ -305,6 +311,7 @@ ORDER BY t.created_at DESC"#,
         description: Option<String>,
         status: TaskStatus,
         parent_task_attempt: Option<Uuid>,
+        pinned: bool,
     ) -> Result<Self, sqlx::Error> {
         sqlx::query_as::<_, Task>(
             r#"UPDATE tasks 
@@ -312,13 +319,14 @@ ORDER BY t.created_at DESC"#,
                    description = $4,
                    status = $5,
                    parent_task_attempt = $6,
+                   pinned = $7,
                    updated_at = CURRENT_TIMESTAMP,
                    cancelled_at = CASE
                        WHEN $5 = 'cancelled' THEN COALESCE(cancelled_at, CURRENT_TIMESTAMP)
                        ELSE NULL
                    END
                WHERE id = $1 AND project_id = $2 
-               RETURNING id, project_id, title, description, status, parent_task_attempt, created_at, updated_at"#,
+               RETURNING id, project_id, title, description, status, parent_task_attempt, pinned, created_at, updated_at"#,
         )
         .bind(id)
         .bind(project_id)
@@ -326,6 +334,7 @@ ORDER BY t.created_at DESC"#,
         .bind(description)
         .bind(status)
         .bind(parent_task_attempt)
+        .bind(pinned)
         .fetch_one(pool)
         .await
     }
@@ -402,7 +411,7 @@ ORDER BY t.created_at DESC"#,
     ) -> Result<Vec<Self>, sqlx::Error> {
         // Find only child tasks that have this attempt as their parent
         sqlx::query_as::<_, Task>(
-            r#"SELECT id, project_id, title, description, status, parent_task_attempt, created_at, updated_at
+            r#"SELECT id, project_id, title, description, status, parent_task_attempt, pinned, created_at, updated_at
                FROM tasks 
                WHERE parent_task_attempt = $1
                ORDER BY created_at DESC"#,

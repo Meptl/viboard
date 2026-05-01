@@ -91,11 +91,15 @@ pub struct Config {
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize, TS)]
 pub struct ProjectSettings {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub setup_script: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub dev_script: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub cleanup_script: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub copy_files: Option<String>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub parallel_setup_script: bool,
 }
 

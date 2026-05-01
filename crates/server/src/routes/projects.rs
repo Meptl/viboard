@@ -14,6 +14,7 @@ use db::models::{
 };
 use ignore::WalkBuilder;
 use local_deployment::Deployment;
+use reqwest::Client;
 use services::services::{
     config::{ProjectSettings, save_config_to_file},
     file_search_cache::{
@@ -22,7 +23,11 @@ use services::services::{
     },
     git::GitBranch,
 };
-use utils::{path::expand_tilde, response::ApiResponse};
+use utils::{
+    assets::openclaw_root_path,
+    path::expand_tilde,
+    response::ApiResponse,
+};
 use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError, middleware::load_project_middleware};
@@ -44,11 +49,183 @@ pub async fn get_project(
     Extension(mut project): Extension<Project>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<Project>>, ApiError> {
+    ensure_openclaw_workspace_for_project(project.id)?;
     {
         let config = deployment.config().read().await;
         apply_project_settings(&mut project, &config);
     }
     Ok(ResponseJson(ApiResponse::success(project)))
+}
+
+fn ensure_openclaw_workspace_for_project(project_id: Uuid) -> Result<(), ApiError> {
+    let workspace_root = openclaw_root_path().join(project_id.to_string());
+    std::fs::create_dir_all(&workspace_root)?;
+
+    let config_path = workspace_root.join("openclaw.json");
+    if !config_path.exists() {
+        let payload = serde_json::json!({
+            "agents": {
+                "defaults": {
+                    "workspace": workspace_root,
+                },
+            },
+        });
+        let serialized = serde_json::to_string_pretty(&payload)
+            .map_err(|e| ApiError::BadRequest(format!("Failed to serialize OpenClaw config: {e}")))?;
+        std::fs::write(config_path, format!("{serialized}\n"))?;
+    }
+
+    Ok(())
+}
+
+#[derive(Debug, serde::Serialize)]
+struct OpenClawAgentSession {
+    session_key: String,
+    label: Option<String>,
+    display_name: Option<String>,
+    state: Option<String>,
+    agent_state: Option<String>,
+    busy: Option<bool>,
+    processing: Option<bool>,
+    status: Option<String>,
+    updated_at: Option<i64>,
+    last_activity: Option<String>,
+    model: Option<String>,
+    thinking: Option<String>,
+    total_tokens: Option<i64>,
+    context_tokens: Option<i64>,
+    parent_session_key: Option<String>,
+}
+
+#[derive(Debug, serde::Serialize)]
+struct OpenClawAgentsResponse {
+    sessions: Vec<OpenClawAgentSession>,
+}
+
+fn value_to_i64(value: &serde_json::Value) -> Option<i64> {
+    value
+        .as_i64()
+        .or_else(|| value.as_u64().map(|v| v as i64))
+        .or_else(|| value.as_str().and_then(|v| v.parse::<i64>().ok()))
+}
+
+fn value_to_string(value: Option<&serde_json::Value>) -> Option<String> {
+    value.and_then(|v| v.as_str().map(ToString::to_string))
+}
+
+fn value_to_bool(value: Option<&serde_json::Value>) -> Option<bool> {
+    value.and_then(serde_json::Value::as_bool)
+}
+
+fn extract_sessions_array(result: &serde_json::Value) -> Vec<serde_json::Value> {
+    if let Some(sessions) = result.get("sessions").and_then(serde_json::Value::as_array) {
+        return sessions.to_vec();
+    }
+    if let Some(sessions) = result
+        .get("details")
+        .and_then(|d| d.get("sessions"))
+        .and_then(serde_json::Value::as_array)
+    {
+        return sessions.to_vec();
+    }
+    Vec::new()
+}
+
+async fn list_openclaw_agents(
+    Extension(project): Extension<Project>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<OpenClawAgentsResponse>>, ApiError> {
+    let openclaw_workspace = openclaw_root_path().join(project.id.to_string());
+    let openclaw_workspace_str = openclaw_workspace.to_string_lossy().to_string();
+
+    let openclaw_settings = {
+        let config = deployment.config().read().await;
+        config.openclaw.clone()
+    };
+
+    let gateway_url = openclaw_settings.gateway_url.trim().trim_end_matches('/');
+    if gateway_url.is_empty() {
+        return Ok(ResponseJson(ApiResponse::success(OpenClawAgentsResponse {
+            sessions: Vec::new(),
+        })));
+    }
+
+    let body = serde_json::json!({
+        "tool": "sessions_list",
+        "args": {
+            "activeMinutes": 7 * 24 * 60,
+            "limit": 1000,
+            "workspace": openclaw_workspace_str,
+            "workspaceRoot": openclaw_workspace_str,
+        },
+        "sessionKey": "main",
+    });
+
+    let client = Client::new();
+    let mut request = client
+        .post(format!("{gateway_url}/tools/invoke"))
+        .json(&body);
+    if !openclaw_settings.gateway_key.trim().is_empty() {
+        request = request.bearer_auth(openclaw_settings.gateway_key.trim());
+    }
+    let response = request
+        .send()
+        .await
+        .map_err(|e| ApiError::BadRequest(format!("OpenClaw gateway request failed: {e}")))?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let text = response.text().await.unwrap_or_default();
+        return Err(ApiError::BadRequest(format!(
+            "OpenClaw gateway error {status}: {text}"
+        )));
+    }
+
+    let payload = response
+        .json::<serde_json::Value>()
+        .await
+        .map_err(|e| ApiError::BadRequest(format!("Invalid OpenClaw gateway response: {e}")))?;
+    if payload.get("ok").and_then(serde_json::Value::as_bool) == Some(false) {
+        let message = payload
+            .get("error")
+            .and_then(|e| e.get("message"))
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("tool invocation failed");
+        return Err(ApiError::BadRequest(format!("OpenClaw gateway tool failed: {message}")));
+    }
+
+    let result = payload.get("result").cloned().unwrap_or(serde_json::Value::Null);
+    let sessions = extract_sessions_array(&result)
+        .into_iter()
+        .filter_map(|row| {
+            let session_key = value_to_string(row.get("sessionKey").or_else(|| row.get("key")))
+                .or_else(|| value_to_string(row.get("id")))?;
+            Some(OpenClawAgentSession {
+                session_key,
+                label: value_to_string(row.get("label")),
+                display_name: value_to_string(row.get("displayName")),
+                state: value_to_string(row.get("state")),
+                agent_state: value_to_string(row.get("agentState")),
+                busy: value_to_bool(row.get("busy")),
+                processing: value_to_bool(row.get("processing")),
+                status: value_to_string(row.get("status")),
+                updated_at: row.get("updatedAt").and_then(value_to_i64),
+                last_activity: value_to_string(row.get("lastActivity")),
+                model: value_to_string(row.get("model")),
+                thinking: value_to_string(row.get("thinkingLevel"))
+                    .or_else(|| value_to_string(row.get("thinking"))),
+                total_tokens: row.get("totalTokens").and_then(value_to_i64),
+                context_tokens: row.get("contextTokens").and_then(value_to_i64),
+                parent_session_key: value_to_string(
+                    row.get("parentSessionKey").or_else(|| row.get("parentId")),
+                ),
+            })
+        })
+        .collect::<Vec<_>>();
+
+    Ok(ResponseJson(ApiResponse::success(OpenClawAgentsResponse {
+        sessions,
+    })))
 }
 
 pub fn apply_project_settings(project: &mut Project, config: &services::services::config::Config) {
@@ -525,6 +702,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
             "/",
             get(get_project).put(update_project).delete(delete_project),
         )
+        .route("/openclaw/agents", get(list_openclaw_agents))
         .route("/branches", get(get_project_branches))
         .route("/search", get(search_project_files))
         .route("/open-editor", post(open_project_in_editor))

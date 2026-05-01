@@ -1,11 +1,10 @@
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useMemo, useState } from 'react';
 import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { useProject } from '@/contexts/ProjectContext';
+import { projectsApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
-import { useUserSystem } from '@/components/ConfigProvider';
-import { configApi } from '@/lib/api';
 
 export type LayoutMode = 'preview' | 'diffs' | null;
 
@@ -72,87 +71,95 @@ function AuxRouter({ mode, aux }: { mode: LayoutMode; aux: ReactNode }) {
   );
 }
 
-type OpenClawConnectionStatus = 'checking' | 'connected' | 'failed';
+type OpenClawAgentSession = {
+  session_key: string;
+  label?: string;
+  display_name?: string;
+  state?: string;
+  agent_state?: string;
+  busy?: boolean;
+  processing?: boolean;
+  status?: string;
+  updated_at?: number;
+  model?: string;
+  thinking?: string;
+  total_tokens?: number;
+  context_tokens?: number;
+  parent_session_key?: string;
+};
 
-function getOpenClawConnectionErrorMessage(error: unknown): string {
-  if (!(error instanceof Error)) {
-    return 'Unable to connect to the gateway.';
+type AgentNode = {
+  session: OpenClawAgentSession;
+  depth: number;
+};
+
+function inferParentSessionKey(
+  session: OpenClawAgentSession
+): string | undefined {
+  if (session.parent_session_key?.trim()) return session.parent_session_key;
+  const key = session.session_key;
+  const subagentMatch = key.match(/^agent:([^:]+):subagent:[^:]+:.+$/);
+  if (subagentMatch) {
+    return `agent:${subagentMatch[1]}:main`;
   }
-
-  const normalized = error.message.toLowerCase();
-  if (
-    normalized.includes('networkerror') ||
-    normalized.includes('failed to fetch') ||
-    normalized.includes('load failed')
-  ) {
-    return 'Cannot reach the gateway. This is usually a network, mixed-content, or bad URL issue.';
-  }
-
-  return error.message;
+  return undefined;
 }
 
-function AgentsSidebarSkeleton() {
+function flattenAgentTree(sessions: OpenClawAgentSession[]): AgentNode[] {
+  if (sessions.length === 0) return [];
+
+  const byKey = new Map(sessions.map((s) => [s.session_key, s]));
+  const children = new Map<string, OpenClawAgentSession[]>();
+  const roots: OpenClawAgentSession[] = [];
+
+  for (const session of sessions) {
+    const parentKey = inferParentSessionKey(session);
+    if (parentKey && byKey.has(parentKey)) {
+      const list = children.get(parentKey);
+      if (list) list.push(session);
+      else children.set(parentKey, [session]);
+    } else {
+      roots.push(session);
+    }
+  }
+
+  const byRecent = (a: OpenClawAgentSession, b: OpenClawAgentSession) =>
+    (b.updated_at ?? 0) - (a.updated_at ?? 0);
+  roots.sort(byRecent);
+  for (const list of children.values()) list.sort(byRecent);
+
+  const output: AgentNode[] = [];
+  const walk = (nodes: OpenClawAgentSession[], depth: number) => {
+    for (const node of nodes) {
+      output.push({ session: node, depth });
+      walk(children.get(node.session_key) ?? [], depth + 1);
+    }
+  };
+  walk(roots, 0);
+  return output;
+}
+
+function AgentsSidebar() {
   const tabs = ['Memory', 'Crons', 'Chat', 'Configs'] as const;
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number]>('Memory');
-  const { config } = useUserSystem();
-  const [status, setStatus] = useState<OpenClawConnectionStatus>('checking');
-  const [statusMessage, setStatusMessage] = useState('Checking gateway...');
+  const { projectId } = useProject();
 
-  useEffect(() => {
-    const gatewayUrl = config?.openclaw?.gateway_url?.trim();
-    const gatewayKey = config?.openclaw?.gateway_key?.trim();
+  const agentsQuery = useQuery({
+    queryKey: ['openclaw-agents', projectId],
+    queryFn: () => projectsApi.getOpenclawAgents(projectId!),
+    enabled: !!projectId,
+    staleTime: 15_000,
+    refetchInterval: 15_000,
+  });
 
-    if (!gatewayUrl || !gatewayKey) {
-      setStatus('failed');
-      setStatusMessage('Gateway URL or key is missing in settings.');
-      return;
-    }
-
-    setStatus('checking');
-    setStatusMessage('Checking gateway...');
-
-    const checkConnection = async () => {
-      try {
-        const health = await configApi.checkOpenClawHealth();
-        if (!health.ok) {
-          setStatus('failed');
-          setStatusMessage(health.message);
-          return;
-        }
-
-        setStatus('connected');
-        setStatusMessage(health.message || 'Connected');
-      } catch (error) {
-        setStatus('failed');
-        setStatusMessage(getOpenClawConnectionErrorMessage(error));
-      }
-    };
-
-    void checkConnection();
-    return undefined;
-  }, [config?.openclaw?.gateway_key, config?.openclaw?.gateway_url]);
+  const flatAgents = useMemo(
+    () => flattenAgentTree(agentsQuery.data?.sessions ?? []),
+    [agentsQuery.data?.sessions]
+  );
 
   return (
     <aside className="h-full min-h-0 w-80 shrink-0 border-l bg-muted/20 p-2">
       <div className="h-full min-h-0 flex flex-col gap-2">
-        {status === 'failed' ? (
-          <section className="h-full min-h-0 rounded-xl border bg-background p-3 text-warning-foreground dark:text-warning flex items-center">
-            <div className="min-w-0">
-              <h2 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider">
-                <AlertTriangle className="h-4 w-4 shrink-0" />
-                <span>OpenClaw Connection Failed</span>
-              </h2>
-              <p className="mt-2 text-xs break-words">{statusMessage}</p>
-              <Link
-                to="/settings/general#openclaw-settings"
-                className="mt-3 inline-block text-xs underline underline-offset-2"
-              >
-                Open OpenClaw settings
-              </Link>
-            </div>
-          </section>
-        ) : (
-          <>
         <section className="flex-1 min-h-0 rounded-xl border bg-background overflow-hidden">
           <header className="border-b px-3 py-2">
             <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -160,24 +167,54 @@ function AgentsSidebarSkeleton() {
             </h2>
           </header>
           <div className="h-full overflow-y-auto p-3 space-y-2">
-            <div className="rounded-md border bg-muted/30 px-2 py-1.5 text-xs text-muted-foreground">
-              No active agents
-            </div>
-            <div
-              className={cn(
-                'rounded-md border px-2 py-1.5 text-xs',
-                status === 'connected'
-                  ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-                  : 'border-warning/40 bg-warning/10 text-warning-foreground dark:text-warning'
-              )}
-            >
-              <div className="flex items-center gap-1.5 font-medium">
-                {status === 'checking' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                {status === 'connected' && <CheckCircle2 className="h-3.5 w-3.5" />}
-                <span>OpenClaw gateway</span>
+            {agentsQuery.isLoading ? (
+              <div className="rounded-md border bg-muted/30 px-2 py-1.5 text-xs text-muted-foreground">
+                Loading agents...
               </div>
-              <p className="mt-1">{statusMessage}</p>
-            </div>
+            ) : agentsQuery.isError ? (
+              <div className="rounded-md border bg-muted/30 px-2 py-1.5 text-xs text-muted-foreground">
+                Failed to load OpenClaw agents
+              </div>
+            ) : flatAgents.length === 0 ? (
+              <div className="rounded-md border bg-muted/30 px-2 py-1.5 text-xs text-muted-foreground">
+                No active agents for this workspace
+              </div>
+            ) : (
+              flatAgents.map(({ session, depth }) => {
+                const total = session.total_tokens ?? 0;
+                const context = session.context_tokens ?? 0;
+                const pct =
+                  context > 0 ? Math.min(100, Math.round((total / context) * 100)) : 0;
+                const label =
+                  session.display_name || session.label || session.session_key;
+                return (
+                  <div
+                    key={session.session_key}
+                    className="rounded-md border bg-background px-2 py-1.5"
+                    style={{ marginLeft: `${depth * 10}px` }}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="truncate text-xs">{label}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {session.model ?? 'model?'}
+                      </p>
+                    </div>
+                    <div className="mt-1 h-1.5 w-full rounded bg-muted">
+                      <div
+                        className="h-1.5 rounded bg-primary"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <div className="mt-1 flex items-center justify-between text-[10px] text-muted-foreground">
+                      <span>{session.agent_state ?? session.state ?? 'idle'}</span>
+                      <span>
+                        {total}/{context || '?'} ({pct}%)
+                      </span>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </section>
 
@@ -224,8 +261,6 @@ function AgentsSidebarSkeleton() {
             </section>
           </div>
         </section>
-          </>
-        )}
       </div>
     </aside>
   );
@@ -453,7 +488,7 @@ export function TasksLayout({
         >
           {kanban}
         </div>
-        <AgentsSidebarSkeleton />
+        <AgentsSidebar />
       </div>
     );
   } else {

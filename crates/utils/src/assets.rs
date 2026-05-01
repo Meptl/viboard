@@ -28,6 +28,10 @@ pub fn prod_asset_dir_path() -> std::path::PathBuf {
         .to_path_buf()
 }
 
+pub fn openclaw_root_path() -> std::path::PathBuf {
+    prod_asset_dir_path().join("openclaw")
+}
+
 pub fn config_path() -> std::path::PathBuf {
     asset_dir().join("config.json")
 }

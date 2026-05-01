@@ -40,6 +40,7 @@ Use this document as a quick map of the backend endpoints exposed by the server.
 | Projects | GET | `/api/projects/{id}/branches` |
 | Projects | GET | `/api/projects/{id}/search` |
 | Projects | POST | `/api/projects/{id}/open-editor` |
+| Projects / OpenClaw | GET | `/api/projects/{id}/openclaw/agents` |
 | Tasks | GET, POST | `/api/tasks/` |
 | Tasks | GET | `/api/tasks/stream/ws` |
 | Tasks | POST | `/api/tasks/create-and-start` |
@@ -94,6 +95,12 @@ Use this document as a quick map of the backend endpoints exposed by the server.
 
 - `POST/GET ... /mcp/*` (mounted via `nest_service("/mcp", ...)`).
 - Backed by the TaskServer Streamable HTTP MCP service.
+
+## OpenClaw Notes
+
+- `GET /api/projects/{id}/` now ensures a project-scoped OpenClaw workspace exists at:
+  - `<viboard data dir>/openclaw/{project_id}`
+- It also initializes `<workspace>/openclaw.json` when missing with `agents.defaults.workspace` set to that project workspace.
 
 ## Source of Truth
 

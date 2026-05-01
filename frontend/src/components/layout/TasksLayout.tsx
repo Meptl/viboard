@@ -158,7 +158,7 @@ function AgentsSidebar() {
   );
 
   return (
-    <aside className="h-full min-h-0 w-80 shrink-0 border-l bg-muted/20 py-2">
+    <aside className="h-full min-h-0 w-80 shrink-0 border-l-2 bg-muted/20 py-2">
       <div className="h-full min-h-0 flex flex-col">
         <section className="flex-1 min-h-0 bg-background overflow-hidden">
           <header className="border-b px-3 py-2">

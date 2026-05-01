@@ -1094,10 +1094,7 @@ export function ProjectTasks() {
       }
 
       const dragDistance = getDragDistance(delta);
-      if (
-        duplicateOnDrop &&
-        dragDistance < DUPLICATE_DRAG_MIN_DISTANCE_PX
-      ) {
+      if (duplicateOnDrop && dragDistance < DUPLICATE_DRAG_MIN_DISTANCE_PX) {
         setDropPreview(null);
         return;
       }

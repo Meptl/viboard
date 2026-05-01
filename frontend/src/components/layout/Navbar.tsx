@@ -171,7 +171,6 @@ export function Navbar() {
                   <Settings className="h-4 w-4" />
                 </Link>
               </Button>
-
             </div>
           </div>
         </div>

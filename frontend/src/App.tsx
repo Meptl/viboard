@@ -68,7 +68,6 @@ function AppContent() {
         DisclaimerDialog.hide();
         return;
       }
-
     };
 
     showNextStep();
@@ -88,40 +87,43 @@ function AppContent() {
 
   return (
     <ThemeProvider initialTheme={config?.theme || ThemeMode.SYSTEM}>
-        <SearchProvider>
-          <TaskNotificationsProvider>
-            <div className="h-screen flex flex-col bg-background">
-              <Routes>
-                <Route element={<NormalLayout />}>
-                  <Route path="/" element={<Projects />} />
-                  <Route path="/projects" element={<Projects />} />
-                  <Route path="/projects/:projectId" element={<ProjectRouteRedirect />} />
-                  <Route
-                    path="/projects/:projectId/tasks"
-                    element={<ProjectTasks />}
-                  />
-                  <Route
-                    path="/projects/:projectId/repository-not-detected"
-                    element={<ProjectRepositoryNotDetected />}
-                  />
-                  <Route path="/settings/*" element={<SettingsLayout />}>
-                    <Route index element={<Navigate to="general" replace />} />
-                    <Route path="general" element={<GeneralSettings />} />
-                    <Route path="projects" element={<ProjectSettings />} />
-                  </Route>
-                  <Route
-                    path="/projects/:projectId/tasks/:taskId"
-                    element={<ProjectTasks />}
-                  />
-                  <Route
-                    path="/projects/:projectId/tasks/:taskId/attempts/:attemptId"
-                    element={<ProjectTasks />}
-                  />
+      <SearchProvider>
+        <TaskNotificationsProvider>
+          <div className="h-screen flex flex-col bg-background">
+            <Routes>
+              <Route element={<NormalLayout />}>
+                <Route path="/" element={<Projects />} />
+                <Route path="/projects" element={<Projects />} />
+                <Route
+                  path="/projects/:projectId"
+                  element={<ProjectRouteRedirect />}
+                />
+                <Route
+                  path="/projects/:projectId/tasks"
+                  element={<ProjectTasks />}
+                />
+                <Route
+                  path="/projects/:projectId/repository-not-detected"
+                  element={<ProjectRepositoryNotDetected />}
+                />
+                <Route path="/settings/*" element={<SettingsLayout />}>
+                  <Route index element={<Navigate to="general" replace />} />
+                  <Route path="general" element={<GeneralSettings />} />
+                  <Route path="projects" element={<ProjectSettings />} />
                 </Route>
-              </Routes>
-            </div>
-          </TaskNotificationsProvider>
-        </SearchProvider>
+                <Route
+                  path="/projects/:projectId/tasks/:taskId"
+                  element={<ProjectTasks />}
+                />
+                <Route
+                  path="/projects/:projectId/tasks/:taskId/attempts/:attemptId"
+                  element={<ProjectTasks />}
+                />
+              </Route>
+            </Routes>
+          </div>
+        </TaskNotificationsProvider>
+      </SearchProvider>
     </ThemeProvider>
   );
 }

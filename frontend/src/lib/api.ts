@@ -473,7 +473,6 @@ export const attemptsApi = {
     );
     return handleApiResponse<Diff>(response);
   },
-
 };
 
 // Extra helpers
@@ -569,7 +568,10 @@ export const tagsApi = {
     if (params?.project_id) {
       query.set('project_id', params.project_id);
     }
-    if (params?.include_global !== null && params?.include_global !== undefined) {
+    if (
+      params?.include_global !== null &&
+      params?.include_global !== undefined
+    ) {
       query.set('include_global', String(params.include_global));
     }
     const queryParam = query.toString() ? `?${query.toString()}` : '';
@@ -780,17 +782,23 @@ export const draftApi = {
   },
 
   save: async (attemptId: string, draft: DraftFollowUpData): Promise<void> => {
-    const response = await makeRequest(`/api/task-attempts/${attemptId}/draft`, {
-      method: 'PUT',
-      body: JSON.stringify(draft),
-    });
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/draft`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(draft),
+      }
+    );
     return handleApiResponse<void>(response);
   },
 
   clear: async (attemptId: string): Promise<void> => {
-    const response = await makeRequest(`/api/task-attempts/${attemptId}/draft`, {
-      method: 'DELETE',
-    });
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/draft`,
+      {
+        method: 'DELETE',
+      }
+    );
     return handleApiResponse<void>(response);
   },
 };

@@ -206,7 +206,9 @@ export function GeneralSettings() {
           <ExecutorProfileSelector
             profiles={profiles}
             selectedProfile={draft?.executor_profile ?? null}
-            onProfileSelect={(profile) => updateDraft({ executor_profile: profile })}
+            onProfileSelect={(profile) =>
+              updateDraft({ executor_profile: profile })
+            }
             itemClassName="w-full"
           />
         </CardContent>

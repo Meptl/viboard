@@ -901,9 +901,9 @@ impl TaskServer {
         let url = self.url(&format!("/api/tasks/{}", task_id));
         let task_with_merges: crate::routes::tasks::TaskWithMerges =
             match self.send_json(self.client.get(&url)).await {
-            Ok(t) => t,
-            Err(e) => return Ok(e),
-        };
+                Ok(t) => t,
+                Err(e) => return Ok(e),
+            };
 
         let details = TaskDetails::from_task(task_with_merges.task, task_with_merges.merges);
         let response = GetTaskResponse { task: details };

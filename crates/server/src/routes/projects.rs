@@ -14,8 +14,8 @@ use db::models::{
 };
 use ignore::WalkBuilder;
 use local_deployment::Deployment;
-use services::services::config::{ProjectSettings, save_config_to_file};
 use services::services::{
+    config::{ProjectSettings, save_config_to_file},
     file_search_cache::{
         CacheError, SETTINGS_FUZZY_SCORE_THRESHOLD, SETTINGS_MAX_RESULTS, SearchMode, SearchQuery,
         TASK_FORM_FUZZY_SCORE_THRESHOLD, TASK_FORM_MAX_RESULTS, fuzzy_file_score,
@@ -183,10 +183,7 @@ pub async fn create_project(
     {
         Ok(project) => {
             let mut config = deployment.config().write().await;
-            config.set_project_settings(
-                project.id,
-                project_settings,
-            );
+            config.set_project_settings(project.id, project_settings);
             if let Err(e) = save_config_to_file(&config, &utils::assets::config_path()).await {
                 tracing::error!("Failed to persist project settings to config.json: {}", e);
                 return Err(e.into());

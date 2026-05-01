@@ -54,9 +54,7 @@ export function useGitOperations(
   );
 
   const isAnyLoading =
-    rebase.isPending ||
-    merge.isPending ||
-    changeTargetBranch.isPending;
+    rebase.isPending || merge.isPending || changeTargetBranch.isPending;
 
   return {
     actions: {

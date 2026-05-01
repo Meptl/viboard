@@ -51,9 +51,10 @@ use utils::{
 use uuid::Uuid;
 
 use crate::{
-    DeploymentImpl, error::ApiError, middleware::load_task_attempt_middleware,
-    routes::projects::apply_project_settings,
-    routes::task_attempts::util::ensure_worktree_path,
+    DeploymentImpl,
+    error::ApiError,
+    middleware::load_task_attempt_middleware,
+    routes::{projects::apply_project_settings, task_attempts::util::ensure_worktree_path},
 };
 
 #[derive(Debug, Deserialize, Serialize, TS)]
@@ -1545,7 +1546,10 @@ pub async fn start_dev_server(
         apply_project_settings(&mut project, &config);
     }
 
-    let Some(dev_server) = project.dev_script.filter(|script| !script.trim().is_empty()) else {
+    let Some(dev_server) = project
+        .dev_script
+        .filter(|script| !script.trim().is_empty())
+    else {
         return Ok(ResponseJson(ApiResponse::error(
             "No dev server script configured for this project",
         )));

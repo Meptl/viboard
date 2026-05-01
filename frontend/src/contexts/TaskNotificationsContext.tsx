@@ -10,7 +10,10 @@ import {
 } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowRight, CheckCircle, XCircle } from 'lucide-react';
-import { type TaskNotificationOutcome, type TaskNotificationRecord } from '@/lib/api';
+import {
+  type TaskNotificationOutcome,
+  type TaskNotificationRecord,
+} from '@/lib/api';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { paths } from '@/lib/paths';
 import { useJsonPatchWsStream } from '@/hooks/useJsonPatchWsStream';
@@ -50,11 +53,15 @@ type TaskNotificationsCommand =
 const TaskNotificationsContext =
   createContext<TaskNotificationsContextValue | null>(null);
 
-function normalizeOutcome(outcome: TaskNotificationOutcome): TaskNotificationOutcome {
+function normalizeOutcome(
+  outcome: TaskNotificationOutcome
+): TaskNotificationOutcome {
   return outcome === 'failed' ? 'failed' : 'completed';
 }
 
-function fromServerNotification(record: TaskNotificationRecord): TaskNotification {
+function fromServerNotification(
+  record: TaskNotificationRecord
+): TaskNotification {
   return {
     id: record.id,
     projectId: record.project_id,
@@ -92,7 +99,9 @@ export function TaskNotificationsProvider({
   const didHydrateRef = useRef(false);
   const sessionStartedAtRef = useRef(Date.now());
   const currentTaskRoute = useMemo(() => {
-    const match = location.pathname.match(/^\/projects\/([^/]+)\/tasks\/([^/]+)/);
+    const match = location.pathname.match(
+      /^\/projects\/([^/]+)\/tasks\/([^/]+)/
+    );
     if (!match) return null;
     return { projectId: match[1], taskId: match[2] };
   }, [location.pathname]);
@@ -101,17 +110,20 @@ export function TaskNotificationsProvider({
     []
   );
 
-  const { data: streamData, sendJson } = useJsonPatchWsStream<TaskNotificationsStreamState>(
-    '/api/task-notifications/stream/ws',
-    true,
-    initialStreamData
-  );
+  const { data: streamData, sendJson } =
+    useJsonPatchWsStream<TaskNotificationsStreamState>(
+      '/api/task-notifications/stream/ws',
+      true,
+      initialStreamData
+    );
 
   useEffect(() => {
     if (!streamData) return;
 
     const nextNotificationsById: Record<string, TaskNotification> = {};
-    for (const [id, record] of Object.entries(streamData.task_notifications ?? {})) {
+    for (const [id, record] of Object.entries(
+      streamData.task_notifications ?? {}
+    )) {
       nextNotificationsById[id] = fromServerNotification(record);
     }
     setNotificationsById(nextNotificationsById);
@@ -126,26 +138,32 @@ export function TaskNotificationsProvider({
     [sendJson]
   );
 
-  const clearTaskNotifications = useCallback((projectId: string, taskId: string) => {
-    setNotificationsById((prev) => {
-      const next = { ...prev };
-      for (const [id, notification] of Object.entries(prev)) {
-        if (notification.projectId === projectId && notification.taskId === taskId) {
-          delete next[id];
+  const clearTaskNotifications = useCallback(
+    (projectId: string, taskId: string) => {
+      setNotificationsById((prev) => {
+        const next = { ...prev };
+        for (const [id, notification] of Object.entries(prev)) {
+          if (
+            notification.projectId === projectId &&
+            notification.taskId === taskId
+          ) {
+            delete next[id];
+          }
         }
-      }
-      return next;
-    });
+        return next;
+      });
 
-    sendCommand(
-      {
-        type: 'clear_task',
-        project_id: projectId,
-        task_id: taskId,
-      },
-      'Failed to send clear task notifications command over websocket'
-    );
-  }, [sendCommand]);
+      sendCommand(
+        {
+          type: 'clear_task',
+          project_id: projectId,
+          task_id: taskId,
+        },
+        'Failed to send clear task notifications command over websocket'
+      );
+    },
+    [sendCommand]
+  );
 
   const clearAllNotifications = useCallback(() => {
     setNotificationsById({});
@@ -163,7 +181,10 @@ export function TaskNotificationsProvider({
       current.createdAt < oldest.createdAt ? current : oldest
     );
 
-    clearTaskNotifications(oldestNotification.projectId, oldestNotification.taskId);
+    clearTaskNotifications(
+      oldestNotification.projectId,
+      oldestNotification.taskId
+    );
     navigate(
       paths.attempt(
         oldestNotification.projectId,
@@ -259,7 +280,8 @@ export function TaskNotificationsProvider({
     for (const notification of newlyAdded) {
       seenNotificationIdsRef.current.add(notification.id);
 
-      const isFromCurrentSession = notification.createdAt > sessionStartedAtRef.current;
+      const isFromCurrentSession =
+        notification.createdAt > sessionStartedAtRef.current;
       if (!isFromCurrentSession) {
         continue;
       }
@@ -299,7 +321,9 @@ export function TaskNotificationsProvider({
 
   const notifications = useMemo(
     () =>
-      Object.values(notificationsById).sort((a, b) => b.createdAt - a.createdAt),
+      Object.values(notificationsById).sort(
+        (a, b) => b.createdAt - a.createdAt
+      ),
     [notificationsById]
   );
 

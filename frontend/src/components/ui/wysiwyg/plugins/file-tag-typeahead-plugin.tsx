@@ -32,10 +32,7 @@ const MAX_HEIGHT_STABILITY_THRESHOLD = 10;
 
 type MenuPlacement = ReturnType<typeof getMenuPosition>;
 
-function getMenuPosition(
-  anchorEl: HTMLElement,
-  editorEl: HTMLElement | null
-) {
+function getMenuPosition(anchorEl: HTMLElement, editorEl: HTMLElement | null) {
   const rect = anchorEl.getBoundingClientRect();
   const editorRect = editorEl?.getBoundingClientRect();
   const viewportHeight = window.innerHeight;
@@ -196,83 +193,85 @@ export function FileTagTypeaheadPlugin({ projectId }: { projectId?: string }) {
                 </div>
               ) : (
                 <>
-                {/* Tags Section */}
-                {tagResults.length > 0 && (
-                  <>
-                    <div className="px-3 py-1 text-xs font-semibold text-muted-foreground uppercase">
-                      Tags
-                    </div>
-                    {tagResults.map((option) => {
-                      const index = options.indexOf(option);
-                      const tag = option.item.tag!;
-                      return (
-                        <div
-                          key={option.key}
-                          ref={(el) => {
-                            if (el) itemRefs.current.set(index, el);
-                            else itemRefs.current.delete(index);
-                          }}
-                          className={`px-3 py-2 cursor-pointer text-sm ${
-                            index === selectedIndex
-                              ? 'bg-muted text-foreground'
-                              : 'hover:bg-muted'
-                          }`}
-                          onMouseEnter={() => setHighlightedIndex(index)}
-                          onClick={() => selectOptionAndCleanUp(option)}
-                        >
-                          <div className="flex items-center gap-2 font-medium">
-                            <TagIcon className="h-3.5 w-3.5 text-blue-600" />
-                            <span>@{tag.tag_name}</span>
-                          </div>
-                          {tag.content && (
-                            <div className="text-xs text-muted-foreground mt-0.5 truncate">
-                              {tag.content.slice(0, 60)}
-                              {tag.content.length > 60 ? '...' : ''}
+                  {/* Tags Section */}
+                  {tagResults.length > 0 && (
+                    <>
+                      <div className="px-3 py-1 text-xs font-semibold text-muted-foreground uppercase">
+                        Tags
+                      </div>
+                      {tagResults.map((option) => {
+                        const index = options.indexOf(option);
+                        const tag = option.item.tag!;
+                        return (
+                          <div
+                            key={option.key}
+                            ref={(el) => {
+                              if (el) itemRefs.current.set(index, el);
+                              else itemRefs.current.delete(index);
+                            }}
+                            className={`px-3 py-2 cursor-pointer text-sm ${
+                              index === selectedIndex
+                                ? 'bg-muted text-foreground'
+                                : 'hover:bg-muted'
+                            }`}
+                            onMouseEnter={() => setHighlightedIndex(index)}
+                            onClick={() => selectOptionAndCleanUp(option)}
+                          >
+                            <div className="flex items-center gap-2 font-medium">
+                              <TagIcon className="h-3.5 w-3.5 text-blue-600" />
+                              <span>@{tag.tag_name}</span>
                             </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </>
-                )}
+                            {tag.content && (
+                              <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                                {tag.content.slice(0, 60)}
+                                {tag.content.length > 60 ? '...' : ''}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </>
+                  )}
 
-                {/* Files Section */}
-                {fileResults.length > 0 && (
-                  <>
-                    {tagResults.length > 0 && <div className="border-t my-1" />}
-                    <div className="px-3 py-1 text-xs font-semibold text-muted-foreground uppercase">
-                      Files
-                    </div>
-                    {fileResults.map((option) => {
-                      const index = options.indexOf(option);
-                      const file = option.item.file!;
-                      return (
-                        <div
-                          key={option.key}
-                          ref={(el) => {
-                            if (el) itemRefs.current.set(index, el);
-                            else itemRefs.current.delete(index);
-                          }}
-                          className={`px-3 py-2 cursor-pointer text-sm ${
-                            index === selectedIndex
-                              ? 'bg-muted text-foreground'
-                              : 'hover:bg-muted'
-                          }`}
-                          onMouseEnter={() => setHighlightedIndex(index)}
-                          onClick={() => selectOptionAndCleanUp(option)}
-                        >
-                          <div className="flex items-center gap-2 font-medium truncate">
-                            <FileText className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                            <span>{file.name}</span>
+                  {/* Files Section */}
+                  {fileResults.length > 0 && (
+                    <>
+                      {tagResults.length > 0 && (
+                        <div className="border-t my-1" />
+                      )}
+                      <div className="px-3 py-1 text-xs font-semibold text-muted-foreground uppercase">
+                        Files
+                      </div>
+                      {fileResults.map((option) => {
+                        const index = options.indexOf(option);
+                        const file = option.item.file!;
+                        return (
+                          <div
+                            key={option.key}
+                            ref={(el) => {
+                              if (el) itemRefs.current.set(index, el);
+                              else itemRefs.current.delete(index);
+                            }}
+                            className={`px-3 py-2 cursor-pointer text-sm ${
+                              index === selectedIndex
+                                ? 'bg-muted text-foreground'
+                                : 'hover:bg-muted'
+                            }`}
+                            onMouseEnter={() => setHighlightedIndex(index)}
+                            onClick={() => selectOptionAndCleanUp(option)}
+                          >
+                            <div className="flex items-center gap-2 font-medium truncate">
+                              <FileText className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                              <span>{file.name}</span>
+                            </div>
+                            <div className="text-xs text-muted-foreground truncate">
+                              {file.path}
+                            </div>
                           </div>
-                          <div className="text-xs text-muted-foreground truncate">
-                            {file.path}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </>
-                )}
+                        );
+                      })}
+                    </>
+                  )}
                 </>
               )}
             </div>

@@ -182,25 +182,22 @@ export function PlainTextTagTextarea({
     requestIdRef.current += 1;
   }, [closeMenuSignal]);
 
-  const updateQueryFromTextarea = useCallback(
-    (target: HTMLTextAreaElement) => {
-      const cursor = target.selectionStart ?? 0;
-      const nextQuery = getActiveAtQuery(target.value, cursor);
-      setActiveQuery((prev) => {
-        if (!prev && !nextQuery) return prev;
-        if (!prev || !nextQuery) return nextQuery;
-        if (
-          prev.query === nextQuery.query &&
-          prev.start === nextQuery.start &&
-          prev.end === nextQuery.end
-        ) {
-          return prev;
-        }
-        return nextQuery;
-      });
-    },
-    []
-  );
+  const updateQueryFromTextarea = useCallback((target: HTMLTextAreaElement) => {
+    const cursor = target.selectionStart ?? 0;
+    const nextQuery = getActiveAtQuery(target.value, cursor);
+    setActiveQuery((prev) => {
+      if (!prev && !nextQuery) return prev;
+      if (!prev || !nextQuery) return nextQuery;
+      if (
+        prev.query === nextQuery.query &&
+        prev.start === nextQuery.start &&
+        prev.end === nextQuery.end
+      ) {
+        return prev;
+      }
+      return nextQuery;
+    });
+  }, []);
 
   const handleChange = useCallback(
     (e: ChangeEvent<HTMLTextAreaElement>) => {
@@ -273,12 +270,16 @@ export function PlainTextTagTextarea({
       if (isOpen && options.length > 0) {
         if (e.key === 'ArrowDown') {
           e.preventDefault();
-          setSelectedIndex((prev) => (prev < options.length - 1 ? prev + 1 : 0));
+          setSelectedIndex((prev) =>
+            prev < options.length - 1 ? prev + 1 : 0
+          );
           return;
         }
         if (e.key === 'ArrowUp') {
           e.preventDefault();
-          setSelectedIndex((prev) => (prev > 0 ? prev - 1 : options.length - 1));
+          setSelectedIndex((prev) =>
+            prev > 0 ? prev - 1 : options.length - 1
+          );
           return;
         }
         if ((e.key === 'Enter' || e.key === 'Tab') && selectedIndex >= 0) {
@@ -384,7 +385,8 @@ export function PlainTextTagTextarea({
         className={cn(className)}
       />
 
-      {isOpen && menuStyle &&
+      {isOpen &&
+        menuStyle &&
         createPortal(
           <div
             className="fixed bg-background border border-border rounded-md shadow-lg overflow-hidden"

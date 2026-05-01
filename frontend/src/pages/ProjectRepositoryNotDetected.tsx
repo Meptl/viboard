@@ -63,7 +63,9 @@ export function ProjectRepositoryNotDetected() {
         return;
       }
 
-      setError((retryError as Error)?.message || 'Failed to validate repository path.');
+      setError(
+        (retryError as Error)?.message || 'Failed to validate repository path.'
+      );
     }
   };
 

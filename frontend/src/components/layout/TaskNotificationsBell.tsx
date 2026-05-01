@@ -57,7 +57,8 @@ export function TaskNotificationsBell() {
           aria-label="Notifications"
         >
           <Bell className="h-4 w-4" />
-          {config?.notifications.badge_enabled && visibleNotifications.length > 0 ? (
+          {config?.notifications.badge_enabled &&
+          visibleNotifications.length > 0 ? (
             <span
               aria-hidden="true"
               className="absolute right-0.5 top-0.5 h-2 w-2 -translate-x-[6px] translate-y-[6px] rounded-full bg-rose-400"
@@ -68,7 +69,9 @@ export function TaskNotificationsBell() {
 
       <DropdownMenuContent align="end" className="w-80">
         <div className="flex items-center justify-between px-2 py-1.5">
-          <DropdownMenuLabel className="px-0 py-0">Notifications</DropdownMenuLabel>
+          <DropdownMenuLabel className="px-0 py-0">
+            Notifications
+          </DropdownMenuLabel>
           {visibleNotifications.length > 0 ? (
             <Button
               type="button"
@@ -95,8 +98,13 @@ export function TaskNotificationsBell() {
               key={notification.id}
               className="flex cursor-pointer items-start gap-2 py-2"
               onClick={() => {
-                clearTaskNotifications(notification.projectId, notification.taskId);
-                navigate(paths.task(notification.projectId, notification.taskId));
+                clearTaskNotifications(
+                  notification.projectId,
+                  notification.taskId
+                );
+                navigate(
+                  paths.task(notification.projectId, notification.taskId)
+                );
               }}
             >
               <div className="mt-0.5 h-2 w-2 rounded-full bg-primary shrink-0" />
@@ -112,7 +120,6 @@ export function TaskNotificationsBell() {
             </DropdownMenuItem>
           ))
         )}
-
       </DropdownMenuContent>
     </DropdownMenu>
   );

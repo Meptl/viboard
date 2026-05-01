@@ -91,8 +91,7 @@ export function KeyboardShortcutsHelp() {
         return;
       }
       addBinding({
-        description:
-          binding.description,
+        description: binding.description,
         keys: getBindingKeys(binding),
       });
     });

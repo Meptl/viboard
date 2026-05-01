@@ -130,7 +130,8 @@ impl Config {
     }
 
     pub fn set_project_settings(&mut self, project_id: Uuid, settings: ProjectSettings) {
-        self.project_settings.insert(project_id.to_string(), settings);
+        self.project_settings
+            .insert(project_id.to_string(), settings);
     }
 
     fn from_v8_config(old_config: v8::Config) -> Self {

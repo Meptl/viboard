@@ -110,7 +110,9 @@ export const useDiffStream = (
       try {
         const msg: DiffMetadataWsMessage = JSON.parse(event.data);
         if (msg.type === 'snapshot') {
-          setEntries((prev) => (entryMapEqual(prev, msg.entries) ? prev : msg.entries));
+          setEntries((prev) =>
+            entryMapEqual(prev, msg.entries) ? prev : msg.entries
+          );
           setIsFinished(true);
           return;
         }
@@ -149,7 +151,10 @@ export const useDiffStream = (
     ws.onclose = () => {
       wsRef.current = null;
       retryAttemptsRef.current += 1;
-      const delay = Math.min(8000, 1000 * Math.pow(2, retryAttemptsRef.current));
+      const delay = Math.min(
+        8000,
+        1000 * Math.pow(2, retryAttemptsRef.current)
+      );
       retryTimerRef.current = window.setTimeout(() => {
         retryTimerRef.current = null;
         setRetryNonce((n) => n + 1);

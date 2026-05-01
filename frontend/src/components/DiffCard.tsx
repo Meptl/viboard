@@ -1,11 +1,7 @@
 import { Diff } from 'shared/types';
 import { DiffModeEnum, DiffView, SplitSide } from '@git-diff-view/react';
 import { generateDiffFile, type DiffFile } from '@git-diff-view/file';
-import {
-  useCallback,
-  memo,
-  useMemo,
-} from 'react';
+import { useCallback, memo, useMemo } from 'react';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { getHighLightLanguageFromPath } from '@/utils/extToLanguage';
 import { getActualTheme } from '@/utils/theme';
@@ -316,10 +312,7 @@ function DiffCard({
           >
             +{add ?? 0}
           </span>
-          <span
-            className="ml-2"
-            style={{ color: 'hsl(var(--console-error))' }}
-          >
+          <span className="ml-2" style={{ color: 'hsl(var(--console-error))' }}>
             -{del ?? 0}
           </span>
         </>
@@ -428,16 +421,16 @@ function DiffCard({
           {isActivelyLoadingContent
             ? 'Loading diff content...'
             : hasDeferredContent
-            ? 'Diff content is unavailable for this file.'
-            : isOmitted
-            ? 'Content omitted or not renderable as a text diff. Open in editor to view.'
-            : isContentEqual
-              ? diff.change === 'renamed'
-                ? 'File renamed with no content changes.'
-                : diff.change === 'permissionChange'
-                  ? 'File permission changed.'
-                  : 'No content changes to display.'
-              : 'Failed to render diff for this file.'}
+              ? 'Diff content is unavailable for this file.'
+              : isOmitted
+                ? 'Content omitted or not renderable as a text diff. Open in editor to view.'
+                : isContentEqual
+                  ? diff.change === 'renamed'
+                    ? 'File renamed with no content changes.'
+                    : diff.change === 'permissionChange'
+                      ? 'File permission changed.'
+                      : 'No content changes to display.'
+                  : 'Failed to render diff for this file.'}
         </div>
       )}
     </div>

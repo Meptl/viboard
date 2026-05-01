@@ -87,7 +87,10 @@ export async function searchTagsAndFiles(
 
   // Fetch files (if projectId is available and query has content)
   if (projectId && trimmedQuery.length > 0) {
-    const searchedFiles = await projectsApi.searchFiles(projectId, trimmedQuery);
+    const searchedFiles = await projectsApi.searchFiles(
+      projectId,
+      trimmedQuery
+    );
     const fileSearchResults: FileSearchResult[] = searchedFiles
       .map((item) => ({
         ...item,

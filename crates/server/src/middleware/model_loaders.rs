@@ -11,8 +11,7 @@ use db::models::{
 use local_deployment::Deployment;
 use uuid::Uuid;
 
-use crate::DeploymentImpl;
-use crate::routes::projects::apply_project_settings;
+use crate::{DeploymentImpl, routes::projects::apply_project_settings};
 
 pub async fn load_project_middleware(
     State(deployment): State<DeploymentImpl>,

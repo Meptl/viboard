@@ -33,7 +33,9 @@ const TaskAttemptPanel = ({
           followUp: task ? (
             <TaskFollowUpSection task={task} selectedAttemptId={attempt.id} />
           ) : (
-            <div className="p-6 text-sm text-muted-foreground">Loading task...</div>
+            <div className="p-6 text-sm text-muted-foreground">
+              Loading task...
+            </div>
           ),
         })}
       </RetryUiProvider>

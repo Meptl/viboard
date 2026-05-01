@@ -89,12 +89,9 @@ export function CommentWidgetLine({
     preventDefault: true,
   });
 
-  const handleChange = useCallback(
-    (nextValue: string) => {
-      setValue(nextValue);
-    },
-    []
-  );
+  const handleChange = useCallback((nextValue: string) => {
+    setValue(nextValue);
+  }, []);
 
   useEffect(() => {
     return () => {

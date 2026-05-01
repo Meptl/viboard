@@ -418,10 +418,11 @@ export function GeneralSettings() {
 
           <div className="space-y-2">
             <Label htmlFor="openclaw-gateway-key">Gateway Key</Label>
-            <div className="flex gap-2">
+            <div className="relative">
               <Input
                 id="openclaw-gateway-key"
                 type={showOpenClawKey ? 'text' : 'password'}
+                className="pr-10"
                 value={draft?.openclaw.gateway_key ?? ''}
                 onChange={(e) =>
                   updateDraft({
@@ -434,20 +435,16 @@ export function GeneralSettings() {
               />
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
+                size="icon"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
                 onClick={() => setShowOpenClawKey((prev) => !prev)}
                 aria-label={showOpenClawKey ? 'Hide gateway key' : 'Show gateway key'}
               >
                 {showOpenClawKey ? (
-                  <>
-                    <EyeOff className="h-4 w-4" />
-                    <span className="ml-2">Hide</span>
-                  </>
+                  <EyeOff className="h-4 w-4" />
                 ) : (
-                  <>
-                    <Eye className="h-4 w-4" />
-                    <span className="ml-2">Show</span>
-                  </>
+                  <Eye className="h-4 w-4" />
                 )}
               </Button>
             </div>

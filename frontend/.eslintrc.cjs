@@ -1,5 +1,3 @@
-const i18nCheck = process.env.LINT_I18N === 'true';
-
 module.exports = {
   root: true,
   env: {
@@ -10,13 +8,12 @@ module.exports = {
     'eslint:recommended',
     'plugin:@typescript-eslint/recommended',
     'plugin:react-hooks/recommended',
-    'plugin:i18next/recommended',
     'plugin:eslint-comments/recommended',
     'prettier',
   ],
   ignorePatterns: ['dist', '.eslintrc.cjs'],
   parser: '@typescript-eslint/parser',
-  plugins: ['react-refresh', '@typescript-eslint', 'unused-imports', 'i18next', 'eslint-comments', 'check-file'],
+  plugins: ['react-refresh', '@typescript-eslint', 'unused-imports', 'eslint-comments', 'check-file'],
   parserOptions: {
     ecmaVersion: 'latest',
     sourceType: 'module',
@@ -84,30 +81,6 @@ module.exports = {
         message: 'Do not use removeModal(). Use DialogName.remove() instead.',
       },
     ],
-    // i18n rule - only active when LINT_I18N=true
-    'i18next/no-literal-string': i18nCheck
-      ? [
-          'warn',
-          {
-            markupOnly: true,
-            ignoreAttribute: [
-              'data-testid',
-              'to',
-              'href',
-              'id',
-              'key',
-              'type',
-              'role',
-              'className',
-              'style',
-              'aria-describedby',
-            ],
-            'jsx-components': {
-              exclude: ['code'],
-            },
-          },
-        ]
-      : 'off',
     // File naming conventions
     'check-file/filename-naming-convention': [
       'error',
@@ -149,12 +122,6 @@ module.exports = {
             ignoreMiddleExtensions: true,
           },
         ],
-      },
-    },
-    {
-      files: ['**/*.test.{ts,tsx}', '**/*.stories.{ts,tsx}'],
-      rules: {
-        'i18next/no-literal-string': 'off',
       },
     },
     {

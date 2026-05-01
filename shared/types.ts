@@ -96,7 +96,7 @@ export type ApiResponse<T, E = T> = { success: boolean, data: T | null, error_da
 
 export type TagSearchParams = { search: string | null, project_id: string | null, include_global: boolean | null, };
 
-export type UserSystemInfo = { config: Config, environment: Environment, 
+export type UserSystemInfo = { config: Config, environment: Environment, project_local_config_path: string | null, project_local_override_paths: Array<string>, 
 /**
  * Capabilities supported per executor (e.g., { "CLAUDE_CODE": ["SESSION_FORK"] })
  */
@@ -160,7 +160,7 @@ export type DirectoryEntry = { name: string, path: string, is_directory: boolean
 
 export type DirectoryListResponse = { entries: Array<DirectoryEntry>, current_path: string, };
 
-export type Config = { config_version: string, theme: ThemeMode, executor_profile: ExecutorProfileId, disclaimer_acknowledged: boolean, notifications: NotificationConfig, editor: EditorConfig, workspace_dir: string | null, show_new_attempt_drag_warning: boolean, language: UiLanguage, git_branch_prefix: string, showcases: ShowcaseState, done_task_cleanup_days: number, automatic_done_task_cleanup_days_by_project: { [key in string]?: number }, task_title_prompt: string | null, task_description_prompt: string | null, project_local_tags: { [key in string]?: Array<Tag> }, };
+export type Config = { config_version: string, theme: ThemeMode, executor_profile: ExecutorProfileId, disclaimer_acknowledged: boolean, notifications: NotificationConfig, editor: EditorConfig, workspace_dir: string | null, show_new_attempt_drag_warning: boolean, language: UiLanguage, git_branch_prefix: string, showcases: ShowcaseState, done_task_cleanup_days: number, automatic_done_task_cleanup_days_by_project: { [key in string]?: number }, task_title_prompt: string | null, task_description_prompt: string | null, project_local_tags: { [key in string]?: Array<Tag> }, project_settings: { [key in string]?: ProjectSettings }, };
 
 export type NotificationConfig = { sound_enabled: boolean, system_enabled: boolean, badge_enabled: boolean, toast_enabled: boolean, sound_file: SoundFile, };
 
@@ -177,6 +177,8 @@ export enum SoundFile { ABSTRACT_SOUND1 = "ABSTRACT_SOUND1", ABSTRACT_SOUND2 = "
 export type UiLanguage = "BROWSER" | "EN" | "JA" | "ES" | "KO" | "ZH_HANS";
 
 export type ShowcaseState = { seen_features: Array<string>, };
+
+export type ProjectSettings = { setup_script: string | null, dev_script: string | null, cleanup_script: string | null, copy_files: string | null, parallel_setup_script: boolean, };
 
 export type GitBranch = { name: string, is_current: boolean, is_remote: boolean, last_commit_date: Date, };
 

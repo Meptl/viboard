@@ -2,6 +2,7 @@ use directories::ProjectDirs;
 use rust_embed::RustEmbed;
 
 const PROJECT_ROOT: &str = env!("CARGO_MANIFEST_DIR");
+const PROJECT_LOCAL_CONFIG_DIR: &str = ".viboard";
 
 pub fn asset_dir() -> std::path::PathBuf {
     let path = if cfg!(debug_assertions) {
@@ -29,6 +30,14 @@ pub fn prod_asset_dir_path() -> std::path::PathBuf {
 }
 
 pub fn config_path() -> std::path::PathBuf {
+    if let Some(project_local_config_path) = project_local_config_path() {
+        return project_local_config_path;
+    }
+
+    global_config_path()
+}
+
+pub fn global_config_path() -> std::path::PathBuf {
     asset_dir().join("config.json")
 }
 
@@ -38,6 +47,16 @@ pub fn profiles_path() -> std::path::PathBuf {
 
 pub fn credentials_path() -> std::path::PathBuf {
     asset_dir().join("credentials.json")
+}
+
+pub fn project_local_config_path() -> Option<std::path::PathBuf> {
+    let current_dir = std::env::current_dir().ok()?;
+    let project_local_config_dir = current_dir.join(PROJECT_LOCAL_CONFIG_DIR);
+    if project_local_config_dir.is_dir() {
+        return Some(project_local_config_dir.join("config.json"));
+    }
+
+    None
 }
 
 #[derive(RustEmbed)]

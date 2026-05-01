@@ -36,6 +36,8 @@ export function GeneralSettings() {
     loading,
     updateAndSaveConfig, // Use this on Save
     profiles,
+    projectLocalConfigPath,
+    projectLocalOverridePaths,
   } = useUserSystem();
 
   // Draft state management
@@ -68,6 +70,21 @@ export function GeneralSettings() {
     }
     return null;
   }, []);
+
+  const isProjectManaged = useCallback(
+    (path: string): boolean => {
+      if (!projectLocalConfigPath) return false;
+      return projectLocalOverridePaths.some(
+        (overridePath) =>
+          overridePath === path || path.startsWith(`${overridePath}.`)
+      );
+    },
+    [projectLocalConfigPath, projectLocalOverridePaths]
+  );
+
+  const managedHint = projectLocalConfigPath
+    ? `Managed in ${projectLocalConfigPath}`
+    : null;
 
   // When config loads or changes externally, update draft only if not dirty
   useEffect(() => {
@@ -179,6 +196,7 @@ export function GeneralSettings() {
             <Label htmlFor="theme">Theme</Label>
             <Select
               value={draft?.theme}
+              disabled={isProjectManaged('theme')}
               onValueChange={(value: ThemeMode) =>
                 updateDraft({ theme: value })
               }
@@ -194,6 +212,9 @@ export function GeneralSettings() {
                 ))}
               </SelectContent>
             </Select>
+            {isProjectManaged('theme') && managedHint && (
+              <p className="text-sm text-muted-foreground">{managedHint}</p>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -208,7 +229,11 @@ export function GeneralSettings() {
             selectedProfile={draft?.executor_profile ?? null}
             onProfileSelect={(profile) => updateDraft({ executor_profile: profile })}
             itemClassName="w-full"
+            disabled={isProjectManaged('executor_profile')}
           />
+          {isProjectManaged('executor_profile') && managedHint && (
+            <p className="text-sm text-muted-foreground">{managedHint}</p>
+          )}
         </CardContent>
       </Card>
 
@@ -221,6 +246,7 @@ export function GeneralSettings() {
             <Label htmlFor="editor-type">Editor Type</Label>
             <Select
               value={draft?.editor.editor_type}
+              disabled={isProjectManaged('editor.editor_type')}
               onValueChange={(value: EditorType) =>
                 updateDraft({
                   editor: { ...draft!.editor, editor_type: value },
@@ -238,6 +264,9 @@ export function GeneralSettings() {
                 ))}
               </SelectContent>
             </Select>
+            {isProjectManaged('editor.editor_type') && managedHint && (
+              <p className="text-sm text-muted-foreground">{managedHint}</p>
+            )}
 
             {/* Editor availability status indicator */}
             {draft?.editor.editor_type !== EditorType.CUSTOM && (
@@ -259,6 +288,7 @@ export function GeneralSettings() {
                   id="custom-command-workspace"
                   placeholder="konsole --workdir %repo_root%"
                   value={draft?.editor.custom_ide_dir_cmd || ''}
+                  disabled={isProjectManaged('editor.custom_ide_dir_cmd')}
                   onChange={(e) =>
                     updateDraft({
                       editor: {
@@ -268,6 +298,9 @@ export function GeneralSettings() {
                     })
                   }
                 />
+                {isProjectManaged('editor.custom_ide_dir_cmd') && managedHint && (
+                  <p className="text-sm text-muted-foreground">{managedHint}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="custom-command-file">File Open Command</Label>
@@ -275,6 +308,7 @@ export function GeneralSettings() {
                   id="custom-command-file"
                   placeholder="konsole --workdir %repo_root% -e nvim %file%"
                   value={draft?.editor.custom_ide_file_cmd || ''}
+                  disabled={isProjectManaged('editor.custom_ide_file_cmd')}
                   onChange={(e) =>
                     updateDraft({
                       editor: {
@@ -284,6 +318,9 @@ export function GeneralSettings() {
                     })
                   }
                 />
+                {isProjectManaged('editor.custom_ide_file_cmd') && managedHint && (
+                  <p className="text-sm text-muted-foreground">{managedHint}</p>
+                )}
               </div>
             </div>
           )}
@@ -300,6 +337,7 @@ export function GeneralSettings() {
                   id="remote-ssh-host"
                   placeholder="e.g., hostname or IP address"
                   value={draft?.editor.remote_ssh_host || ''}
+                  disabled={isProjectManaged('editor.remote_ssh_host')}
                   onChange={(e) =>
                     updateDraft({
                       editor: {
@@ -309,6 +347,9 @@ export function GeneralSettings() {
                     })
                   }
                 />
+                {isProjectManaged('editor.remote_ssh_host') && managedHint && (
+                  <p className="text-sm text-muted-foreground">{managedHint}</p>
+                )}
                 <p className="text-sm text-muted-foreground">
                   Set this if Viboard is running on a remote server. When set,
                   clicking "Open in Editor" will generate a URL to open your
@@ -325,6 +366,7 @@ export function GeneralSettings() {
                     id="remote-ssh-user"
                     placeholder="e.g., username"
                     value={draft?.editor.remote_ssh_user || ''}
+                    disabled={isProjectManaged('editor.remote_ssh_user')}
                     onChange={(e) =>
                       updateDraft({
                         editor: {
@@ -334,6 +376,9 @@ export function GeneralSettings() {
                       })
                     }
                   />
+                  {isProjectManaged('editor.remote_ssh_user') && managedHint && (
+                    <p className="text-sm text-muted-foreground">{managedHint}</p>
+                  )}
                   <p className="text-sm text-muted-foreground">
                     SSH username for the remote connection. If not set, VS Code
                     will use your SSH config or prompt you.
@@ -357,6 +402,7 @@ export function GeneralSettings() {
               type="text"
               placeholder="vb"
               value={draft?.git_branch_prefix ?? ''}
+              disabled={isProjectManaged('git_branch_prefix')}
               onChange={(e) => {
                 const value = e.target.value.trim();
                 updateDraft({ git_branch_prefix: value });
@@ -386,6 +432,9 @@ export function GeneralSettings() {
                 </>
               )}
             </p>
+            {isProjectManaged('git_branch_prefix') && managedHint && (
+              <p className="text-sm text-muted-foreground">{managedHint}</p>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -405,11 +454,15 @@ export function GeneralSettings() {
               id="global-task-title-prompt"
               type="text"
               value={draft?.task_title_prompt ?? ''}
+              disabled={isProjectManaged('task_title_prompt')}
               onChange={(e) =>
                 updateDraft({ task_title_prompt: e.target.value || null })
               }
               placeholder="Succinct 2-5 words"
             />
+            {isProjectManaged('task_title_prompt') && managedHint && (
+              <p className="text-sm text-muted-foreground">{managedHint}</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -420,6 +473,7 @@ export function GeneralSettings() {
               id="global-task-description-prompt"
               type="text"
               value={draft?.task_description_prompt ?? ''}
+              disabled={isProjectManaged('task_description_prompt')}
               onChange={(e) =>
                 updateDraft({
                   task_description_prompt: e.target.value || null,
@@ -427,6 +481,9 @@ export function GeneralSettings() {
               }
               placeholder="Do not write tests"
             />
+            {isProjectManaged('task_description_prompt') && managedHint && (
+              <p className="text-sm text-muted-foreground">{managedHint}</p>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -440,6 +497,7 @@ export function GeneralSettings() {
             <Checkbox
               id="sound-enabled"
               checked={draft?.notifications.sound_enabled}
+              disabled={isProjectManaged('notifications.sound_enabled')}
               onCheckedChange={(checked: boolean) =>
                 updateDraft({
                   notifications: {
@@ -464,6 +522,7 @@ export function GeneralSettings() {
               <div className="flex gap-2">
                 <Select
                   value={draft.notifications.sound_file}
+                  disabled={isProjectManaged('notifications.sound_file')}
                   onValueChange={(value: SoundFile) =>
                     updateDraft({
                       notifications: {
@@ -487,18 +546,23 @@ export function GeneralSettings() {
                 <Button
                   variant="outline"
                   size="sm"
+                  disabled={isProjectManaged('notifications.sound_file')}
                   onClick={() => playSound(draft.notifications.sound_file)}
                   className="px-3"
                 >
                   <Volume2 className="h-4 w-4" />
                 </Button>
               </div>
+              {isProjectManaged('notifications.sound_file') && managedHint && (
+                <p className="text-sm text-muted-foreground">{managedHint}</p>
+              )}
             </div>
           )}
           <div className="flex items-center space-x-2">
             <Checkbox
               id="badge-notifications"
               checked={draft?.notifications.badge_enabled}
+              disabled={isProjectManaged('notifications.badge_enabled')}
               onCheckedChange={(checked: boolean) =>
                 updateDraft({
                   notifications: {
@@ -522,6 +586,7 @@ export function GeneralSettings() {
             <Checkbox
               id="toast-notifications"
               checked={draft?.notifications.toast_enabled}
+              disabled={isProjectManaged('notifications.toast_enabled')}
               onCheckedChange={(checked: boolean) =>
                 updateDraft({
                   notifications: {
@@ -545,6 +610,7 @@ export function GeneralSettings() {
             <Checkbox
               id="system-notifications"
               checked={draft?.notifications.system_enabled}
+              disabled={isProjectManaged('notifications.system_enabled')}
               onCheckedChange={(checked: boolean) =>
                 updateDraft({
                   notifications: {
@@ -564,6 +630,9 @@ export function GeneralSettings() {
               </p>
             </div>
           </div>
+          {isProjectManaged('notifications') && managedHint && (
+            <p className="text-sm text-muted-foreground">{managedHint}</p>
+          )}
         </CardContent>
       </Card>
 
@@ -588,14 +657,22 @@ export function GeneralSettings() {
                 Reset the safety disclaimer.
               </p>
             </div>
-            <Button variant="outline" onClick={resetDisclaimer}>
+            <Button
+              variant="outline"
+              onClick={resetDisclaimer}
+              disabled={isProjectManaged('disclaimer_acknowledged')}
+            >
               Reset
             </Button>
           </div>
+          {isProjectManaged('disclaimer_acknowledged') && managedHint && (
+            <p className="text-sm text-muted-foreground">{managedHint}</p>
+          )}
           <div className="flex items-center space-x-2">
             <Checkbox
               id="show-new-attempt-drag-warning"
               checked={draft?.show_new_attempt_drag_warning}
+              disabled={isProjectManaged('show_new_attempt_drag_warning')}
               onCheckedChange={(checked: boolean) =>
                 updateDraft({ show_new_attempt_drag_warning: checked })
               }
@@ -609,6 +686,9 @@ export function GeneralSettings() {
               </Label>
             </div>
           </div>
+          {isProjectManaged('show_new_attempt_drag_warning') && managedHint && (
+            <p className="text-sm text-muted-foreground">{managedHint}</p>
+          )}
         </CardContent>
       </Card>
     </div>

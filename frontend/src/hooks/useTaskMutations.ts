@@ -1,12 +1,11 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { tasksApi } from '@/lib/api';
+import { tasksApi, type UpdateTaskPatch } from '@/lib/api';
 import { taskRelationshipsKeys } from '@/hooks/useTaskRelationships';
 import type {
   CreateTask,
   CreateAndStartTaskRequest,
   Task,
   TaskWithAttemptStatus,
-  UpdateTask,
 } from 'shared/types';
 import { taskKeys } from './useTask';
 
@@ -58,7 +57,7 @@ export function useTaskMutations() {
   });
 
   const updateTask = useMutation({
-    mutationFn: ({ taskId, data }: { taskId: string; data: UpdateTask }) =>
+    mutationFn: ({ taskId, data }: { taskId: string; data: UpdateTaskPatch }) =>
       tasksApi.update(taskId, data),
     onSuccess: (updatedTask: Task) => {
       invalidateQueries(updatedTask.id);

@@ -47,6 +47,8 @@ import {
   Diff,
 } from 'shared/types';
 
+export type UpdateTaskPatch = Partial<UpdateTask>;
+
 export class ApiError<E = unknown> extends Error {
   public status?: number;
   public error_data?: E;
@@ -327,7 +329,7 @@ export const tasksApi = {
     return handleApiResponse<TaskWithAttemptStatus>(response);
   },
 
-  update: async (taskId: string, data: UpdateTask): Promise<Task> => {
+  update: async (taskId: string, data: UpdateTaskPatch): Promise<Task> => {
     const response = await makeRequest(`/api/tasks/${taskId}`, {
       method: 'PUT',
       body: JSON.stringify(data),

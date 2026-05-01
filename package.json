@@ -28,6 +28,7 @@
     "generate-types:check": "cargo run --bin generate_types -- --check",
     "prepare-db": "node scripts/prepare-db.js",
     "prepare-db:check": "node scripts/prepare-db.js --check",
+    "setup": "node scripts/setup-openclaw-gateway-origins.js",
     "build:electron": "node scripts/build-electron.js",
     "build:npx": "bash ./local-build.sh",
     "prepack": "pnpm run build:npx"

@@ -368,28 +368,19 @@ async fn get_openclaw_session_history(
         )));
     }
 
-    let client = Client::new();
-    let history_url = format!("{gateway_url}/api/sessions/{session_key}/history?limit=500");
-    let mut request = client.get(history_url);
-    if !openclaw_settings.gateway_key.trim().is_empty() {
-        request = request.bearer_auth(openclaw_settings.gateway_key.trim());
-    }
-    let response = request
-        .send()
-        .await
-        .map_err(|e| ApiError::BadRequest(format!("OpenClaw history request failed: {e}")))?;
-    if !response.status().is_success() {
-        let status = response.status();
-        let text = response.text().await.unwrap_or_default();
-        return Err(ApiError::BadRequest(format!(
-            "OpenClaw history endpoint error {status}: {text}"
-        )));
-    }
-    let payload = response
-        .json::<serde_json::Value>()
-        .await
-        .map_err(|e| ApiError::BadRequest(format!("Invalid OpenClaw history response: {e}")))?;
-    let messages = parse_openclaw_messages(&payload);
+    let result = invoke_openclaw_tool(
+        &Client::new(),
+        gateway_url,
+        openclaw_settings.gateway_key.trim(),
+        "sessions_history",
+        serde_json::json!({
+            "sessionKey": session_key,
+            "limit": 500,
+        }),
+        "main",
+    )
+    .await?;
+    let messages = parse_openclaw_messages(&result);
 
     Ok(ResponseJson(ApiResponse::success(
         OpenClawSessionChatResponse {
@@ -423,31 +414,18 @@ async fn send_openclaw_session_message(
         ));
     }
 
-    let client = Client::new();
-    let send_url = format!("{gateway_url}/api/sessions/{session_key}/messages");
-    let mut request = client.post(send_url).json(&serde_json::json!({
-        "message": text,
-        "content": text,
-        "role": "user",
-    }));
-    if !openclaw_settings.gateway_key.trim().is_empty() {
-        request = request.bearer_auth(openclaw_settings.gateway_key.trim());
-    }
-    let response = request
-        .send()
-        .await
-        .map_err(|e| ApiError::BadRequest(format!("OpenClaw send request failed: {e}")))?;
-    if !response.status().is_success() {
-        let status = response.status();
-        let body = response.text().await.unwrap_or_default();
-        return Err(ApiError::BadRequest(format!(
-            "OpenClaw send endpoint error {status}: {body}"
-        )));
-    }
-    let result = response
-        .json::<serde_json::Value>()
-        .await
-        .map_err(|e| ApiError::BadRequest(format!("Invalid OpenClaw send response: {e}")))?;
+    let result = invoke_openclaw_tool(
+        &Client::new(),
+        gateway_url,
+        openclaw_settings.gateway_key.trim(),
+        "sessions_yield",
+        serde_json::json!({
+            "sessionKey": session_key,
+            "message": text,
+        }),
+        "main",
+    )
+    .await?;
 
     Ok(ResponseJson(ApiResponse::success(result)))
 }

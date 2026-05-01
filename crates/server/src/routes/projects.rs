@@ -255,34 +255,31 @@ async fn invoke_openclaw_tool(
         .unwrap_or(serde_json::Value::Null))
 }
 
-async fn invoke_openclaw_tool_fallback(
-    client: &Client,
-    gateway_url: &str,
-    gateway_key: &str,
-    tool_names: &[&str],
-    args: serde_json::Value,
-    session_key: &str,
-) -> Result<serde_json::Value, ApiError> {
-    let mut last_error: Option<ApiError> = None;
-    for tool in tool_names {
-        match invoke_openclaw_tool(
-            client,
-            gateway_url,
-            gateway_key,
-            tool,
-            args.clone(),
-            session_key,
-        )
-        .await
-        {
-            Ok(result) => return Ok(result),
-            Err(err) => {
-                last_error = Some(err);
+fn parse_openclaw_messages(raw: &serde_json::Value) -> Vec<OpenClawChatMessage> {
+    extract_messages_array(raw)
+        .into_iter()
+        .map(|row| {
+            let role = value_to_string(row.get("role"))
+                .or_else(|| value_to_string(row.get("type")))
+                .unwrap_or_else(|| "assistant".to_string());
+            let content = row
+                .get("content")
+                .map(value_to_plain_string)
+                .or_else(|| row.get("text").map(value_to_plain_string))
+                .or_else(|| row.get("message").map(value_to_plain_string))
+                .unwrap_or_default();
+            let timestamp = row
+                .get("timestamp")
+                .and_then(value_to_i64)
+                .or_else(|| row.get("createdAt").and_then(value_to_i64));
+            OpenClawChatMessage {
+                role,
+                content,
+                timestamp,
             }
-        }
-    }
-    Err(last_error
-        .unwrap_or_else(|| ApiError::BadRequest("OpenClaw tool invocation failed".to_string())))
+        })
+        .filter(|m| !m.content.trim().is_empty())
+        .collect::<Vec<_>>()
 }
 
 async fn list_openclaw_agents(
@@ -353,12 +350,10 @@ async fn list_openclaw_agents(
 }
 
 async fn get_openclaw_session_history(
-    Extension(project): Extension<Project>,
+    Extension(_project): Extension<Project>,
     State(deployment): State<DeploymentImpl>,
     axum::extract::Path(session_key): axum::extract::Path<String>,
 ) -> Result<ResponseJson<ApiResponse<OpenClawSessionChatResponse>>, ApiError> {
-    let openclaw_workspace = openclaw_root_path().join(project.id.to_string());
-    let openclaw_workspace_str = openclaw_workspace.to_string_lossy().to_string();
     let openclaw_settings = {
         let config = deployment.config().read().await;
         config.openclaw.clone()
@@ -374,45 +369,27 @@ async fn get_openclaw_session_history(
     }
 
     let client = Client::new();
-    let result = invoke_openclaw_tool_fallback(
-        &client,
-        gateway_url,
-        openclaw_settings.gateway_key.trim(),
-        &["sessions_history", "chat_history"],
-        serde_json::json!({
-            "sessionKey": session_key,
-            "limit": 500,
-            "workspace": openclaw_workspace_str,
-            "workspaceRoot": openclaw_workspace_str,
-        }),
-        "main",
-    )
-    .await?;
-
-    let messages = extract_messages_array(&result)
-        .into_iter()
-        .map(|row| {
-            let role = value_to_string(row.get("role"))
-                .or_else(|| value_to_string(row.get("type")))
-                .unwrap_or_else(|| "assistant".to_string());
-            let content = row
-                .get("content")
-                .map(value_to_plain_string)
-                .or_else(|| row.get("text").map(value_to_plain_string))
-                .or_else(|| row.get("message").map(value_to_plain_string))
-                .unwrap_or_default();
-            let timestamp = row
-                .get("timestamp")
-                .and_then(value_to_i64)
-                .or_else(|| row.get("createdAt").and_then(value_to_i64));
-            OpenClawChatMessage {
-                role,
-                content,
-                timestamp,
-            }
-        })
-        .filter(|m| !m.content.trim().is_empty())
-        .collect::<Vec<_>>();
+    let history_url = format!("{gateway_url}/api/sessions/{session_key}/history?limit=500");
+    let mut request = client.get(history_url);
+    if !openclaw_settings.gateway_key.trim().is_empty() {
+        request = request.bearer_auth(openclaw_settings.gateway_key.trim());
+    }
+    let response = request
+        .send()
+        .await
+        .map_err(|e| ApiError::BadRequest(format!("OpenClaw history request failed: {e}")))?;
+    if !response.status().is_success() {
+        let status = response.status();
+        let text = response.text().await.unwrap_or_default();
+        return Err(ApiError::BadRequest(format!(
+            "OpenClaw history endpoint error {status}: {text}"
+        )));
+    }
+    let payload = response
+        .json::<serde_json::Value>()
+        .await
+        .map_err(|e| ApiError::BadRequest(format!("Invalid OpenClaw history response: {e}")))?;
+    let messages = parse_openclaw_messages(&payload);
 
     Ok(ResponseJson(ApiResponse::success(
         OpenClawSessionChatResponse {
@@ -423,7 +400,7 @@ async fn get_openclaw_session_history(
 }
 
 async fn send_openclaw_session_message(
-    Extension(project): Extension<Project>,
+    Extension(_project): Extension<Project>,
     State(deployment): State<DeploymentImpl>,
     axum::extract::Path(session_key): axum::extract::Path<String>,
     Json(payload): Json<OpenClawSendMessageRequest>,
@@ -435,8 +412,6 @@ async fn send_openclaw_session_message(
         ));
     }
 
-    let openclaw_workspace = openclaw_root_path().join(project.id.to_string());
-    let openclaw_workspace_str = openclaw_workspace.to_string_lossy().to_string();
     let openclaw_settings = {
         let config = deployment.config().read().await;
         config.openclaw.clone()
@@ -449,24 +424,30 @@ async fn send_openclaw_session_message(
     }
 
     let client = Client::new();
-    let result = invoke_openclaw_tool_fallback(
-        &client,
-        gateway_url,
-        openclaw_settings.gateway_key.trim(),
-        &["sessions_send", "chat_send"],
-        serde_json::json!({
-            "sessionKey": session_key,
-            "message": text,
-            "messages": [{
-                "role": "user",
-                "content": text
-            }],
-            "workspace": openclaw_workspace_str,
-            "workspaceRoot": openclaw_workspace_str,
-        }),
-        "main",
-    )
-    .await?;
+    let send_url = format!("{gateway_url}/api/sessions/{session_key}/messages");
+    let mut request = client.post(send_url).json(&serde_json::json!({
+        "message": text,
+        "content": text,
+        "role": "user",
+    }));
+    if !openclaw_settings.gateway_key.trim().is_empty() {
+        request = request.bearer_auth(openclaw_settings.gateway_key.trim());
+    }
+    let response = request
+        .send()
+        .await
+        .map_err(|e| ApiError::BadRequest(format!("OpenClaw send request failed: {e}")))?;
+    if !response.status().is_success() {
+        let status = response.status();
+        let body = response.text().await.unwrap_or_default();
+        return Err(ApiError::BadRequest(format!(
+            "OpenClaw send endpoint error {status}: {body}"
+        )));
+    }
+    let result = response
+        .json::<serde_json::Value>()
+        .await
+        .map_err(|e| ApiError::BadRequest(format!("Invalid OpenClaw send response: {e}")))?;
 
     Ok(ResponseJson(ApiResponse::success(result)))
 }

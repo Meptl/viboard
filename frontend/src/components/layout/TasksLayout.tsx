@@ -305,19 +305,16 @@ function AgentsSidebar() {
               })}
             </div>
           </div>
-          <div className="h-full overflow-y-auto p-3">
+          <div className="h-full overflow-y-auto">
             {activeTab === 'Chat' ? (
-              <section className="rounded-lg border bg-background p-2 h-full min-h-0 flex flex-col gap-2">
-                <h3 className="px-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Chat
-                </h3>
-                <div className="px-1 text-[11px] text-muted-foreground truncate">
+              <section className="h-full min-h-0 flex flex-col gap-2 p-3">
+                <div className="text-[11px] text-muted-foreground truncate">
                   {selectedSession?.display_name ||
                     selectedSession?.label ||
                     selectedSession?.session_key ||
                     'No session selected'}
                 </div>
-                <div className="flex-1 min-h-0 overflow-y-auto rounded-md border bg-muted/20 p-2 space-y-2">
+                <div className="flex-1 min-h-0 overflow-y-auto space-y-2">
                   {!selectedSessionKey ? (
                     <div className="text-xs text-muted-foreground">
                       Select an agent session to view chat history.
@@ -339,10 +336,10 @@ function AgentsSidebar() {
                       <div
                         key={`${msg.timestamp ?? 0}-${idx}`}
                         className={cn(
-                          'rounded-md border px-2 py-1.5 text-xs whitespace-pre-wrap',
+                          'px-2 py-1.5 text-xs whitespace-pre-wrap border-l-2',
                           msg.role === 'user'
-                            ? 'bg-primary/5 border-primary/20'
-                            : 'bg-background'
+                            ? 'bg-primary/5 border-primary/30'
+                            : 'bg-background border-border'
                         )}
                       >
                         <p className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">
@@ -357,7 +354,7 @@ function AgentsSidebar() {
                   <textarea
                     value={draftMessage}
                     onChange={(e) => setDraftMessage(e.target.value)}
-                    className="w-full min-h-20 rounded-md border bg-background px-2 py-1.5 text-xs"
+                    className="w-full min-h-20 border bg-background px-2 py-1.5 text-xs"
                     placeholder="Send a message to this session..."
                     disabled={!selectedSessionKey || sendMutation.isPending}
                   />
@@ -368,14 +365,14 @@ function AgentsSidebar() {
                       !draftMessage.trim() ||
                       sendMutation.isPending
                     }
-                    className="w-full rounded-md bg-primary px-2 py-1.5 text-xs font-semibold text-primary-foreground disabled:opacity-50"
+                    className="w-full border bg-primary px-2 py-1.5 text-xs font-semibold text-primary-foreground disabled:opacity-50"
                   >
                     {sendMutation.isPending ? 'Sending...' : 'Send'}
                   </button>
                 </form>
               </section>
             ) : (
-              <section className="rounded-lg border bg-background p-3 space-y-2">
+              <section className="p-3 space-y-2">
                 <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   {activeTab}
                 </h3>

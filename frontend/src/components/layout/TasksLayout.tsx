@@ -68,6 +68,77 @@ function AuxRouter({ mode, aux }: { mode: LayoutMode; aux: ReactNode }) {
   );
 }
 
+function AgentsSidebarSkeleton() {
+  const tabs = ['Memory', 'Crons', 'Chat', 'Configs'] as const;
+  const [activeTab, setActiveTab] = useState<(typeof tabs)[number]>('Memory');
+
+  return (
+    <aside className="h-full min-h-0 w-80 shrink-0 border-l bg-muted/20 p-2">
+      <div className="h-full min-h-0 flex flex-col gap-2">
+        <section className="flex-1 min-h-0 rounded-xl border bg-background overflow-hidden">
+          <header className="border-b px-3 py-2">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Agents
+            </h2>
+          </header>
+          <div className="h-full overflow-y-auto p-3 space-y-2">
+            <div className="rounded-md border bg-muted/30 px-2 py-1.5 text-xs text-muted-foreground">
+              No active agents
+            </div>
+            <div className="rounded-md border bg-muted/30 px-2 py-1.5 text-xs text-muted-foreground">
+              OpenClaw session list pending integration
+            </div>
+          </div>
+        </section>
+
+        <section className="flex-1 min-h-0 rounded-xl border bg-background overflow-hidden">
+          <div
+            className="border-b bg-background/80 px-2 py-1.5"
+            role="tablist"
+            aria-label="Agents workspace tabs"
+          >
+            <div className="flex flex-wrap gap-1">
+              {tabs.map((tab) => {
+                const isActive = tab === activeTab;
+                return (
+                  <button
+                    key={tab}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    className={cn(
+                      'rounded-md px-2 py-1 text-[11px] uppercase tracking-wide transition-colors',
+                      isActive
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-muted-foreground hover:text-foreground'
+                    )}
+                    onClick={() => setActiveTab(tab)}
+                  >
+                    {tab}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="h-full overflow-y-auto p-3">
+            <section className="rounded-lg border bg-background p-3 space-y-2">
+              <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                {activeTab}
+              </h3>
+              <div className="rounded-md border bg-muted/30 px-2 py-1.5 text-xs text-muted-foreground">
+                OpenClaw integration pending
+              </div>
+              <div className="rounded-md border bg-muted/30 px-2 py-1.5 text-xs text-muted-foreground">
+                Skeleton panel only
+              </div>
+            </section>
+          </div>
+        </section>
+      </div>
+    </aside>
+  );
+}
+
 /**
  * RightWorkArea - Contains header and Attempt/Aux content.
  * Shows just Attempt when mode === null, or Attempt | Aux split when mode !== null.
@@ -88,8 +159,8 @@ function RightWorkArea({
   );
   const [isAttemptCollapsed, setIsAttemptCollapsed] = useState(false);
 
-  return (
-    <div className="h-full min-h-0 flex flex-col">
+  const mainContent = (
+    <div className="flex-1 min-w-0 min-h-0 flex flex-col">
       {rightHeader && (
         <div className="shrink-0 sticky top-0 z-20 bg-background border-b">
           {rightHeader}
@@ -160,6 +231,13 @@ function RightWorkArea({
           </PanelGroup>
         )}
       </div>
+    </div>
+  );
+
+  return (
+    <div className="h-full min-h-0 flex">
+      {mainContent}
+      <AgentsSidebarSkeleton />
     </div>
   );
 }
@@ -280,12 +358,15 @@ export function TasksLayout({
 
   if (!isPanelOpen) {
     desktopNode = (
-      <div
-        className="h-full min-h-0 min-w-0 overflow-hidden"
-        role="region"
-        aria-label="Kanban board"
-      >
-        {kanban}
+      <div className="h-full min-h-0 flex">
+        <div
+          className="h-full min-h-0 min-w-0 flex-1 overflow-hidden"
+          role="region"
+          aria-label="Kanban board"
+        >
+          {kanban}
+        </div>
+        <AgentsSidebarSkeleton />
       </div>
     );
   } else {

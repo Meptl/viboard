@@ -1545,6 +1545,12 @@ pub async fn start_dev_server(
         apply_project_settings(&mut project, &config);
     }
 
+    let Some(dev_server) = project.dev_script.filter(|script| !script.trim().is_empty()) else {
+        return Ok(ResponseJson(ApiResponse::error(
+            "No dev server script configured for this project",
+        )));
+    };
+
     // Stop any existing dev servers for this project
     let existing_dev_servers =
         match ExecutionProcess::find_running_dev_servers_by_project(pool, project.id).await {
@@ -1561,23 +1567,23 @@ pub async fn start_dev_server(
             }
         };
 
-    for dev_server in existing_dev_servers {
+    for dev_server_process in existing_dev_servers {
         tracing::info!(
             "Stopping existing dev server {} for project {}",
-            dev_server.id,
+            dev_server_process.id,
             project.id
         );
 
         if let Err(e) = deployment
             .container()
-            .stop_execution(&dev_server, ExecutionProcessStatus::Killed)
+            .stop_execution(&dev_server_process, ExecutionProcessStatus::Killed)
             .await
         {
-            tracing::error!("Failed to stop dev server {}: {}", dev_server.id, e);
+            tracing::error!("Failed to stop dev server {}: {}", dev_server_process.id, e);
         }
     }
 
-    if let Some(dev_server) = project.dev_script {
+    {
         // TODO: Derive script language from system config
         let executor_action = ExecutorAction::new(
             ExecutorActionType::ScriptRequest(ScriptRequest {
@@ -1596,10 +1602,6 @@ pub async fn start_dev_server(
                 &ExecutionProcessRunReason::DevServer,
             )
             .await?
-    } else {
-        return Ok(ResponseJson(ApiResponse::error(
-            "No dev server script configured for this project",
-        )));
     };
 
     Ok(ResponseJson(ApiResponse::success(())))

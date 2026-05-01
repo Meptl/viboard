@@ -79,11 +79,6 @@ struct ProjectRow {
     id: Uuid,
     name: String,
     git_repo_path: String,
-    setup_script: Option<String>,
-    dev_script: Option<String>,
-    cleanup_script: Option<String>,
-    copy_files: Option<String>,
-    parallel_setup_script: bool,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
 }
@@ -94,11 +89,11 @@ impl From<ProjectRow> for Project {
             id: row.id,
             name: row.name,
             git_repo_path: PathBuf::from(row.git_repo_path),
-            setup_script: row.setup_script,
-            dev_script: row.dev_script,
-            cleanup_script: row.cleanup_script,
-            copy_files: row.copy_files,
-            parallel_setup_script: row.parallel_setup_script,
+            setup_script: None,
+            dev_script: None,
+            cleanup_script: None,
+            copy_files: None,
+            parallel_setup_script: false,
             created_at: row.created_at,
             updated_at: row.updated_at,
         }
@@ -114,8 +109,7 @@ impl Project {
 
     pub async fn find_all(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
         let projects = sqlx::query_as::<_, ProjectRow>(
-            r#"SELECT id, name, git_repo_path, setup_script, dev_script, cleanup_script, copy_files,
-                      parallel_setup_script, created_at, updated_at
+            r#"SELECT id, name, git_repo_path, created_at, updated_at
                FROM projects
                ORDER BY created_at DESC"#,
         )
@@ -131,8 +125,7 @@ impl Project {
     pub async fn find_most_active(pool: &SqlitePool, limit: i32) -> Result<Vec<Self>, sqlx::Error> {
         let projects = sqlx::query_as::<_, ProjectRow>(
             r#"
-            SELECT p.id, p.name, p.git_repo_path, p.setup_script, p.dev_script, p.cleanup_script, p.copy_files,
-                   p.parallel_setup_script, p.created_at, p.updated_at
+            SELECT p.id, p.name, p.git_repo_path, p.created_at, p.updated_at
             FROM projects p
             WHERE p.id IN (
                 SELECT DISTINCT t.project_id
@@ -154,8 +147,7 @@ impl Project {
 
     pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as::<_, ProjectRow>(
-            r#"SELECT id, name, git_repo_path, setup_script, dev_script, cleanup_script, copy_files,
-                      parallel_setup_script, created_at, updated_at
+            r#"SELECT id, name, git_repo_path, created_at, updated_at
                FROM projects
                WHERE id = $1"#,
         )
@@ -170,8 +162,7 @@ impl Project {
         git_repo_path: &str,
     ) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as::<_, ProjectRow>(
-            r#"SELECT id, name, git_repo_path, setup_script, dev_script, cleanup_script, copy_files,
-                      parallel_setup_script, created_at, updated_at
+            r#"SELECT id, name, git_repo_path, created_at, updated_at
                FROM projects
                WHERE git_repo_path = $1"#,
         )
@@ -187,8 +178,7 @@ impl Project {
         exclude_id: Uuid,
     ) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as::<_, ProjectRow>(
-            r#"SELECT id, name, git_repo_path, setup_script, dev_script, cleanup_script, copy_files,
-                      parallel_setup_script, created_at, updated_at
+            r#"SELECT id, name, git_repo_path, created_at, updated_at
                FROM projects
                WHERE git_repo_path = $1 AND id != $2"#,
         )
@@ -204,69 +194,40 @@ impl Project {
         data: &CreateProject,
         project_id: Uuid,
     ) -> Result<Self, sqlx::Error> {
-        let parallel_setup_script = data.parallel_setup_script.unwrap_or(false);
         sqlx::query_as::<_, ProjectRow>(
             r#"INSERT INTO projects (
                     id,
                     name,
-                    git_repo_path,
-                    setup_script,
-                    dev_script,
-                    cleanup_script,
-                    copy_files,
-                    parallel_setup_script
+                    git_repo_path
                 ) VALUES (
-                    $1, $2, $3, $4, $5, $6, $7, $8
+                    $1, $2, $3
                 )
-                RETURNING id, name, git_repo_path, setup_script, dev_script, cleanup_script, copy_files,
-                          parallel_setup_script, created_at, updated_at"#,
+                RETURNING id, name, git_repo_path, created_at, updated_at"#,
         )
         .bind(project_id)
         .bind(&data.name)
         .bind(&data.git_repo_path)
-        .bind(&data.setup_script)
-        .bind(&data.dev_script)
-        .bind(&data.cleanup_script)
-        .bind(&data.copy_files)
-        .bind(parallel_setup_script)
         .fetch_one(pool)
         .await
         .map(Project::from)
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub async fn update(
         pool: &SqlitePool,
         id: Uuid,
         name: String,
         git_repo_path: String,
-        setup_script: Option<String>,
-        dev_script: Option<String>,
-        cleanup_script: Option<String>,
-        copy_files: Option<String>,
-        parallel_setup_script: bool,
     ) -> Result<Self, sqlx::Error> {
         sqlx::query_as::<_, ProjectRow>(
             r#"UPDATE projects
                SET name = $2,
-                   git_repo_path = $3,
-                   setup_script = $4,
-                   dev_script = $5,
-                   cleanup_script = $6,
-                   copy_files = $7,
-                   parallel_setup_script = $8
+                   git_repo_path = $3
                WHERE id = $1
-               RETURNING id, name, git_repo_path, setup_script, dev_script, cleanup_script, copy_files,
-                         parallel_setup_script, created_at, updated_at"#,
+               RETURNING id, name, git_repo_path, created_at, updated_at"#,
         )
         .bind(id)
         .bind(name)
         .bind(git_repo_path)
-        .bind(setup_script)
-        .bind(dev_script)
-        .bind(cleanup_script)
-        .bind(copy_files)
-        .bind(parallel_setup_script)
         .fetch_one(pool)
         .await
         .map(Project::from)

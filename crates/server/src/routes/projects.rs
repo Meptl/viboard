@@ -252,11 +252,6 @@ pub async fn update_project(
         existing_project.id,
         name.unwrap_or(existing_project.name),
         git_repo_path.to_string_lossy().to_string(),
-        None,
-        None,
-        None,
-        None,
-        false,
     )
     .await
     {

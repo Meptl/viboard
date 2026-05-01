@@ -63,7 +63,7 @@ export function PreviewPanel() {
 
   const attemptId =
     rawAttemptId && rawAttemptId !== 'latest' ? rawAttemptId : undefined;
-  const projectHasDevScript = Boolean(project?.dev_script);
+  const projectHasDevScript = Boolean(project?.dev_script?.trim());
 
   const {
     start: startDevServer,

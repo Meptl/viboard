@@ -8,7 +8,7 @@
     "vb": "bin/cli.js"
   },
   "keywords": [],
-  "author": "bloop",
+  "author": "meptl",
   "license": "",
   "description": "NPX wrapper around viboard",
   "dependencies": {

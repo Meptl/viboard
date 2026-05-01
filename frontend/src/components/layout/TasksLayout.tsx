@@ -1,4 +1,11 @@
-import { FormEvent, ReactNode, useEffect, useMemo, useState } from 'react';
+import {
+  FormEvent,
+  ReactNode,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -144,6 +151,7 @@ function AgentsSidebar() {
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number]>('Memory');
   const [selectedSessionKey, setSelectedSessionKey] = useState<string | null>(null);
   const [draftMessage, setDraftMessage] = useState('');
+  const chatMessagesRef = useRef<HTMLDivElement | null>(null);
   const { projectId } = useProject();
 
   const agentsQuery = useQuery({
@@ -180,6 +188,12 @@ function AgentsSidebar() {
     staleTime: 2_000,
     refetchInterval: activeTab === 'Chat' ? 5_000 : false,
   });
+
+  useEffect(() => {
+    const chatMessagesEl = chatMessagesRef.current;
+    if (!chatMessagesEl || activeTab !== 'Chat') return;
+    chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+  }, [activeTab, selectedSessionKey, chatHistoryQuery.data?.messages]);
 
   const sendMutation = useMutation({
     mutationFn: (text: string) =>
@@ -314,7 +328,10 @@ function AgentsSidebar() {
                     selectedSession?.session_key ||
                     'No session selected'}
                 </div>
-                <div className="flex-1 min-h-0 overflow-y-auto space-y-2">
+                <div
+                  ref={chatMessagesRef}
+                  className="flex-1 min-h-0 overflow-y-auto space-y-2"
+                >
                   {!selectedSessionKey ? (
                     <div className="text-xs text-muted-foreground">
                       Select an agent session to view chat history.

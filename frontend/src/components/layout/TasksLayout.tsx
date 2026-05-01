@@ -185,6 +185,13 @@ function AgentsSidebar() {
                 const context = session.context_tokens ?? 0;
                 const pct =
                   context > 0 ? Math.min(100, Math.round((total / context) * 100)) : 0;
+                const pctForMiniBar = pct > 0 ? Math.max(pct, 6) : 0;
+                const fillClass =
+                  pct >= 80
+                    ? 'bg-red-500'
+                    : pct >= 50
+                      ? 'bg-amber-500'
+                      : 'bg-emerald-500';
                 const label =
                   session.display_name || session.label || session.session_key;
                 return (
@@ -199,17 +206,20 @@ function AgentsSidebar() {
                         {session.model ?? 'model?'}
                       </p>
                     </div>
-                    <div className="mt-1 h-1.5 w-full rounded bg-muted">
-                      <div
-                        className="h-1.5 rounded bg-primary"
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
                     <div className="mt-1 flex items-center justify-between text-[10px] text-muted-foreground">
                       <span>{session.agent_state ?? session.state ?? 'idle'}</span>
-                      <span>
-                        {total}/{context || '?'} ({pct}%)
-                      </span>
+                      <div
+                        className="flex items-center gap-1.5"
+                        aria-label={`${pct}% context used`}
+                      >
+                        <span>{pct}%</span>
+                        <div className="h-2 w-14 overflow-hidden rounded-full border border-border/60 bg-muted">
+                          <div
+                            className={cn('h-full rounded-full transition-all', fillClass)}
+                            style={{ width: `${pctForMiniBar}%` }}
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 );

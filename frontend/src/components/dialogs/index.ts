@@ -44,18 +44,6 @@ export {
 } from './tasks/GitActionsDialog';
 export { CreateAttemptDialog } from './tasks/CreateAttemptDialog';
 
-// Settings dialogs
-export {
-  CreateConfigurationDialog,
-  type CreateConfigurationDialogProps,
-  type CreateConfigurationResult,
-} from './settings/CreateConfigurationDialog';
-export {
-  DeleteConfigurationDialog,
-  type DeleteConfigurationDialogProps,
-  type DeleteConfigurationResult,
-} from './settings/DeleteConfigurationDialog';
-
 // Shared/Generic dialogs
 export { ConfirmDialog, type ConfirmDialogProps } from './shared/ConfirmDialog';
 export {

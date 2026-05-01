@@ -28,12 +28,14 @@ import { EditorAvailabilityIndicator } from '@/components/EditorAvailabilityIndi
 import { useTheme } from '@/components/ThemeProvider';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { TagManager } from '@/components/TagManager';
+import { ExecutorProfileSelector } from '@/components/settings';
 
 export function GeneralSettings() {
   const {
     config,
     loading,
     updateAndSaveConfig, // Use this on Save
+    profiles,
   } = useUserSystem();
 
   // Draft state management
@@ -193,6 +195,20 @@ export function GeneralSettings() {
               </SelectContent>
             </Select>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle>Default Coding Agent</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <ExecutorProfileSelector
+            profiles={profiles}
+            selectedProfile={draft?.executor_profile ?? null}
+            onProfileSelect={(profile) => updateDraft({ executor_profile: profile })}
+            itemClassName="w-full"
+          />
         </CardContent>
       </Card>
 

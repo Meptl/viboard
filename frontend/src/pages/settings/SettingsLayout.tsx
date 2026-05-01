@@ -5,7 +5,7 @@ import {
   useNavigate,
   useSearchParams,
 } from 'react-router-dom';
-import { Settings, Cpu, X, FolderOpen } from 'lucide-react';
+import { Settings, X, FolderOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useEffect, useRef } from 'react';
@@ -25,12 +25,6 @@ const settingsNavigation = [
     icon: FolderOpen,
     label: 'Projects',
     description: 'Project scripts and configuration',
-  },
-  {
-    path: 'agents',
-    icon: Cpu,
-    label: 'Agents',
-    description: 'Coding agent configurations',
   },
 ];
 

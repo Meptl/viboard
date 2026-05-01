@@ -12,7 +12,6 @@ import { ProjectRepositoryNotDetected } from '@/pages/ProjectRepositoryNotDetect
 import { NormalLayout } from '@/components/layout/NormalLayout';
 
 import {
-  AgentSettings,
   GeneralSettings,
   ProjectSettings,
   SettingsLayout,
@@ -109,7 +108,6 @@ function AppContent() {
                     <Route index element={<Navigate to="general" replace />} />
                     <Route path="general" element={<GeneralSettings />} />
                     <Route path="projects" element={<ProjectSettings />} />
-                    <Route path="agents" element={<AgentSettings />} />
                   </Route>
                   <Route
                     path="/projects/:projectId/tasks/:taskId"

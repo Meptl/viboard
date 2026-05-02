@@ -11,10 +11,11 @@ When referencing items the user may use these terms:
 - Diff view: Part of the task page (component: frontend/src/components/panels/DiffsPanel.tsx)
 - Preview view: Part of the task page (component: frontend/src/components/panels/PreviewPanel.tsx)
 - Settings page: General or project settings management page at /settings (route: frontend/src/App.tsx, layout: frontend/src/pages/settings/SettingsLayout.tsx, pages: frontend/src/pages/settings/GeneralSettings.tsx and frontend/src/pages/settings/ProjectSettings.tsx)
-- Agent sidebar: A sidebar on the project page for openclaw with two sections. (component: frontend/src/components/layout/TasksLayout.tsx, AgentsSidebar in same file)
+- Agent sidebar: A sidebar on the project page for openclaw with two sections. (component: frontend/src/components/layout/AgentsSidebar.tsx)
     An Agents list and a tabbed window of Memory, Crons, and Chat for management
     of openclaw.
 - Openclaw sidebar: Same as agent sidebar
 - Agents list: Part of the agent sidebar. (component: frontend/src/components/layout/AgentsList.tsx)
-- Agent chat: Part of the agent sidebar. (component: frontend/src/components/layout/TasksLayout.tsx, Chat tab in AgentsSidebar)
+- Memory tab: Part of the agent sidebar. (component: frontend/src/components/layout/MemoryTab.tsx)
+- Agent chat: Part of the agent sidebar. (component: frontend/src/components/layout/AgentsSidebar.tsx, Chat tab in AgentsSidebar)
 - Openclaw chat: Same as Agent chat.

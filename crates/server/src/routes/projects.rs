@@ -1,6 +1,8 @@
 use std::{
     fs,
+    io::ErrorKind,
     path::{Path as StdPath, PathBuf},
+    time::{SystemTime, UNIX_EPOCH},
 };
 
 use axum::{
@@ -11,6 +13,8 @@ use axum::{
     response::Json as ResponseJson,
     routing::{get, post},
 };
+use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
+use ed25519_dalek::{Signer, SigningKey};
 use futures_util::{SinkExt, StreamExt};
 use db::models::{
     project::{CreateProject, Project, ProjectError, SearchResult, UpdateProject},
@@ -30,6 +34,8 @@ use services::services::{
 use utils::{assets::openclaw_root_path, path::expand_tilde, response::ApiResponse};
 use uuid::Uuid;
 use tokio::time::{Duration, timeout};
+use tokio_tungstenite::tungstenite::client::IntoClientRequest;
+use tokio_tungstenite::tungstenite::http::HeaderValue;
 use tokio_tungstenite::{connect_async, tungstenite::protocol::Message as WsMessage};
 
 use crate::{DeploymentImpl, error::ApiError, middleware::load_project_middleware};
@@ -170,6 +176,67 @@ fn value_to_i64(value: &serde_json::Value) -> Option<i64> {
         .as_i64()
         .or_else(|| value.as_u64().map(|v| v as i64))
         .or_else(|| value.as_str().and_then(|v| v.parse::<i64>().ok()))
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+struct OpenClawDeviceIdentity {
+    device_id: String,
+    public_key_b64url: String,
+    private_key_b64url: String,
+}
+
+fn get_or_create_openclaw_device_identity() -> Result<OpenClawDeviceIdentity, ApiError> {
+    let identity_path = openclaw_root_path().join("device-identity.json");
+
+    if let Ok(raw) = std::fs::read_to_string(&identity_path) {
+        if let Ok(identity) = serde_json::from_str::<OpenClawDeviceIdentity>(&raw) {
+            if !identity.device_id.is_empty()
+                && !identity.public_key_b64url.is_empty()
+                && !identity.private_key_b64url.is_empty()
+            {
+                return Ok(identity);
+            }
+        }
+    }
+
+    let mut seed = [0u8; 32];
+    let uuid_a = Uuid::new_v4();
+    let uuid_b = Uuid::new_v4();
+    seed[..16].copy_from_slice(uuid_a.as_bytes());
+    seed[16..].copy_from_slice(uuid_b.as_bytes());
+    let signing_key = SigningKey::from_bytes(&seed);
+    let verify_key = signing_key.verifying_key();
+    let public_key_raw = verify_key.to_bytes();
+    let private_key_raw = signing_key.to_bytes();
+
+    let device_id = {
+        use sha2::Digest as _;
+        let digest = sha2::Sha256::digest(public_key_raw);
+        format!("{digest:x}")
+    };
+
+    let identity = OpenClawDeviceIdentity {
+        device_id,
+        public_key_b64url: URL_SAFE_NO_PAD.encode(public_key_raw),
+        private_key_b64url: URL_SAFE_NO_PAD.encode(private_key_raw),
+    };
+
+    if let Some(parent) = identity_path.parent() {
+        std::fs::create_dir_all(parent)?;
+    } else {
+        return Err(ApiError::BadRequest(
+            "OpenClaw RPC device identity directory is unavailable".to_string(),
+        ));
+    }
+    if let Ok(serialized) = serde_json::to_string_pretty(&identity) {
+        match std::fs::write(&identity_path, format!("{serialized}\n")) {
+            Ok(()) => return Ok(identity),
+            Err(err) if err.kind() == ErrorKind::PermissionDenied => {}
+            Err(_) => {}
+        }
+    }
+
+    Ok(identity)
 }
 
 fn value_to_string(value: Option<&serde_json::Value>) -> Option<String> {
@@ -331,6 +398,44 @@ async fn invoke_openclaw_rpc(
         ws_url
     }
 
+    fn normalize_origin(value: &str) -> Option<String> {
+        let trimmed = value.trim();
+        if trimmed.is_empty() {
+            return None;
+        }
+        let parsed = url::Url::parse(trimmed).ok()?;
+        let scheme = parsed.scheme();
+        if scheme != "http" && scheme != "https" {
+            return None;
+        }
+        let host = parsed.host_str()?;
+        match parsed.port() {
+            Some(port) => Some(format!("{scheme}://{host}:{port}")),
+            None => Some(format!("{scheme}://{host}")),
+        }
+    }
+
+    fn gateway_request_origin() -> String {
+        if let Ok(value) = std::env::var("PUBLIC_ORIGIN") {
+            if let Some(origin) = normalize_origin(&value) {
+                return origin;
+            }
+        }
+        if let Ok(value) = std::env::var("ALLOWED_ORIGINS") {
+            for raw in value.split(',') {
+                if let Some(origin) = normalize_origin(raw) {
+                    return origin;
+                }
+            }
+        }
+        let backend_port = std::env::var("BACKEND_PORT")
+            .or_else(|_| std::env::var("PORT"))
+            .ok()
+            .and_then(|s| s.trim().parse::<u16>().ok())
+            .unwrap_or(3000);
+        format!("http://127.0.0.1:{backend_port}")
+    }
+
     async fn read_json_frame(
         stream: &mut tokio_tungstenite::WebSocketStream<
             tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
@@ -371,6 +476,31 @@ async fn invoke_openclaw_rpc(
         }
     }
 
+    async fn read_rpc_response(
+        stream: &mut tokio_tungstenite::WebSocketStream<
+            tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
+        >,
+        response_id: &str,
+        timeout_ms: u64,
+    ) -> Result<serde_json::Value, ApiError> {
+        loop {
+            let frame = read_json_frame(stream, timeout_ms).await?;
+            let is_response = frame
+                .get("type")
+                .and_then(serde_json::Value::as_str)
+                .map(|v| v == "res")
+                .unwrap_or(false);
+            let id_matches = frame
+                .get("id")
+                .and_then(serde_json::Value::as_str)
+                .map(|v| v == response_id)
+                .unwrap_or(false);
+            if is_response && id_matches {
+                return Ok(frame);
+            }
+        }
+    }
+
     let gateway_token = gateway_key.trim();
     if gateway_token.is_empty() {
         return Err(ApiError::BadRequest(
@@ -379,9 +509,17 @@ async fn invoke_openclaw_rpc(
     }
 
     let ws_url = gateway_ws_url(gateway_url);
-    let (mut stream, _) = connect_async(ws_url.as_str())
-        .await
-        .map_err(|e| ApiError::BadRequest(format!("OpenClaw gateway RPC connect failed: {e}")))?;
+    let mut request = ws_url
+        .as_str()
+        .into_client_request()
+        .map_err(|e| ApiError::BadRequest(format!("OpenClaw gateway RPC request build failed: {e}")))?;
+    let origin = HeaderValue::from_str(&gateway_request_origin()).map_err(|e| {
+        ApiError::BadRequest(format!("OpenClaw gateway RPC origin header is invalid: {e}"))
+    })?;
+    request.headers_mut().insert("Origin", origin);
+    let (mut stream, _) = connect_async(request).await.map_err(|e| {
+        ApiError::BadRequest(format!("OpenClaw gateway RPC connect failed: {e}"))
+    })?;
 
     let challenge = read_json_frame(&mut stream, 10_000).await?;
     let nonce = challenge
@@ -392,6 +530,34 @@ async fn invoke_openclaw_rpc(
             ApiError::BadRequest("OpenClaw gateway RPC missing connect challenge".to_string())
         })?;
 
+    let identity = get_or_create_openclaw_device_identity()?;
+    let signed_at = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0);
+
+    let signing_payload = format!(
+        "v2|{}|{}|{}|{}|{}|{}|{}|{}",
+        identity.device_id,
+        "openclaw-control-ui",
+        "webchat",
+        "operator",
+        "operator.admin,operator.read,operator.write",
+        signed_at,
+        gateway_token,
+        nonce
+    );
+    let private_key_bytes = URL_SAFE_NO_PAD
+        .decode(identity.private_key_b64url.as_bytes())
+        .map_err(|e| ApiError::BadRequest(format!("OpenClaw RPC private key decode failed: {e}")))?;
+    let private_key_arr: [u8; 32] = private_key_bytes
+        .as_slice()
+        .try_into()
+        .map_err(|_| ApiError::BadRequest("OpenClaw RPC private key has invalid length".to_string()))?;
+    let signing_key = SigningKey::from_bytes(&private_key_arr);
+    let signature = signing_key.sign(signing_payload.as_bytes()).to_bytes();
+    let signature_b64url = URL_SAFE_NO_PAD.encode(signature);
+
     let connect_req = serde_json::json!({
         "type": "req",
         "id": "__connect__",
@@ -400,16 +566,22 @@ async fn invoke_openclaw_rpc(
             "minProtocol": 3,
             "maxProtocol": 3,
             "client": {
-                "id": "gateway-client",
+                "id": "openclaw-control-ui",
                 "version": env!("CARGO_PKG_VERSION"),
-                "platform": "backend",
-                "mode": "backend",
+                "platform": "web",
+                "mode": "webchat",
                 "instanceId": format!("viboard-{}", Uuid::new_v4().simple()),
             },
             "role": "operator",
-            "scopes": ["operator.read", "operator.write"],
+            "scopes": ["operator.admin", "operator.read", "operator.write"],
             "auth": { "token": gateway_token },
-            "nonce": nonce,
+            "device": {
+                "id": identity.device_id,
+                "publicKey": identity.public_key_b64url,
+                "signature": signature_b64url,
+                "signedAt": signed_at,
+                "nonce": nonce,
+            },
         }
     });
     stream
@@ -417,7 +589,7 @@ async fn invoke_openclaw_rpc(
         .await
         .map_err(|e| ApiError::BadRequest(format!("OpenClaw gateway RPC connect send failed: {e}")))?;
 
-    let connect_res = read_json_frame(&mut stream, 10_000).await?;
+    let connect_res = read_rpc_response(&mut stream, "__connect__", 10_000).await?;
     let connect_ok = connect_res
         .get("type")
         .and_then(serde_json::Value::as_str)
@@ -455,7 +627,7 @@ async fn invoke_openclaw_rpc(
         .await
         .map_err(|e| ApiError::BadRequest(format!("OpenClaw gateway RPC send failed: {e}")))?;
 
-    let method_res = read_json_frame(&mut stream, 20_000).await?;
+    let method_res = read_rpc_response(&mut stream, &req_id, 20_000).await?;
     let ok = method_res
         .get("type")
         .and_then(serde_json::Value::as_str)
@@ -473,9 +645,14 @@ async fn invoke_openclaw_rpc(
     if !ok {
         let message = method_res
             .get("error")
-            .and_then(|err| err.get("message").or(Some(err)))
-            .and_then(serde_json::Value::as_str)
-            .unwrap_or("RPC invocation failed");
+            .and_then(|err| {
+                err.get("message")
+                    .and_then(serde_json::Value::as_str)
+                    .map(ToString::to_string)
+                    .or_else(|| err.as_str().map(ToString::to_string))
+                    .or_else(|| serde_json::to_string(err).ok())
+            })
+            .unwrap_or_else(|| serde_json::to_string(&method_res).unwrap_or_else(|_| "RPC invocation failed".to_string()));
         return Err(ApiError::BadRequest(format!(
             "OpenClaw gateway RPC {method} failed: {message}"
         )));

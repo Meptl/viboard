@@ -5574,9 +5574,11 @@ version = "0.0.143"
 dependencies = [
  "anyhow",
  "axum",
+ "base64",
  "chrono",
  "db",
  "dotenv",
+ "ed25519-dalek",
  "executors",
  "futures-util",
  "git2",

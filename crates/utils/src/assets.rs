@@ -4,11 +4,18 @@ use rust_embed::RustEmbed;
 const PROJECT_ROOT: &str = env!("CARGO_MANIFEST_DIR");
 
 pub fn asset_dir() -> std::path::PathBuf {
-    let path = if cfg!(debug_assertions) {
-        std::path::PathBuf::from(PROJECT_ROOT).join("../../dev_assets")
-    } else {
-        prod_asset_dir_path()
-    };
+    let path = std::env::var("VIBOARD_ASSET_DIR")
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| {
+            if cfg!(debug_assertions) {
+                std::path::PathBuf::from(PROJECT_ROOT).join("../../dev_assets")
+            } else {
+                prod_asset_dir_path()
+            }
+        });
 
     // Ensure the directory exists
     if !path.exists() {

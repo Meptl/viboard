@@ -21,7 +21,6 @@ interface AgentsListProps {
   isError: boolean;
   flatAgents: AgentNode[];
   selectedSessionKey: string | null;
-  onSelectSession: (sessionKey: string) => void;
 }
 
 export function AgentsList({
@@ -29,7 +28,6 @@ export function AgentsList({
   isError,
   flatAgents,
   selectedSessionKey,
-  onSelectSession,
 }: AgentsListProps) {
   if (isLoading) {
     return (
@@ -58,7 +56,8 @@ export function AgentsList({
   return flatAgents.map(({ session, depth }) => {
     const total = session.total_tokens ?? 0;
     const context = session.context_tokens ?? 0;
-    const pct = context > 0 ? Math.min(100, Math.round((total / context) * 100)) : 0;
+    const pct =
+      context > 0 ? Math.min(100, Math.round((total / context) * 100)) : 0;
     const pctForMiniBar = pct > 0 ? Math.max(pct, 6) : 0;
     const fillClass =
       pct >= 80 ? 'bg-red-500' : pct >= 50 ? 'bg-amber-500' : 'bg-emerald-500';
@@ -68,13 +67,12 @@ export function AgentsList({
       <div
         key={session.session_key}
         className={cn(
-          'rounded-md border bg-background px-2 py-1.5 cursor-pointer transition-colors',
+          'rounded-md border bg-background px-2 py-1.5',
           selectedSessionKey === session.session_key
             ? 'border-primary/40 bg-primary/5'
-            : 'hover:bg-muted/40'
+            : ''
         )}
         style={{ marginLeft: `${depth * 10}px` }}
-        onClick={() => onSelectSession(session.session_key)}
       >
         <div className="flex items-center justify-between gap-2">
           <p className="truncate text-xs">{label}</p>
@@ -84,7 +82,10 @@ export function AgentsList({
         </div>
         <div className="mt-1 flex items-center justify-between text-[10px] text-muted-foreground">
           <span>{session.agent_state ?? session.state ?? 'idle'}</span>
-          <div className="flex items-center gap-1.5" aria-label={`${pct}% context used`}>
+          <div
+            className="flex items-center gap-1.5"
+            aria-label={`${pct}% context used`}
+          >
             <span>{pct}%</span>
             <div className="h-2 w-14 overflow-hidden rounded-full border border-border/60 bg-muted">
               <div

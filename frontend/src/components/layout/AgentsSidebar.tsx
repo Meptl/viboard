@@ -41,7 +41,9 @@ function inferParentSessionKey(
   const cronRunMatch = key.match(/^(.+:cron:[^:]+):run:.+$/);
   if (cronRunMatch) return cronRunMatch[1];
 
-  const rootScopedMatch = key.match(/^((?:agent:[^:]+)):(?:subagent:.+|cron:[^:]+|(?:[^:]+:)*direct:.+|(?:[^:]+:)*channel:.+)$/);
+  const rootScopedMatch = key.match(
+    /^((?:agent:[^:]+)):(?:subagent:.+|cron:[^:]+|(?:[^:]+:)*direct:.+|(?:[^:]+:)*channel:.+)$/
+  );
   if (rootScopedMatch) return `${rootScopedMatch[1]}:main`;
 
   return undefined;
@@ -83,8 +85,11 @@ function flattenAgentTree(sessions: OpenClawAgentSession[]): AgentNode[] {
 
 export function AgentsSidebar() {
   const tabs: SidebarTab[] = ['Memory', 'Crons', 'Chat'];
+  const openclawWorkspacePath = '~/.openclaw/workspace';
   const [activeTab, setActiveTab] = useState<SidebarTab>('Memory');
-  const [selectedSessionKey, setSelectedSessionKey] = useState<string | null>(null);
+  const [selectedSessionKey, setSelectedSessionKey] = useState<string | null>(
+    null
+  );
   const [draftMessage, setDraftMessage] = useState('');
   const { projectId } = useProject();
 
@@ -102,15 +107,18 @@ export function AgentsSidebar() {
   );
   const selectedSession = useMemo(
     () =>
-      flatAgents.find(({ session }) => session.session_key === selectedSessionKey)
-        ?.session ?? null,
+      flatAgents.find(
+        ({ session }) => session.session_key === selectedSessionKey
+      )?.session ?? null,
     [flatAgents, selectedSessionKey]
   );
 
   useEffect(() => {
     if (
       selectedSessionKey &&
-      flatAgents.some(({ session }) => session.session_key === selectedSessionKey)
+      flatAgents.some(
+        ({ session }) => session.session_key === selectedSessionKey
+      )
     ) {
       return;
     }
@@ -136,7 +144,11 @@ export function AgentsSidebar() {
 
   const sendMutation = useMutation({
     mutationFn: (text: string) =>
-      projectsApi.sendOpenclawSessionMessage(projectId!, selectedSessionKey!, text),
+      projectsApi.sendOpenclawSessionMessage(
+        projectId!,
+        selectedSessionKey!,
+        text
+      ),
     onSuccess: () => {
       setDraftMessage('');
       void chatHistoryQuery.refetch();
@@ -145,7 +157,8 @@ export function AgentsSidebar() {
 
   const sendDraftMessage = async () => {
     const text = draftMessage.trim();
-    if (!text || !projectId || !selectedSessionKey || sendMutation.isPending) return;
+    if (!text || !projectId || !selectedSessionKey || sendMutation.isPending)
+      return;
     await sendMutation.mutateAsync(text);
   };
 
@@ -153,7 +166,7 @@ export function AgentsSidebar() {
     mutationFn: () =>
       projectsApi.openOpenclawWorkspaceInEditor(projectId!, {
         editor_type: null,
-        file_path: null,
+        file_path: openclawWorkspacePath,
       }),
     onSuccess: (response) => {
       if (response.url) window.open(response.url, '_blank');
@@ -168,29 +181,21 @@ export function AgentsSidebar() {
   return (
     <aside className="h-full min-h-0 w-[30rem] shrink-0 border-l-2 bg-muted/20 py-2">
       <div className="h-full min-h-0 flex flex-col">
-        <section className="flex-[0.5] min-h-0 bg-background overflow-hidden">
+        <section className="flex-[0.5] min-h-0 bg-background overflow-hidden flex flex-col">
           <header className="border-b px-3 py-2">
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Agents
-              </h2>
-              <OpenInIdeButton
-                onClick={() => {
-                  if (!projectId || openWorkspaceInIde.isPending) return;
-                  openWorkspaceInIde.mutate();
-                }}
-                disabled={!projectId || openWorkspaceInIde.isPending}
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Agents
+            </h2>
+          </header>
+          <div className="flex-1 min-h-0 p-3">
+            <div className="h-full min-h-0 overflow-y-auto space-y-2">
+              <AgentsList
+                isLoading={agentsQuery.isLoading}
+                isError={agentsQuery.isError}
+                flatAgents={flatAgents}
+                selectedSessionKey={selectedSessionKey}
               />
             </div>
-          </header>
-          <div className="h-full overflow-y-auto p-3 space-y-2">
-            <AgentsList
-              isLoading={agentsQuery.isLoading}
-              isError={agentsQuery.isError}
-              flatAgents={flatAgents}
-              selectedSessionKey={selectedSessionKey}
-              onSelectSession={setSelectedSessionKey}
-            />
           </div>
         </section>
 
@@ -202,27 +207,36 @@ export function AgentsSidebar() {
             role="tablist"
             aria-label="Agents workspace tabs"
           >
-            <div className="flex flex-wrap gap-1">
-              {tabs.map((tab) => {
-                const isActive = tab === activeTab;
-                return (
-                  <button
-                    key={tab}
-                    type="button"
-                    role="tab"
-                    aria-selected={isActive}
-                    className={cn(
-                      'rounded-md px-2 py-1 text-[11px] uppercase tracking-wide transition-colors',
-                      isActive
-                        ? 'bg-accent font-semibold text-foreground border border-border/60'
-                        : 'text-muted-foreground hover:text-foreground'
-                    )}
-                    onClick={() => setActiveTab(tab)}
-                  >
-                    {tab}
-                  </button>
-                );
-              })}
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex flex-wrap gap-1">
+                {tabs.map((tab) => {
+                  const isActive = tab === activeTab;
+                  return (
+                    <button
+                      key={tab}
+                      type="button"
+                      role="tab"
+                      aria-selected={isActive}
+                      className={cn(
+                        'rounded-md px-2 py-1 text-[11px] uppercase tracking-wide transition-colors',
+                        isActive
+                          ? 'bg-accent font-semibold text-foreground border border-border/60'
+                          : 'text-muted-foreground hover:text-foreground'
+                      )}
+                      onClick={() => setActiveTab(tab)}
+                    >
+                      {tab}
+                    </button>
+                  );
+                })}
+              </div>
+              <OpenInIdeButton
+                onClick={() => {
+                  if (!projectId || openWorkspaceInIde.isPending) return;
+                  openWorkspaceInIde.mutate();
+                }}
+                disabled={!projectId || openWorkspaceInIde.isPending}
+              />
             </div>
           </div>
           <div className="h-full overflow-y-auto">
@@ -254,7 +268,10 @@ export function AgentsSidebar() {
                 entries={memoriesQuery.data?.entries ?? []}
               />
             ) : activeTab === 'Crons' ? (
-              <CronsTab projectId={projectId} isActive={activeTab === 'Crons'} />
+              <CronsTab
+                projectId={projectId}
+                isActive={activeTab === 'Crons'}
+              />
             ) : (
               <section className="p-3 space-y-2">
                 <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">

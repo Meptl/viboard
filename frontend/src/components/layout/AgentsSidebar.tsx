@@ -1,11 +1,11 @@
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useProject } from '@/contexts/ProjectContext';
 import { projectsApi } from '@/lib/api';
-import { PlainTextTagTextarea } from '@/components/ui/plain-text-tag-textarea';
 import { OpenInIdeButton } from '@/components/ide/OpenInIdeButton';
 import { cn } from '@/lib/utils';
 import { AgentsList } from './AgentsList';
+import { ChatTab } from './ChatTab';
 import { CronsTab } from './CronsTab';
 import { MemoryTab } from './MemoryTab';
 
@@ -86,7 +86,6 @@ export function AgentsSidebar() {
   const [activeTab, setActiveTab] = useState<SidebarTab>('Memory');
   const [selectedSessionKey, setSelectedSessionKey] = useState<string | null>(null);
   const [draftMessage, setDraftMessage] = useState('');
-  const chatMessagesRef = useRef<HTMLDivElement | null>(null);
   const { projectId } = useProject();
 
   const agentsQuery = useQuery({
@@ -134,12 +133,6 @@ export function AgentsSidebar() {
     staleTime: 5_000,
     refetchInterval: activeTab === 'Memory' ? 10_000 : false,
   });
-
-  useEffect(() => {
-    const chatMessagesEl = chatMessagesRef.current;
-    if (!chatMessagesEl || activeTab !== 'Chat') return;
-    chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
-  }, [activeTab, selectedSessionKey, chatHistoryQuery.data?.messages]);
 
   const sendMutation = useMutation({
     mutationFn: (text: string) =>
@@ -234,79 +227,26 @@ export function AgentsSidebar() {
           </div>
           <div className="h-full overflow-y-auto">
             {activeTab === 'Chat' ? (
-              <section className="h-full min-h-0 flex flex-col gap-2 p-3">
-                <div className="text-[11px] text-muted-foreground truncate">
-                  {selectedSession?.display_name ||
-                    selectedSession?.label ||
-                    selectedSession?.session_key ||
-                    'No session selected'}
-                </div>
-                <div
-                  ref={chatMessagesRef}
-                  className="flex-1 min-h-0 overflow-y-auto space-y-2"
-                >
-                  {!selectedSessionKey ? (
-                    <div className="text-xs text-muted-foreground">
-                      Select an agent session to view chat history.
-                    </div>
-                  ) : chatHistoryQuery.isLoading ? (
-                    <div className="text-xs text-muted-foreground">
-                      Loading chat history...
-                    </div>
-                  ) : chatHistoryQuery.isError ? (
-                    <div className="text-xs text-muted-foreground">
-                      Failed to load chat history.
-                    </div>
-                  ) : (chatHistoryQuery.data?.messages?.length ?? 0) === 0 ? (
-                    <div className="text-xs text-muted-foreground">
-                      No chat messages yet.
-                    </div>
-                  ) : (
-                    chatHistoryQuery.data?.messages.map((msg, idx) => (
-                      <div
-                        key={`${msg.timestamp ?? 0}-${idx}`}
-                        className={cn(
-                          'px-2 py-1.5 text-xs whitespace-pre-wrap border-l-2',
-                          msg.role === 'user'
-                            ? 'bg-primary/5 border-primary/30'
-                            : 'bg-background border-border'
-                        )}
-                      >
-                        <p className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">
-                          {msg.role}
-                        </p>
-                        <p>{msg.content}</p>
-                      </div>
-                    ))
-                  )}
-                </div>
-                <form onSubmit={onSend} className="space-y-2">
-                  <PlainTextTagTextarea
-                    value={draftMessage}
-                    onChange={setDraftMessage}
-                    onCmdEnter={() => {
-                      void sendDraftMessage();
-                    }}
-                    className="w-full min-h-20 border bg-background px-2 py-1.5 text-xs"
-                    placeholder="Send a message to this session..."
-                    disabled={!selectedSessionKey || sendMutation.isPending}
-                    projectId={projectId}
-                    rows={4}
-                    maxRows={10}
-                  />
-                  <button
-                    type="submit"
-                    disabled={
-                      !selectedSessionKey ||
-                      !draftMessage.trim() ||
-                      sendMutation.isPending
-                    }
-                    className="w-full border bg-primary px-2 py-1.5 text-xs font-semibold text-primary-foreground disabled:opacity-50"
-                  >
-                    {sendMutation.isPending ? 'Sending...' : 'Send'}
-                  </button>
-                </form>
-              </section>
+              <ChatTab
+                projectId={projectId}
+                selectedSessionKey={selectedSessionKey}
+                sessionDisplayName={
+                  selectedSession?.display_name ||
+                  selectedSession?.label ||
+                  selectedSession?.session_key ||
+                  'No session selected'
+                }
+                messages={chatHistoryQuery.data?.messages}
+                isLoading={chatHistoryQuery.isLoading}
+                isError={chatHistoryQuery.isError}
+                draftMessage={draftMessage}
+                isSending={sendMutation.isPending}
+                onDraftChange={setDraftMessage}
+                onSend={onSend}
+                onCmdEnter={() => {
+                  void sendDraftMessage();
+                }}
+              />
             ) : activeTab === 'Memory' ? (
               <MemoryTab
                 isLoading={memoriesQuery.isLoading}

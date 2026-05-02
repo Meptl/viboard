@@ -94,3 +94,7 @@ remote-frontend/dist
 .codex
 
 out
+
+# Playwright artifacts
+test-results/
+playwright-report/

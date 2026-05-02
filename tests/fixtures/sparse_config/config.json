@@ -1,0 +1,41 @@
+{
+  "config_version": "v9",
+  "theme": "SYSTEM",
+  "executor_profile": {
+    "executor": "CODEX"
+  },
+  "disclaimer_acknowledged": true,
+  "notifications": {
+    "sound_enabled": true,
+    "system_enabled": true,
+    "badge_enabled": true,
+    "toast_enabled": true,
+    "sound_file": "ABSTRACT_SOUND4"
+  },
+  "editor": {
+    "editor_type": "VS_CODE",
+    "custom_ide_dir_cmd": null,
+    "custom_ide_file_cmd": null,
+    "remote_ssh_host": null,
+    "remote_ssh_user": null
+  },
+  "workspace_dir": null,
+  "show_new_attempt_drag_warning": true,
+  "language": "BROWSER",
+  "git_branch_prefix": "vb",
+  "showcases": {
+    "seen_features": []
+  },
+  "done_task_cleanup_days": 0,
+  "automatic_done_task_cleanup_days_by_project": {},
+  "task_title_prompt": null,
+  "task_description_prompt": null,
+  "openclaw": {
+    "gateway_url": "http://127.0.0.1:18789",
+    "gateway_key": "e078a110cc252648d7c9ab27ab80aede229e9f0049dd88b4"
+  },
+  "project_local_tags": {},
+  "project_settings": {
+    "ddc826f7-5c4b-440a-baf1-b26109369b6b": {}
+  }
+}

@@ -20,3 +20,7 @@ When referencing items the user may use these terms:
 - Crons tab: Part of the agent sidebar. (component: frontend/src/components/layout/CronsTab.tsx)
 - Agent chat: Part of the agent sidebar. (component: frontend/src/components/layout/ChatTab.tsx)
 - Openclaw chat: Same as Agent chat.
+
+## Testing
+You can use the playwright tests which can start you a frontend and backend instance for testing purposes.
+Openclaw gateway should be running.

@@ -38,10 +38,12 @@ function inferParentSessionKey(
 ): string | undefined {
   if (session.parent_session_key?.trim()) return session.parent_session_key;
   const key = session.session_key;
-  const subagentMatch = key.match(/^agent:([^:]+):subagent:[^:]+:.+$/);
-  if (subagentMatch) {
-    return `agent:${subagentMatch[1]}:main`;
-  }
+  const cronRunMatch = key.match(/^(.+:cron:[^:]+):run:.+$/);
+  if (cronRunMatch) return cronRunMatch[1];
+
+  const rootScopedMatch = key.match(/^((?:agent:[^:]+)):(?:subagent:.+|cron:[^:]+|(?:[^:]+:)*direct:.+|(?:[^:]+:)*channel:.+)$/);
+  if (rootScopedMatch) return `${rootScopedMatch[1]}:main`;
+
   return undefined;
 }
 

@@ -771,6 +771,23 @@ async fn send_openclaw_session_message(
     )
     .await?;
 
+    if let Some(status) = result
+        .get("status")
+        .and_then(serde_json::Value::as_str)
+        .map(|s| s.to_ascii_lowercase())
+    {
+        if matches!(status.as_str(), "error" | "forbidden" | "timeout" | "cancelled") {
+            let message = result
+                .get("error")
+                .and_then(serde_json::Value::as_str)
+                .filter(|s| !s.trim().is_empty())
+                .unwrap_or("OpenClaw session send failed");
+            return Err(ApiError::BadRequest(format!(
+                "OpenClaw gateway tool sessions_send failed: {message}"
+            )));
+        }
+    }
+
     Ok(ResponseJson(ApiResponse::success(result)))
 }
 

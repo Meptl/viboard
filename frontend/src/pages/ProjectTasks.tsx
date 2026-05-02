@@ -394,14 +394,28 @@ export function ProjectTasks() {
     useTaskAttempt(effectiveAttemptId);
   const taskRouteResolutionRef = useRef<string | null>(null);
   const skipNextAutomaticDoneCleanupRef = useRef<Record<string, true>>({});
+  const prevDoneTaskIdsRef = useRef<Set<string>>(new Set());
+  const doneTaskIdsInitializedRef = useRef(false);
   const doneCleanupDays = Math.max(0, config?.done_task_cleanup_days ?? 0);
-  const automaticDoneCleanupByProject = useMemo(
+  const automaticDoneCleanupDaysByProject = useMemo(
     () => config?.automatic_done_task_cleanup_days_by_project ?? {},
     [config?.automatic_done_task_cleanup_days_by_project]
   );
+  const automaticDoneCleanupTicketsByProject = useMemo(
+    () => config?.automatic_done_task_cleanup_tickets_by_project ?? {},
+    [config?.automatic_done_task_cleanup_tickets_by_project]
+  );
   const automaticDoneCleanupDaysForProject = projectId
-    ? automaticDoneCleanupByProject[projectId]
+    ? automaticDoneCleanupDaysByProject[projectId]
     : undefined;
+  const automaticDoneCleanupTicketsForProject = projectId
+    ? automaticDoneCleanupTicketsByProject[projectId]
+    : undefined;
+
+  useEffect(() => {
+    prevDoneTaskIdsRef.current = new Set();
+    doneTaskIdsInitializedRef.current = false;
+  }, [projectId]);
 
   const { data: branchStatus } = useBranchStatus(attempt?.id);
   const { data: branches = [], error: projectBranchesError } =
@@ -666,27 +680,41 @@ export function ProjectTasks() {
     };
 
     const saveAutomaticCleanup = async ({
-      enabled,
+      daysEnabled,
       olderThanDays,
+      ticketsEnabled,
+      keepLatestTickets,
     }: {
-      enabled: boolean;
+      daysEnabled: boolean;
       olderThanDays: number;
+      ticketsEnabled: boolean;
+      keepLatestTickets: number;
     }) => {
       if (!projectId) {
         return;
       }
       const automaticCleanupDays = Math.max(0, Math.floor(olderThanDays));
-      const nextByProject = { ...automaticDoneCleanupByProject };
+      const automaticCleanupTickets = Math.max(0, Math.floor(keepLatestTickets));
+      const nextDaysByProject = { ...automaticDoneCleanupDaysByProject };
+      const nextTicketsByProject = { ...automaticDoneCleanupTicketsByProject };
 
-      if (!enabled) {
-        delete nextByProject[projectId];
+      if (!daysEnabled) {
+        delete nextDaysByProject[projectId];
       } else {
         skipNextAutomaticDoneCleanupRef.current[projectId] = true;
-        nextByProject[projectId] = automaticCleanupDays;
+        nextDaysByProject[projectId] = automaticCleanupDays;
+      }
+
+      if (!ticketsEnabled) {
+        delete nextTicketsByProject[projectId];
+      } else {
+        skipNextAutomaticDoneCleanupRef.current[projectId] = true;
+        nextTicketsByProject[projectId] = automaticCleanupTickets;
       }
 
       await updateAndSaveConfig({
-        automatic_done_task_cleanup_days_by_project: nextByProject,
+        automatic_done_task_cleanup_days_by_project: nextDaysByProject,
+        automatic_done_task_cleanup_tickets_by_project: nextTicketsByProject,
       });
     };
 
@@ -696,12 +724,18 @@ export function ProjectTasks() {
         id: task.id,
         updated_at: task.updated_at,
       })),
-      automaticCleanupEnabled:
+      automaticCleanupDaysEnabled:
         typeof automaticDoneCleanupDaysForProject === 'number',
       automaticCleanupDays:
         typeof automaticDoneCleanupDaysForProject === 'number'
           ? automaticDoneCleanupDaysForProject
           : doneCleanupDays,
+      automaticCleanupTicketsEnabled:
+        typeof automaticDoneCleanupTicketsForProject === 'number',
+      automaticCleanupTickets:
+        typeof automaticDoneCleanupTicketsForProject === 'number'
+          ? automaticDoneCleanupTicketsForProject
+          : doneTasks.length,
       onSaveAutomaticCleanup: saveAutomaticCleanup,
     }).finally(() => {
       DoneCleanupDialog.hide();
@@ -730,8 +764,10 @@ export function ProjectTasks() {
       );
     }
   }, [
-    automaticDoneCleanupByProject,
+    automaticDoneCleanupDaysByProject,
     automaticDoneCleanupDaysForProject,
+    automaticDoneCleanupTicketsByProject,
+    automaticDoneCleanupTicketsForProject,
     config,
     doneCleanupDays,
     doneTasks,
@@ -743,11 +779,71 @@ export function ProjectTasks() {
     if (!projectId) {
       return;
     }
+    if (typeof automaticDoneCleanupTicketsForProject !== 'number') {
+      return;
+    }
+
+    const currentDoneTaskIds = new Set(doneTasks.map((task) => task.id));
+    if (!doneTaskIdsInitializedRef.current) {
+      prevDoneTaskIdsRef.current = currentDoneTaskIds;
+      doneTaskIdsInitializedRef.current = true;
+      return;
+    }
+
+    const hasDoneTaskAddition = [...currentDoneTaskIds].some(
+      (taskId) => !prevDoneTaskIdsRef.current.has(taskId)
+    );
+    prevDoneTaskIdsRef.current = currentDoneTaskIds;
+
+    if (!hasDoneTaskAddition) {
+      return;
+    }
+
+    const runAutomaticTicketCountCleanup = async () => {
+      if (skipNextAutomaticDoneCleanupRef.current[projectId]) {
+        delete skipNextAutomaticDoneCleanupRef.current[projectId];
+        return;
+      }
+
+      const doneTasksSortedByUpdatedDesc = [...doneTasksRef.current].sort(
+        (a, b) =>
+          new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+      );
+      const keepLatestTickets = Math.max(
+        0,
+        Math.floor(automaticDoneCleanupTicketsForProject)
+      );
+      const overflowTasks = doneTasksSortedByUpdatedDesc.slice(keepLatestTickets);
+
+      if (overflowTasks.length === 0) {
+        return;
+      }
+
+      const results = await Promise.allSettled(
+        overflowTasks.map((task) => tasksApi.delete(task.id))
+      );
+      const failedCount = results.filter(
+        (resultItem) => resultItem.status === 'rejected'
+      ).length;
+      if (failedCount > 0) {
+        console.error(
+          `Automatic ticket-count cleanup deleted ${overflowTasks.length - failedCount}/${overflowTasks.length} tasks for project ${projectId}`
+        );
+      }
+    };
+
+    void runAutomaticTicketCountCleanup();
+  }, [automaticDoneCleanupTicketsForProject, doneTasks, projectId]);
+
+  useEffect(() => {
+    if (!projectId) {
+      return;
+    }
     if (typeof automaticDoneCleanupDaysForProject !== 'number') {
       return;
     }
 
-    const runAutomaticDoneCleanup = async () => {
+    const runAutomaticAgeCleanup = async () => {
       if (skipNextAutomaticDoneCleanupRef.current[projectId]) {
         delete skipNextAutomaticDoneCleanupRef.current[projectId];
         return;
@@ -774,14 +870,14 @@ export function ProjectTasks() {
       ).length;
       if (failedCount > 0) {
         console.error(
-          `Automatic done cleanup deleted ${tasksToDelete.length - failedCount}/${tasksToDelete.length} tasks for project ${projectId}`
+          `Automatic age cleanup deleted ${tasksToDelete.length - failedCount}/${tasksToDelete.length} tasks for project ${projectId}`
         );
       }
     };
 
-    void runAutomaticDoneCleanup();
+    void runAutomaticAgeCleanup();
     const intervalId = window.setInterval(() => {
-      void runAutomaticDoneCleanup();
+      void runAutomaticAgeCleanup();
     }, AUTO_DONE_CLEANUP_INTERVAL_MS);
 
     return () => {

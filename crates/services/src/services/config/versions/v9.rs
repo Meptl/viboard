@@ -170,6 +170,8 @@ pub struct Config {
     pub done_task_cleanup_days: u32,
     #[serde(default)]
     pub automatic_done_task_cleanup_days_by_project: HashMap<String, u32>,
+    #[serde(default)]
+    pub automatic_done_task_cleanup_tickets_by_project: HashMap<String, u32>,
     #[serde(default = "default_task_title_prompt")]
     pub task_title_prompt: Option<String>,
     #[serde(default = "default_task_description_prompt")]
@@ -248,6 +250,7 @@ impl Config {
             showcases: old_config.showcases,
             done_task_cleanup_days: default_done_task_cleanup_days(),
             automatic_done_task_cleanup_days_by_project: HashMap::new(),
+            automatic_done_task_cleanup_tickets_by_project: HashMap::new(),
             task_title_prompt: default_task_title_prompt(),
             task_description_prompt: default_task_description_prompt(),
             openclaw: default_openclaw_settings(),
@@ -304,6 +307,7 @@ impl Default for Config {
             showcases: ShowcaseState::default(),
             done_task_cleanup_days: default_done_task_cleanup_days(),
             automatic_done_task_cleanup_days_by_project: HashMap::new(),
+            automatic_done_task_cleanup_tickets_by_project: HashMap::new(),
             task_title_prompt: default_task_title_prompt(),
             task_description_prompt: default_task_description_prompt(),
             openclaw: default_openclaw_settings(),

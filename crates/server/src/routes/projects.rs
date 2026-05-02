@@ -380,12 +380,9 @@ fn parse_openclaw_messages(raw: &serde_json::Value) -> Vec<OpenClawChatMessage> 
 }
 
 async fn list_openclaw_agents(
-    Extension(project): Extension<Project>,
+    Extension(_project): Extension<Project>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<OpenClawAgentsResponse>>, ApiError> {
-    let openclaw_workspace = openclaw_workspace_path(project.id);
-    let openclaw_workspace_str = openclaw_workspace.to_string_lossy().to_string();
-
     let openclaw_settings = {
         let config = deployment.config().read().await;
         config.openclaw.clone()
@@ -405,10 +402,7 @@ async fn list_openclaw_agents(
         openclaw_settings.gateway_key.trim(),
         "sessions_list",
         serde_json::json!({
-            "activeMinutes": 7 * 24 * 60,
-            "limit": 1000,
-            "workspace": openclaw_workspace_str,
-            "workspaceRoot": openclaw_workspace_str,
+            "limit": 10000,
         }),
         "main",
     )

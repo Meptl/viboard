@@ -300,6 +300,58 @@ async fn invoke_openclaw_tool(
         .unwrap_or(serde_json::Value::Null))
 }
 
+async fn invoke_openclaw_rpc(
+    client: &Client,
+    gateway_url: &str,
+    gateway_key: &str,
+    method: &str,
+    params: serde_json::Value,
+) -> Result<serde_json::Value, ApiError> {
+    let body = serde_json::json!({
+        "method": method,
+        "params": params,
+    });
+
+    let mut request = client.post(format!("{gateway_url}/rpc")).json(&body);
+    if !gateway_key.trim().is_empty() {
+        request = request.bearer_auth(gateway_key.trim());
+    }
+    let response = request
+        .send()
+        .await
+        .map_err(|e| ApiError::BadRequest(format!("OpenClaw gateway RPC request failed: {e}")))?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let text = response.text().await.unwrap_or_default();
+        return Err(ApiError::BadRequest(format!(
+            "OpenClaw gateway RPC error {status}: {text}"
+        )));
+    }
+
+    let payload = response
+        .json::<serde_json::Value>()
+        .await
+        .map_err(|e| ApiError::BadRequest(format!("Invalid OpenClaw gateway RPC response: {e}")))?;
+
+    if payload.get("ok").and_then(serde_json::Value::as_bool) == Some(false) {
+        let message = payload
+            .get("error")
+            .and_then(|err| err.get("message").or(Some(err)))
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("RPC invocation failed");
+        return Err(ApiError::BadRequest(format!(
+            "OpenClaw gateway RPC {method} failed: {message}"
+        )));
+    }
+
+    Ok(payload
+        .get("result")
+        .or_else(|| payload.get("payload"))
+        .cloned()
+        .unwrap_or(payload))
+}
+
 fn parse_openclaw_messages(raw: &serde_json::Value) -> Vec<OpenClawChatMessage> {
     extract_messages_array(raw)
         .into_iter()
@@ -711,16 +763,15 @@ async fn get_openclaw_session_history(
         )));
     }
 
-    let result = invoke_openclaw_tool(
+    let result = invoke_openclaw_rpc(
         &Client::new(),
         gateway_url,
         openclaw_settings.gateway_key.trim(),
-        "sessions_history",
+        "chat.history",
         serde_json::json!({
             "sessionKey": session_key,
             "limit": 500,
         }),
-        "main",
     )
     .await?;
     let messages = parse_openclaw_messages(&result);
@@ -757,17 +808,17 @@ async fn send_openclaw_session_message(
         ));
     }
 
-    let result = invoke_openclaw_tool(
+    let result = invoke_openclaw_rpc(
         &Client::new(),
         gateway_url,
         openclaw_settings.gateway_key.trim(),
-        "sessions_send",
+        "chat.send",
         serde_json::json!({
             "sessionKey": session_key,
             "message": text,
-            "timeoutSeconds": 0,
+            "deliver": false,
+            "idempotencyKey": format!("viboard-openclaw-{}", Uuid::new_v4()),
         }),
-        "main",
     )
     .await?;
 

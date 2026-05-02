@@ -1308,7 +1308,7 @@ async fn send_openclaw_session_message(
         serde_json::json!({
             "sessionKey": session_key,
             "message": text,
-            "deliver": false,
+            "deliver": true,
             "idempotencyKey": format!("viboard-openclaw-{}", Uuid::new_v4()),
         }),
     )

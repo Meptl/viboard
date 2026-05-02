@@ -327,6 +327,110 @@ export const projectsApi = {
     );
     return handleApiResponse(response);
   },
+
+  getOpenclawMemories: async (
+    id: string
+  ): Promise<{
+    workspace: string;
+    entries: Array<{ file: string; content: string }>;
+  }> => {
+    const response = await makeRequest(`/api/projects/${id}/openclaw/memories`);
+    return handleApiResponse(response);
+  },
+
+  getOpenclawCrons: async (
+    id: string
+  ): Promise<{
+    jobs: Array<{
+      id: string;
+      name: string;
+      enabled: boolean;
+      schedule: {
+        kind: string;
+        expr?: string;
+        tz?: string;
+        every_ms?: number;
+        at?: string;
+      };
+      payload: {
+        kind: string;
+        prompt: string;
+      };
+    }>;
+  }> => {
+    const response = await makeRequest(`/api/projects/${id}/openclaw/crons`);
+    return handleApiResponse(response);
+  },
+
+  createOpenclawCron: async (
+    id: string,
+    data: {
+      name?: string;
+      enabled?: boolean;
+      schedule: Record<string, unknown>;
+      payload: Record<string, unknown>;
+    }
+  ): Promise<unknown> => {
+    const response = await makeRequest(`/api/projects/${id}/openclaw/crons`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse(response);
+  },
+
+  updateOpenclawCron: async (
+    id: string,
+    cronId: string,
+    data: {
+      name?: string;
+      enabled?: boolean;
+      schedule: Record<string, unknown>;
+      payload: Record<string, unknown>;
+    }
+  ): Promise<unknown> => {
+    const response = await makeRequest(
+      `/api/projects/${id}/openclaw/crons/${encodeURIComponent(cronId)}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }
+    );
+    return handleApiResponse(response);
+  },
+
+  deleteOpenclawCron: async (id: string, cronId: string): Promise<unknown> => {
+    const response = await makeRequest(
+      `/api/projects/${id}/openclaw/crons/${encodeURIComponent(cronId)}`,
+      { method: 'DELETE' }
+    );
+    return handleApiResponse(response);
+  },
+
+  toggleOpenclawCron: async (
+    id: string,
+    cronId: string,
+    enabled: boolean
+  ): Promise<unknown> => {
+    const response = await makeRequest(
+      `/api/projects/${id}/openclaw/crons/${encodeURIComponent(cronId)}/toggle`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ enabled }),
+      }
+    );
+    return handleApiResponse(response);
+  },
+
+  openOpenclawWorkspaceInEditor: async (
+    id: string,
+    data: OpenEditorRequest
+  ): Promise<OpenEditorResponse> => {
+    const response = await makeRequest(`/api/projects/${id}/openclaw/open-editor`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<OpenEditorResponse>(response);
+  },
 };
 
 // Task Management APIs

@@ -1,4 +1,7 @@
-use std::path::Path as StdPath;
+use std::{
+    fs,
+    path::{Path as StdPath, PathBuf},
+};
 
 use axum::{
     Extension, Json, Router,
@@ -54,25 +57,13 @@ pub async fn get_project(
 }
 
 fn ensure_openclaw_workspace_for_project(project_id: Uuid) -> Result<(), ApiError> {
-    let workspace_root = openclaw_root_path().join(project_id.to_string());
+    let workspace_root = openclaw_workspace_path(project_id);
     std::fs::create_dir_all(&workspace_root)?;
-
-    let config_path = workspace_root.join("openclaw.json");
-    if !config_path.exists() {
-        let payload = serde_json::json!({
-            "agents": {
-                "defaults": {
-                    "workspace": workspace_root,
-                },
-            },
-        });
-        let serialized = serde_json::to_string_pretty(&payload).map_err(|e| {
-            ApiError::BadRequest(format!("Failed to serialize OpenClaw config: {e}"))
-        })?;
-        std::fs::write(config_path, format!("{serialized}\n"))?;
-    }
-
     Ok(())
+}
+
+fn openclaw_workspace_path(project_id: Uuid) -> PathBuf {
+    openclaw_root_path().join(project_id.to_string())
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -115,6 +106,60 @@ struct OpenClawChatMessage {
 struct OpenClawSessionChatResponse {
     session_key: String,
     messages: Vec<OpenClawChatMessage>,
+}
+
+#[derive(Debug, serde::Serialize)]
+struct OpenClawMemoryEntry {
+    file: String,
+    content: String,
+}
+
+#[derive(Debug, serde::Serialize)]
+struct OpenClawMemoriesResponse {
+    workspace: String,
+    entries: Vec<OpenClawMemoryEntry>,
+}
+
+#[derive(Debug, serde::Serialize)]
+struct OpenClawCronSchedule {
+    kind: String,
+    expr: Option<String>,
+    tz: Option<String>,
+    every_ms: Option<i64>,
+    at: Option<String>,
+}
+
+#[derive(Debug, serde::Serialize)]
+struct OpenClawCronPayload {
+    kind: String,
+    prompt: String,
+}
+
+#[derive(Debug, serde::Serialize)]
+struct OpenClawCronJob {
+    id: String,
+    name: String,
+    enabled: bool,
+    schedule: OpenClawCronSchedule,
+    payload: OpenClawCronPayload,
+}
+
+#[derive(Debug, serde::Serialize)]
+struct OpenClawCronsResponse {
+    jobs: Vec<OpenClawCronJob>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct OpenClawCronUpsertRequest {
+    name: Option<String>,
+    enabled: Option<bool>,
+    schedule: serde_json::Value,
+    payload: serde_json::Value,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct OpenClawToggleCronRequest {
+    enabled: bool,
 }
 
 fn value_to_i64(value: &serde_json::Value) -> Option<i64> {
@@ -286,7 +331,7 @@ async fn list_openclaw_agents(
     Extension(project): Extension<Project>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<OpenClawAgentsResponse>>, ApiError> {
-    let openclaw_workspace = openclaw_root_path().join(project.id.to_string());
+    let openclaw_workspace = openclaw_workspace_path(project.id);
     let openclaw_workspace_str = openclaw_workspace.to_string_lossy().to_string();
 
     let openclaw_settings = {
@@ -347,6 +392,304 @@ async fn list_openclaw_agents(
     Ok(ResponseJson(ApiResponse::success(OpenClawAgentsResponse {
         sessions,
     })))
+}
+
+fn extract_memory_entries(workspace_root: &StdPath) -> Vec<OpenClawMemoryEntry> {
+    let mut entries = Vec::new();
+    let memory_main = workspace_root.join("MEMORY.md");
+    if let Ok(content) = fs::read_to_string(&memory_main) {
+        let trimmed = content.trim();
+        if !trimmed.is_empty() {
+            entries.push(OpenClawMemoryEntry {
+                file: "MEMORY.md".to_string(),
+                content: trimmed.to_string(),
+            });
+        }
+    }
+
+    let daily_dir = workspace_root.join("memory");
+    if let Ok(dir_entries) = fs::read_dir(daily_dir) {
+        let mut files = dir_entries
+            .filter_map(Result::ok)
+            .map(|entry| entry.path())
+            .filter(|p| p.extension().is_some_and(|ext| ext == "md"))
+            .collect::<Vec<_>>();
+        files.sort();
+
+        for path in files {
+            if let Ok(content) = fs::read_to_string(&path) {
+                let trimmed = content.trim();
+                if trimmed.is_empty() {
+                    continue;
+                }
+                if let Some(name) = path.file_name().and_then(|f| f.to_str()) {
+                    entries.push(OpenClawMemoryEntry {
+                        file: format!("memory/{name}"),
+                        content: trimmed.to_string(),
+                    });
+                }
+            }
+        }
+    }
+
+    entries
+}
+
+fn parse_cron_job(row: &serde_json::Value) -> Option<OpenClawCronJob> {
+    let id = value_to_string(row.get("id").or_else(|| row.get("jobId")))?;
+    let name = value_to_string(row.get("name").or_else(|| row.get("label")))
+        .unwrap_or_else(|| id.clone());
+    let enabled = value_to_bool(row.get("enabled")).unwrap_or(true);
+    let schedule = row
+        .get("schedule")
+        .cloned()
+        .unwrap_or(serde_json::json!({ "kind": "every", "everyMs": 3600000 }));
+    let payload = row.get("payload").cloned().unwrap_or(serde_json::json!({}));
+
+    let schedule_kind = value_to_string(schedule.get("kind"))
+        .or_else(|| {
+            if schedule.get("expr").is_some() {
+                Some("cron".to_string())
+            } else if schedule.get("at").is_some() {
+                Some("at".to_string())
+            } else {
+                Some("every".to_string())
+            }
+        })
+        .unwrap_or_else(|| "every".to_string());
+    let payload_kind = value_to_string(payload.get("kind")).unwrap_or_else(|| "agentTurn".to_string());
+    let prompt = value_to_string(payload.get("message").or_else(|| payload.get("text")))
+        .unwrap_or_default();
+
+    Some(OpenClawCronJob {
+        id,
+        name,
+        enabled,
+        schedule: OpenClawCronSchedule {
+            kind: schedule_kind,
+            expr: value_to_string(schedule.get("expr")),
+            tz: value_to_string(schedule.get("tz")),
+            every_ms: schedule.get("everyMs").and_then(value_to_i64),
+            at: value_to_string(schedule.get("at")),
+        },
+        payload: OpenClawCronPayload {
+            kind: payload_kind,
+            prompt,
+        },
+    })
+}
+
+async fn get_openclaw_memories(
+    Extension(project): Extension<Project>,
+) -> Result<ResponseJson<ApiResponse<OpenClawMemoriesResponse>>, ApiError> {
+    let workspace_root = openclaw_workspace_path(project.id);
+    std::fs::create_dir_all(&workspace_root)?;
+    let entries = extract_memory_entries(&workspace_root);
+    Ok(ResponseJson(ApiResponse::success(OpenClawMemoriesResponse {
+        workspace: workspace_root.to_string_lossy().to_string(),
+        entries,
+    })))
+}
+
+async fn list_openclaw_crons(
+    Extension(project): Extension<Project>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<OpenClawCronsResponse>>, ApiError> {
+    let openclaw_settings = {
+        let config = deployment.config().read().await;
+        config.openclaw.clone()
+    };
+    let gateway_url = openclaw_settings.gateway_url.trim().trim_end_matches('/');
+    if gateway_url.is_empty() {
+        return Ok(ResponseJson(ApiResponse::success(OpenClawCronsResponse {
+            jobs: Vec::new(),
+        })));
+    }
+    let workspace = openclaw_workspace_path(project.id)
+        .to_string_lossy()
+        .to_string();
+    let result = invoke_openclaw_tool(
+        &Client::new(),
+        gateway_url,
+        openclaw_settings.gateway_key.trim(),
+        "cron",
+        serde_json::json!({
+            "action": "list",
+            "workspace": workspace,
+            "workspaceRoot": workspace,
+        }),
+        "main",
+    )
+    .await?;
+    let rows = result
+        .get("jobs")
+        .and_then(serde_json::Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    let jobs = rows.iter().filter_map(parse_cron_job).collect::<Vec<_>>();
+    Ok(ResponseJson(ApiResponse::success(OpenClawCronsResponse { jobs })))
+}
+
+async fn create_openclaw_cron(
+    Extension(project): Extension<Project>,
+    State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<OpenClawCronUpsertRequest>,
+) -> Result<ResponseJson<ApiResponse<serde_json::Value>>, ApiError> {
+    let openclaw_settings = {
+        let config = deployment.config().read().await;
+        config.openclaw.clone()
+    };
+    let gateway_url = openclaw_settings.gateway_url.trim().trim_end_matches('/');
+    if gateway_url.is_empty() {
+        return Err(ApiError::BadRequest(
+            "OpenClaw gateway URL is not configured".to_string(),
+        ));
+    }
+    let workspace = openclaw_workspace_path(project.id)
+        .to_string_lossy()
+        .to_string();
+    let mut job = serde_json::json!({
+        "schedule": payload.schedule,
+        "payload": payload.payload,
+        "enabled": payload.enabled.unwrap_or(true),
+    });
+    if let Some(name) = payload.name.as_ref().filter(|name| !name.trim().is_empty()) {
+        job["name"] = serde_json::Value::String(name.trim().to_string());
+    }
+    let result = invoke_openclaw_tool(
+        &Client::new(),
+        gateway_url,
+        openclaw_settings.gateway_key.trim(),
+        "cron",
+        serde_json::json!({
+            "action": "add",
+            "job": job,
+            "workspace": workspace,
+            "workspaceRoot": workspace,
+        }),
+        "main",
+    )
+    .await?;
+    Ok(ResponseJson(ApiResponse::success(result)))
+}
+
+async fn update_openclaw_cron(
+    Extension(project): Extension<Project>,
+    State(deployment): State<DeploymentImpl>,
+    axum::extract::Path((_, cron_id)): axum::extract::Path<(String, String)>,
+    Json(payload): Json<OpenClawCronUpsertRequest>,
+) -> Result<ResponseJson<ApiResponse<serde_json::Value>>, ApiError> {
+    let openclaw_settings = {
+        let config = deployment.config().read().await;
+        config.openclaw.clone()
+    };
+    let gateway_url = openclaw_settings.gateway_url.trim().trim_end_matches('/');
+    if gateway_url.is_empty() {
+        return Err(ApiError::BadRequest(
+            "OpenClaw gateway URL is not configured".to_string(),
+        ));
+    }
+    let workspace = openclaw_workspace_path(project.id)
+        .to_string_lossy()
+        .to_string();
+    let mut patch = serde_json::json!({
+        "schedule": payload.schedule,
+        "payload": payload.payload,
+    });
+    if let Some(enabled) = payload.enabled {
+        patch["enabled"] = serde_json::Value::Bool(enabled);
+    }
+    if let Some(name) = payload.name.as_ref().filter(|name| !name.trim().is_empty()) {
+        patch["name"] = serde_json::Value::String(name.trim().to_string());
+    }
+    let result = invoke_openclaw_tool(
+        &Client::new(),
+        gateway_url,
+        openclaw_settings.gateway_key.trim(),
+        "cron",
+        serde_json::json!({
+            "action": "update",
+            "id": cron_id,
+            "patch": patch,
+            "workspace": workspace,
+            "workspaceRoot": workspace,
+        }),
+        "main",
+    )
+    .await?;
+    Ok(ResponseJson(ApiResponse::success(result)))
+}
+
+async fn delete_openclaw_cron(
+    Extension(project): Extension<Project>,
+    State(deployment): State<DeploymentImpl>,
+    axum::extract::Path((_, cron_id)): axum::extract::Path<(String, String)>,
+) -> Result<ResponseJson<ApiResponse<serde_json::Value>>, ApiError> {
+    let openclaw_settings = {
+        let config = deployment.config().read().await;
+        config.openclaw.clone()
+    };
+    let gateway_url = openclaw_settings.gateway_url.trim().trim_end_matches('/');
+    if gateway_url.is_empty() {
+        return Err(ApiError::BadRequest(
+            "OpenClaw gateway URL is not configured".to_string(),
+        ));
+    }
+    let workspace = openclaw_workspace_path(project.id)
+        .to_string_lossy()
+        .to_string();
+    let result = invoke_openclaw_tool(
+        &Client::new(),
+        gateway_url,
+        openclaw_settings.gateway_key.trim(),
+        "cron",
+        serde_json::json!({
+            "action": "remove",
+            "id": cron_id,
+            "workspace": workspace,
+            "workspaceRoot": workspace,
+        }),
+        "main",
+    )
+    .await?;
+    Ok(ResponseJson(ApiResponse::success(result)))
+}
+
+async fn toggle_openclaw_cron(
+    Extension(project): Extension<Project>,
+    State(deployment): State<DeploymentImpl>,
+    axum::extract::Path((_, cron_id)): axum::extract::Path<(String, String)>,
+    Json(payload): Json<OpenClawToggleCronRequest>,
+) -> Result<ResponseJson<ApiResponse<serde_json::Value>>, ApiError> {
+    let openclaw_settings = {
+        let config = deployment.config().read().await;
+        config.openclaw.clone()
+    };
+    let gateway_url = openclaw_settings.gateway_url.trim().trim_end_matches('/');
+    if gateway_url.is_empty() {
+        return Err(ApiError::BadRequest(
+            "OpenClaw gateway URL is not configured".to_string(),
+        ));
+    }
+    let workspace = openclaw_workspace_path(project.id)
+        .to_string_lossy()
+        .to_string();
+    let result = invoke_openclaw_tool(
+        &Client::new(),
+        gateway_url,
+        openclaw_settings.gateway_key.trim(),
+        "cron",
+        serde_json::json!({
+            "action": "toggle",
+            "id": cron_id,
+            "enabled": payload.enabled,
+            "workspace": workspace,
+            "workspaceRoot": workspace,
+        }),
+        "main",
+    )
+    .await?;
+    Ok(ResponseJson(ApiResponse::success(result)))
 }
 
 async fn get_openclaw_session_history(
@@ -747,6 +1090,25 @@ pub async fn open_project_in_editor(
     }
 }
 
+pub async fn open_openclaw_workspace_in_editor(
+    Extension(project): Extension<Project>,
+    State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<Option<OpenEditorRequest>>,
+) -> Result<ResponseJson<ApiResponse<OpenEditorResponse>>, ApiError> {
+    let path = openclaw_workspace_path(project.id);
+    std::fs::create_dir_all(&path)?;
+    let editor_config = {
+        let config = deployment.config().read().await;
+        let editor_type_str = payload.as_ref().and_then(|req| req.editor_type.as_deref());
+        config.editor.with_override(editor_type_str)
+    };
+
+    match editor_config.open_file(&path, None).await {
+        Ok(url) => Ok(ResponseJson(ApiResponse::success(OpenEditorResponse { url }))),
+        Err(e) => Err(ApiError::EditorOpen(e)),
+    }
+}
+
 pub async fn search_project_files(
     State(deployment): State<DeploymentImpl>,
     Extension(project): Extension<Project>,
@@ -905,6 +1267,19 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
             get(get_project).put(update_project).delete(delete_project),
         )
         .route("/openclaw/agents", get(list_openclaw_agents))
+        .route("/openclaw/memories", get(get_openclaw_memories))
+        .route(
+            "/openclaw/crons",
+            get(list_openclaw_crons).post(create_openclaw_cron),
+        )
+        .route(
+            "/openclaw/crons/{cron_id}",
+            axum::routing::patch(update_openclaw_cron).delete(delete_openclaw_cron),
+        )
+        .route(
+            "/openclaw/crons/{cron_id}/toggle",
+            post(toggle_openclaw_cron),
+        )
         .route(
             "/openclaw/agents/{session_key}/history",
             get(get_openclaw_session_history),
@@ -913,6 +1288,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
             "/openclaw/agents/{session_key}/send",
             post(send_openclaw_session_message),
         )
+        .route("/openclaw/open-editor", post(open_openclaw_workspace_in_editor))
         .route("/branches", get(get_project_branches))
         .route("/search", get(search_project_files))
         .route("/open-editor", post(open_project_in_editor))

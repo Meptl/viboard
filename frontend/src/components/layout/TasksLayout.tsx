@@ -103,50 +103,10 @@ type AgentNode = {
   depth: number;
 };
 
-function inferParentSessionKey(
-  session: OpenClawAgentSession
-): string | undefined {
-  if (session.parent_session_key?.trim()) return session.parent_session_key;
-  const key = session.session_key;
-  const subagentMatch = key.match(/^agent:([^:]+):subagent:[^:]+:.+$/);
-  if (subagentMatch) {
-    return `agent:${subagentMatch[1]}:main`;
-  }
-  return undefined;
-}
-
 function flattenAgentTree(sessions: OpenClawAgentSession[]): AgentNode[] {
-  if (sessions.length === 0) return [];
-
-  const byKey = new Map(sessions.map((s) => [s.session_key, s]));
-  const children = new Map<string, OpenClawAgentSession[]>();
-  const roots: OpenClawAgentSession[] = [];
-
-  for (const session of sessions) {
-    const parentKey = inferParentSessionKey(session);
-    if (parentKey && byKey.has(parentKey)) {
-      const list = children.get(parentKey);
-      if (list) list.push(session);
-      else children.set(parentKey, [session]);
-    } else {
-      roots.push(session);
-    }
-  }
-
   const byRecent = (a: OpenClawAgentSession, b: OpenClawAgentSession) =>
     (b.updated_at ?? 0) - (a.updated_at ?? 0);
-  roots.sort(byRecent);
-  for (const list of children.values()) list.sort(byRecent);
-
-  const output: AgentNode[] = [];
-  const walk = (nodes: OpenClawAgentSession[], depth: number) => {
-    for (const node of nodes) {
-      output.push({ session: node, depth });
-      walk(children.get(node.session_key) ?? [], depth + 1);
-    }
-  };
-  walk(roots, 0);
-  return output;
+  return [...sessions].sort(byRecent).map((session) => ({ session, depth: 0 }));
 }
 
 function AgentsSidebar() {

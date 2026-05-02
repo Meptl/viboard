@@ -48,7 +48,8 @@ pub async fn get_project(
     Extension(mut project): Extension<Project>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<Project>>, ApiError> {
-    ensure_openclaw_workspace_for_project(project.id)?;
+    let openclaw_workspace = ensure_openclaw_workspace_for_project(project.id)?;
+    ensure_openclaw_project_agent_session(project.id, &openclaw_workspace, &deployment).await?;
     {
         let config = deployment.config().read().await;
         apply_project_settings(&mut project, &config);
@@ -56,9 +57,156 @@ pub async fn get_project(
     Ok(ResponseJson(ApiResponse::success(project)))
 }
 
-fn ensure_openclaw_workspace_for_project(project_id: Uuid) -> Result<(), ApiError> {
+fn project_openclaw_agent_id(project_id: Uuid) -> String {
+    format!("vb-project-{project_id}")
+}
+
+fn project_openclaw_agent_label(project_id: Uuid) -> String {
+    format!("vb-project-agent-{project_id}")
+}
+
+fn ensure_openclaw_workspace_for_project(project_id: Uuid) -> Result<PathBuf, ApiError> {
     let workspace_root = openclaw_workspace_path(project_id);
     std::fs::create_dir_all(&workspace_root)?;
+
+    let config_path = workspace_root.join("openclaw.json");
+    let mut payload = if config_path.exists() {
+        match std::fs::read_to_string(&config_path)
+            .ok()
+            .and_then(|raw| serde_json::from_str::<serde_json::Value>(&raw).ok())
+        {
+            Some(existing) if existing.is_object() => existing,
+            _ => serde_json::json!({}),
+        }
+    } else {
+        serde_json::json!({})
+    };
+
+    if !payload.is_object() {
+        payload = serde_json::json!({});
+    }
+
+    if payload.get("agents").is_none() {
+        payload["agents"] = serde_json::json!({});
+    }
+    if payload["agents"].get("defaults").is_none() {
+        payload["agents"]["defaults"] = serde_json::json!({});
+    }
+
+    payload["agents"]["defaults"]["workspace"] =
+        serde_json::Value::String(workspace_root.to_string_lossy().to_string());
+
+    if payload["agents"].get("list").is_none() || !payload["agents"]["list"].is_array() {
+        payload["agents"]["list"] = serde_json::json!([]);
+    }
+
+    let agent_id = project_openclaw_agent_id(project_id);
+    let has_project_agent = payload["agents"]["list"]
+        .as_array()
+        .map(|list| {
+            list.iter().any(|entry| {
+                entry
+                    .get("id")
+                    .and_then(serde_json::Value::as_str)
+                    .map(|id| id == agent_id)
+                    .unwrap_or(false)
+            })
+        })
+        .unwrap_or(false);
+
+    if !has_project_agent
+        && let Some(list) = payload["agents"]["list"].as_array_mut()
+    {
+        list.push(serde_json::json!({
+            "id": agent_id,
+            "workspace": workspace_root,
+        }));
+    }
+
+    let serialized = serde_json::to_string_pretty(&payload).map_err(|e| {
+        ApiError::BadRequest(format!("Failed to serialize OpenClaw config: {e}"))
+    })?;
+    std::fs::write(config_path, format!("{serialized}\n"))?;
+
+    Ok(workspace_root)
+}
+
+async fn ensure_openclaw_project_agent_session(
+    project_id: Uuid,
+    workspace_root: &StdPath,
+    deployment: &DeploymentImpl,
+) -> Result<(), ApiError> {
+    let openclaw_settings = {
+        let config = deployment.config().read().await;
+        config.openclaw.clone()
+    };
+    let gateway_url = openclaw_settings.gateway_url.trim().trim_end_matches('/');
+    if gateway_url.is_empty() {
+        return Ok(());
+    }
+
+    let label = project_openclaw_agent_label(project_id);
+    let client = Client::new();
+    let existing = invoke_openclaw_tool(
+        &client,
+        gateway_url,
+        openclaw_settings.gateway_key.trim(),
+        "sessions_list",
+        serde_json::json!({
+            "label": label,
+            "limit": 1,
+            "activeMinutes": 365 * 24 * 60,
+        }),
+        "main",
+    )
+    .await?;
+
+    if !extract_sessions_array(&existing).is_empty() {
+        return Ok(());
+    }
+
+    let workspace = workspace_root.to_string_lossy().to_string();
+    let spawn_result = invoke_openclaw_tool(
+        &client,
+        gateway_url,
+        openclaw_settings.gateway_key.trim(),
+        "sessions_spawn",
+        serde_json::json!({
+            "task": "Initialize project agent session. Reply READY.",
+            "label": project_openclaw_agent_label(project_id),
+            "agentId": project_openclaw_agent_id(project_id),
+            "workspace": workspace,
+            "cleanup": "keep",
+        }),
+        "main",
+    )
+    .await?;
+
+    let status = spawn_result
+        .get("status")
+        .and_then(serde_json::Value::as_str)
+        .or_else(|| {
+            spawn_result
+                .get("details")
+                .and_then(|d| d.get("status"))
+                .and_then(serde_json::Value::as_str)
+        });
+    if status == Some("error") {
+        let message = spawn_result
+            .get("error")
+            .and_then(serde_json::Value::as_str)
+            .or_else(|| {
+                spawn_result
+                    .get("details")
+                    .and_then(|d| d.get("error"))
+                    .and_then(serde_json::Value::as_str)
+            })
+            .unwrap_or("failed to create project OpenClaw agent session");
+        return Err(ApiError::BadRequest(format!(
+            "OpenClaw project agent session initialization failed: {message}"
+        )));
+    }
+
     Ok(())
 }
 
@@ -1004,6 +1152,8 @@ pub async fn delete_project(
     Extension(project): Extension<Project>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<()>>, StatusCode> {
+    let openclaw_workspace = openclaw_root_path().join(project.id.to_string());
+
     let tasks = Task::find_by_project_id_with_attempt_status(&deployment.db().pool, project.id)
         .await
         .map_err(|e| {
@@ -1037,6 +1187,17 @@ pub async fn delete_project(
             if rows_affected == 0 {
                 Err(StatusCode::NOT_FOUND)
             } else {
+                if openclaw_workspace.exists()
+                    && let Err(e) = std::fs::remove_dir_all(&openclaw_workspace)
+                {
+                    tracing::error!(
+                        "Failed to remove OpenClaw workspace for project {} at {:?}: {}",
+                        project.id,
+                        openclaw_workspace,
+                        e
+                    );
+                    return Err(StatusCode::INTERNAL_SERVER_ERROR);
+                }
                 Ok(ResponseJson(ApiResponse::success(())))
             }
         }

@@ -909,10 +909,11 @@ async fn send_openclaw_session_message(
         &Client::new(),
         gateway_url,
         openclaw_settings.gateway_key.trim(),
-        "sessions_yield",
+        "sessions_send",
         serde_json::json!({
             "sessionKey": session_key,
             "message": text,
+            "timeoutSeconds": 0,
         }),
         "main",
     )

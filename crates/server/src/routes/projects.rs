@@ -1334,6 +1334,92 @@ async fn send_openclaw_session_message(
     Ok(ResponseJson(ApiResponse::success(result)))
 }
 
+async fn delete_openclaw_session(
+    Extension(_project): Extension<Project>,
+    State(deployment): State<DeploymentImpl>,
+    axum::extract::Path((_, session_key)): axum::extract::Path<(String, String)>,
+) -> Result<ResponseJson<ApiResponse<serde_json::Value>>, ApiError> {
+    let key = session_key.trim().to_string();
+    if key.is_empty() {
+        return Err(ApiError::BadRequest(
+            "Session key cannot be empty".to_string(),
+        ));
+    }
+
+    let openclaw_settings = {
+        let config = deployment.config().read().await;
+        config.openclaw.clone()
+    };
+    let gateway_url = openclaw_settings.gateway_url.trim().trim_end_matches('/');
+    if gateway_url.is_empty() {
+        return Err(ApiError::BadRequest(
+            "OpenClaw gateway URL is not configured".to_string(),
+        ));
+    }
+
+    let sessions_result = invoke_openclaw_rpc(
+        gateway_url,
+        openclaw_settings.gateway_key.trim(),
+        "sessions.list",
+        serde_json::json!({
+            "limit": 10000,
+        }),
+    )
+    .await?;
+
+    let sessions = extract_sessions_array(&sessions_result);
+    let mut children_by_parent: HashMap<String, Vec<String>> = HashMap::new();
+    for row in sessions {
+        let child_key = value_to_string(row.get("sessionKey").or_else(|| row.get("key")))
+            .or_else(|| value_to_string(row.get("id")));
+        let parent_key = value_to_string(row.get("parentSessionKey").or_else(|| row.get("parentId")));
+        let (Some(child_key), Some(parent_key)) = (child_key, parent_key) else {
+            continue;
+        };
+        children_by_parent.entry(parent_key).or_default().push(child_key);
+    }
+
+    fn collect_descendants_post_order(
+        parent: &str,
+        children_by_parent: &HashMap<String, Vec<String>>,
+        visited: &mut HashSet<String>,
+        output: &mut Vec<String>,
+    ) {
+        let Some(children) = children_by_parent.get(parent) else {
+            return;
+        };
+        for child in children {
+            if !visited.insert(child.clone()) {
+                continue;
+            }
+            collect_descendants_post_order(child, children_by_parent, visited, output);
+            output.push(child.clone());
+        }
+    }
+
+    let mut keys_to_delete = Vec::new();
+    let mut visited = HashSet::new();
+    collect_descendants_post_order(&key, &children_by_parent, &mut visited, &mut keys_to_delete);
+    keys_to_delete.push(key.clone());
+
+    for key_to_delete in &keys_to_delete {
+        invoke_openclaw_rpc(
+            gateway_url,
+            openclaw_settings.gateway_key.trim(),
+            "sessions.delete",
+            serde_json::json!({
+                "key": key_to_delete,
+                "deleteTranscript": true,
+            }),
+        )
+        .await?;
+    }
+
+    Ok(ResponseJson(ApiResponse::success(serde_json::json!({
+        "deleted": keys_to_delete,
+    }))))
+}
+
 pub fn apply_project_settings(project: &mut Project, config: &services::services::config::Config) {
     let settings = config.project_settings(project.id);
     project.setup_script = settings.setup_script;
@@ -1848,6 +1934,10 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route(
             "/openclaw/agents/{session_key}/send",
             post(send_openclaw_session_message),
+        )
+        .route(
+            "/openclaw/agents/{session_key}",
+            axum::routing::delete(delete_openclaw_session),
         )
         .route("/openclaw/open-editor", post(open_openclaw_workspace_in_editor))
         .route("/branches", get(get_project_branches))

@@ -1,4 +1,11 @@
 import { cn } from '@/lib/utils';
+import { EllipsisVertical, Trash2 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 type OpenClawAgentSession = {
   session_key: string;
@@ -21,6 +28,9 @@ interface AgentsListProps {
   isError: boolean;
   flatAgents: AgentNode[];
   selectedSessionKey: string | null;
+  deletingSessionKey: string | null;
+  onSelectSession: (sessionKey: string) => void;
+  onDeleteSession: (sessionKey: string, label: string) => void;
 }
 
 export function AgentsList({
@@ -28,6 +38,9 @@ export function AgentsList({
   isError,
   flatAgents,
   selectedSessionKey,
+  deletingSessionKey,
+  onSelectSession,
+  onDeleteSession,
 }: AgentsListProps) {
   if (isLoading) {
     return (
@@ -67,18 +80,48 @@ export function AgentsList({
       <div
         key={session.session_key}
         className={cn(
-          'rounded-md border bg-background px-2 py-1.5',
+          'rounded-md border bg-background px-2 py-1.5 cursor-pointer hover:bg-muted/30',
           selectedSessionKey === session.session_key
             ? 'border-primary/40 bg-primary/5'
             : ''
         )}
         style={{ marginLeft: `${depth * 10}px` }}
+        onClick={() => onSelectSession(session.session_key)}
       >
         <div className="flex items-center justify-between gap-2">
-          <p className="truncate text-xs">{label}</p>
-          <p className="text-[10px] text-muted-foreground">
-            {session.model ?? 'model?'}
-          </p>
+          <div className="flex min-w-0 items-center gap-2">
+            <p className="truncate text-xs">{label}</p>
+            <p className="text-[10px] text-muted-foreground">
+              {session.model ?? 'model?'}
+            </p>
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="rounded-sm p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+                aria-label="Agent actions"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <EllipsisVertical className="h-3.5 w-3.5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                className="text-destructive"
+                disabled={deletingSessionKey === session.session_key}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDeleteSession(session.session_key, label);
+                }}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                {deletingSessionKey === session.session_key
+                  ? 'Deleting...'
+                  : 'Delete agent'}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         <div className="mt-1 flex items-center justify-between text-[10px] text-muted-foreground">
           <span>{session.agent_state ?? session.state ?? 'idle'}</span>

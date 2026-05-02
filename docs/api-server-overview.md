@@ -41,6 +41,14 @@ Use this document as a quick map of the backend endpoints exposed by the server.
 | Projects | GET | `/api/projects/{id}/search` |
 | Projects | POST | `/api/projects/{id}/open-editor` |
 | Projects / OpenClaw | GET | `/api/projects/{id}/openclaw/agents` |
+| Projects / OpenClaw | DELETE | `/api/projects/{id}/openclaw/agents/{session_key}` |
+| Projects / OpenClaw | GET | `/api/projects/{id}/openclaw/agents/{session_key}/history` |
+| Projects / OpenClaw | POST | `/api/projects/{id}/openclaw/agents/{session_key}/send` |
+| Projects / OpenClaw | GET | `/api/projects/{id}/openclaw/memories` |
+| Projects / OpenClaw | GET, POST | `/api/projects/{id}/openclaw/crons` |
+| Projects / OpenClaw | PATCH, DELETE | `/api/projects/{id}/openclaw/crons/{cron_id}` |
+| Projects / OpenClaw | POST | `/api/projects/{id}/openclaw/crons/{cron_id}/toggle` |
+| Projects / OpenClaw | POST | `/api/projects/{id}/openclaw/open-editor` |
 | Tasks | GET, POST | `/api/tasks/` |
 | Tasks | GET | `/api/tasks/stream/ws` |
 | Tasks | POST | `/api/tasks/create-and-start` |

@@ -328,6 +328,19 @@ export const projectsApi = {
     return handleApiResponse(response);
   },
 
+  deleteOpenclawSession: async (
+    id: string,
+    sessionKey: string
+  ): Promise<{ deleted: string[] }> => {
+    const response = await makeRequest(
+      `/api/projects/${id}/openclaw/agents/${encodeURIComponent(sessionKey)}`,
+      {
+        method: 'DELETE',
+      }
+    );
+    return handleApiResponse(response);
+  },
+
   getOpenclawMemories: async (
     id: string
   ): Promise<{

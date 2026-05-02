@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useProject } from '@/contexts/ProjectContext';
 import { projectsApi } from '@/lib/api';
 import { OpenInIdeButton } from '@/components/ide/OpenInIdeButton';
@@ -8,6 +8,15 @@ import { AgentsList } from './AgentsList';
 import { ChatTab } from './ChatTab';
 import { CronsTab } from './CronsTab';
 import { MemoryTab } from './MemoryTab';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 
 type OpenClawAgentSession = {
   session_key: string;
@@ -84,12 +93,17 @@ function flattenAgentTree(sessions: OpenClawAgentSession[]): AgentNode[] {
 }
 
 export function AgentsSidebar() {
+  const queryClient = useQueryClient();
   const tabs: SidebarTab[] = ['Memory', 'Crons', 'Chat'];
   const openclawWorkspacePath = '~/.openclaw/workspace';
   const [activeTab, setActiveTab] = useState<SidebarTab>('Memory');
   const [selectedSessionKey, setSelectedSessionKey] = useState<string | null>(
     null
   );
+  const [deleteTarget, setDeleteTarget] = useState<{
+    sessionKey: string;
+    label: string;
+  } | null>(null);
   const [draftMessage, setDraftMessage] = useState('');
   const { projectId } = useProject();
 
@@ -155,6 +169,23 @@ export function AgentsSidebar() {
     },
   });
 
+  const deleteSessionMutation = useMutation({
+    mutationFn: async (sessionKey: string) =>
+      projectsApi.deleteOpenclawSession(projectId!, sessionKey),
+    onSuccess: async (_, deletedSessionKey) => {
+      if (selectedSessionKey === deletedSessionKey) {
+        setSelectedSessionKey(null);
+      }
+      setDeleteTarget(null);
+      await queryClient.invalidateQueries({
+        queryKey: ['openclaw-agents', projectId],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ['openclaw-session-history', projectId],
+      });
+    },
+  });
+
   const sendDraftMessage = async () => {
     const text = draftMessage.trim();
     if (!text || !projectId || !selectedSessionKey || sendMutation.isPending)
@@ -194,6 +225,15 @@ export function AgentsSidebar() {
                 isError={agentsQuery.isError}
                 flatAgents={flatAgents}
                 selectedSessionKey={selectedSessionKey}
+                deletingSessionKey={
+                  deleteSessionMutation.isPending && deleteTarget
+                    ? deleteTarget.sessionKey
+                    : null
+                }
+                onSelectSession={setSelectedSessionKey}
+                onDeleteSession={(sessionKey, label) => {
+                  setDeleteTarget({ sessionKey, label });
+                }}
               />
             </div>
           </div>
@@ -285,6 +325,55 @@ export function AgentsSidebar() {
           </div>
         </section>
       </div>
+
+      <Dialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open && !deleteSessionMutation.isPending) {
+            setDeleteTarget(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Agent Session</DialogTitle>
+            <DialogDescription>
+              This will permanently delete this agent session and any nested
+              subagent sessions under it.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-md border bg-muted/20 px-3 py-2">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">
+              Session
+            </p>
+            <p className="mt-1 text-sm break-all">{deleteTarget?.label}</p>
+            <p className="mt-1 text-xs text-muted-foreground break-all">
+              {deleteTarget?.sessionKey}
+            </p>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={deleteSessionMutation.isPending}
+              onClick={() => setDeleteTarget(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={!deleteTarget || deleteSessionMutation.isPending}
+              onClick={() => {
+                if (!deleteTarget) return;
+                deleteSessionMutation.mutate(deleteTarget.sessionKey);
+              }}
+            >
+              {deleteSessionMutation.isPending ? 'Deleting...' : 'Delete agent'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </aside>
   );
 }

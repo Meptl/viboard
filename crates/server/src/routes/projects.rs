@@ -1,4 +1,6 @@
 use std::{
+    collections::{HashMap, HashSet},
+    env,
     fs,
     io::ErrorKind,
     path::{Path as StdPath, PathBuf},
@@ -247,18 +249,100 @@ fn value_to_bool(value: Option<&serde_json::Value>) -> Option<bool> {
     value.and_then(serde_json::Value::as_bool)
 }
 
+fn collect_nested_sessions(value: &serde_json::Value, output: &mut Vec<serde_json::Value>) {
+    let Some(obj) = value.as_object() else {
+        return;
+    };
+
+    output.push(value.clone());
+
+    for key in [
+        "children",
+        "childSessions",
+        "subagents",
+        "subagentSessions",
+        "subAgents",
+        "sessions",
+    ] {
+        if let Some(children) = obj.get(key).and_then(serde_json::Value::as_array) {
+            for child in children {
+                collect_nested_sessions(child, output);
+            }
+        }
+    }
+}
+
 fn extract_sessions_array(result: &serde_json::Value) -> Vec<serde_json::Value> {
-    if let Some(sessions) = result.get("sessions").and_then(serde_json::Value::as_array) {
-        return sessions.to_vec();
-    }
-    if let Some(sessions) = result
-        .get("details")
-        .and_then(|d| d.get("sessions"))
+    let top_level = result
+        .get("sessions")
         .and_then(serde_json::Value::as_array)
-    {
-        return sessions.to_vec();
+        .or_else(|| {
+            result
+                .get("details")
+                .and_then(|d| d.get("sessions"))
+                .and_then(serde_json::Value::as_array)
+        });
+
+    let mut sessions = Vec::new();
+    if let Some(rows) = top_level {
+        for row in rows {
+            collect_nested_sessions(row, &mut sessions);
+        }
     }
-    Vec::new()
+    sessions
+}
+
+fn load_local_openclaw_sessions() -> Vec<OpenClawAgentSession> {
+    let home = match env::var("HOME") {
+        Ok(home) if !home.trim().is_empty() => home,
+        _ => return Vec::new(),
+    };
+    let sessions_path = PathBuf::from(home)
+        .join(".openclaw")
+        .join("agents")
+        .join("main")
+        .join("sessions")
+        .join("sessions.json");
+    let raw = match fs::read_to_string(sessions_path) {
+        Ok(raw) => raw,
+        Err(_) => return Vec::new(),
+    };
+    let parsed = match serde_json::from_str::<serde_json::Value>(&raw) {
+        Ok(value) => value,
+        Err(_) => return Vec::new(),
+    };
+    let Some(obj) = parsed.as_object() else {
+        return Vec::new();
+    };
+
+    obj.iter()
+        .filter_map(|(session_key, row)| {
+            let row_obj = row.as_object()?;
+            Some(OpenClawAgentSession {
+                session_key: value_to_string(row_obj.get("sessionKey").or_else(|| row_obj.get("key")))
+                    .unwrap_or_else(|| session_key.to_string()),
+                label: value_to_string(row_obj.get("label")),
+                display_name: value_to_string(row_obj.get("displayName")),
+                state: value_to_string(row_obj.get("state")),
+                agent_state: value_to_string(row_obj.get("agentState")),
+                busy: value_to_bool(row_obj.get("busy")),
+                processing: value_to_bool(row_obj.get("processing")),
+                status: value_to_string(row_obj.get("status")),
+                updated_at: row_obj.get("updatedAt").and_then(value_to_i64),
+                last_activity: value_to_string(row_obj.get("lastActivity")),
+                model: value_to_string(row_obj.get("model")),
+                thinking: value_to_string(row_obj.get("thinkingLevel"))
+                    .or_else(|| value_to_string(row_obj.get("thinking"))),
+                total_tokens: row_obj.get("totalTokens").and_then(value_to_i64),
+                context_tokens: row_obj.get("contextTokens").and_then(value_to_i64),
+                parent_session_key: value_to_string(
+                    row_obj
+                        .get("parentSessionKey")
+                        .or_else(|| row_obj.get("parentId")),
+                ),
+            })
+        })
+        .collect()
 }
 
 fn value_to_plain_string(value: &serde_json::Value) -> String {
@@ -715,16 +799,21 @@ async fn list_openclaw_agents(
         openclaw_settings.gateway_key.trim(),
         "sessions_list",
         serde_json::json!({
+            "activeMinutes": 24 * 60,
             "limit": 10000,
         }),
         None,
     )
     .await?;
-    let sessions = extract_sessions_array(&result)
+    let mut seen_session_keys = HashSet::new();
+    let mut sessions = extract_sessions_array(&result)
         .into_iter()
         .filter_map(|row| {
             let session_key = value_to_string(row.get("sessionKey").or_else(|| row.get("key")))
                 .or_else(|| value_to_string(row.get("id")))?;
+            if !seen_session_keys.insert(session_key.clone()) {
+                return None;
+            }
             Some(OpenClawAgentSession {
                 session_key,
                 label: value_to_string(row.get("label")),
@@ -747,6 +836,17 @@ async fn list_openclaw_agents(
             })
         })
         .collect::<Vec<_>>();
+    let mut sessions_by_key: HashMap<String, OpenClawAgentSession> = sessions
+        .drain(..)
+        .map(|session| (session.session_key.clone(), session))
+        .collect();
+    for session in load_local_openclaw_sessions() {
+        sessions_by_key
+            .entry(session.session_key.clone())
+            .or_insert(session);
+    }
+    let mut sessions = sessions_by_key.into_values().collect::<Vec<_>>();
+    sessions.sort_by(|a, b| (b.updated_at.unwrap_or(0)).cmp(&a.updated_at.unwrap_or(0)));
 
     Ok(ResponseJson(ApiResponse::success(OpenClawAgentsResponse {
         sessions,

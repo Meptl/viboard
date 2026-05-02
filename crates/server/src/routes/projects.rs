@@ -251,13 +251,20 @@ async fn invoke_openclaw_tool(
     gateway_key: &str,
     tool: &str,
     args: serde_json::Value,
-    session_key: &str,
+    session_key: Option<&str>,
 ) -> Result<serde_json::Value, ApiError> {
-    let body = serde_json::json!({
+    let mut body = serde_json::json!({
         "tool": tool,
         "args": args,
-        "sessionKey": session_key,
     });
+    if let Some(session_key) = session_key.map(str::trim).filter(|s| !s.is_empty()) {
+        if let Some(obj) = body.as_object_mut() {
+            obj.insert(
+                "sessionKey".to_string(),
+                serde_json::Value::String(session_key.to_string()),
+            );
+        }
+    }
 
     let mut request = client
         .post(format!("{gateway_url}/tools/invoke"))
@@ -404,7 +411,7 @@ async fn list_openclaw_agents(
         serde_json::json!({
             "limit": 10000,
         }),
-        "main",
+        None,
     )
     .await?;
     let sessions = extract_sessions_array(&result)
@@ -564,7 +571,7 @@ async fn list_openclaw_crons(
             "workspace": workspace,
             "workspaceRoot": workspace,
         }),
-        "main",
+        Some("main"),
     )
     .await?;
     let rows = result
@@ -613,7 +620,7 @@ async fn create_openclaw_cron(
             "workspace": workspace,
             "workspaceRoot": workspace,
         }),
-        "main",
+        Some("main"),
     )
     .await?;
     Ok(ResponseJson(ApiResponse::success(result)))
@@ -660,7 +667,7 @@ async fn update_openclaw_cron(
             "workspace": workspace,
             "workspaceRoot": workspace,
         }),
-        "main",
+        Some("main"),
     )
     .await?;
     Ok(ResponseJson(ApiResponse::success(result)))
@@ -695,7 +702,7 @@ async fn delete_openclaw_cron(
             "workspace": workspace,
             "workspaceRoot": workspace,
         }),
-        "main",
+        Some("main"),
     )
     .await?;
     Ok(ResponseJson(ApiResponse::success(result)))
@@ -732,7 +739,7 @@ async fn toggle_openclaw_cron(
             "workspace": workspace,
             "workspaceRoot": workspace,
         }),
-        "main",
+        Some("main"),
     )
     .await?;
     Ok(ResponseJson(ApiResponse::success(result)))

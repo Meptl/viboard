@@ -9,6 +9,7 @@ import {
 import { Projects } from '@/pages/Projects';
 import { ProjectTasks } from '@/pages/ProjectTasks';
 import { ProjectRepositoryNotDetected } from '@/pages/ProjectRepositoryNotDetected';
+import { NotFound } from '@/pages/NotFound';
 import { NormalLayout } from '@/components/layout/NormalLayout';
 
 import {
@@ -26,8 +27,11 @@ import { ProjectProvider } from '@/contexts/ProjectContext';
 import { ThemeMode } from 'shared/types';
 import { Loader } from '@/components/ui/loader';
 import { useProjectBranches } from '@/hooks/useProjectBranches';
+import { useProject } from '@/contexts/ProjectContext';
+import { isNotFoundError } from '@/lib/apiErrors';
 import { isUnderlyingRepoNotDetectedError } from '@/lib/repositoryErrors';
 import { paths } from '@/lib/paths';
+import { isUuid } from '@/lib/uuid';
 
 import { DisclaimerDialog } from '@/components/dialogs/global/DisclaimerDialog';
 import { ClickedElementsProvider } from './contexts/ClickedElementsProvider';
@@ -37,9 +41,22 @@ import { TaskNotificationsProvider } from '@/contexts/TaskNotificationsContext';
 function ProjectRouteRedirect() {
   const { projectId } = useParams<{ projectId: string }>();
   const { error: projectBranchesError } = useProjectBranches(projectId);
+  const { error: projectError } = useProject();
 
   if (!projectId) {
     return <Navigate to={paths.projects()} replace />;
+  }
+
+  if (!isUuid(projectId)) {
+    return <NotFound />;
+  }
+
+  if (isNotFoundError(projectBranchesError)) {
+    return <NotFound />;
+  }
+
+  if (isNotFoundError(projectError)) {
+    return <NotFound />;
   }
 
   if (isUnderlyingRepoNotDetectedError(projectBranchesError)) {
@@ -119,6 +136,7 @@ function AppContent() {
                   path="/projects/:projectId/tasks/:taskId/attempts/:attemptId"
                   element={<ProjectTasks />}
                 />
+                <Route path="*" element={<NotFound />} />
               </Route>
             </Routes>
           </div>

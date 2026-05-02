@@ -8,6 +8,7 @@ import {
 import { useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { projectsApi } from '@/lib/api';
+import { isUuid } from '@/lib/uuid';
 import type { Project } from 'shared/types';
 
 interface ProjectContextValue {
@@ -30,7 +31,12 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
   // Extract projectId from current route path
   const projectId = useMemo(() => {
     const match = location.pathname.match(/^\/projects\/([^/]+)/);
-    return match ? match[1] : undefined;
+    if (!match) {
+      return undefined;
+    }
+
+    const id = match[1];
+    return isUuid(id) ? id : undefined;
   }, [location.pathname]);
 
   const query = useQuery({

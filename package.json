@@ -15,6 +15,7 @@
     "format": "cargo fmt --all && cd frontend && pnpm run format",
     "check": "pnpm run frontend:check && pnpm run backend:check",
     "dev": "export FRONTEND_PORT=$(node scripts/setup-dev-environment.js frontend) && export BACKEND_PORT=$(node scripts/setup-dev-environment.js backend) && concurrently \"pnpm run backend:dev:watch\" \"pnpm run frontend:dev\"",
+    "dev:test-fixture": "node scripts/setup-dev-environment.js get >/dev/null && export FRONTEND_PORT=$(node scripts/setup-dev-environment.js frontend) && export BACKEND_PORT=$(node scripts/setup-dev-environment.js backend) && export VIBOARD_ASSET_DIR=tests/fixtures/sparse_config && pnpm run prepare-db && concurrently \"BACKEND_PORT=${BACKEND_PORT} VIBOARD_ASSET_DIR=${VIBOARD_ASSET_DIR} cargo run --bin server\" \"FRONTEND_PORT=${FRONTEND_PORT} BACKEND_PORT=${BACKEND_PORT} pnpm run frontend:dev\"",
     "test:npm": "./test-npm-package.sh",
     "frontend:lint": "cd frontend && pnpm run lint",
     "frontend:dev": "cd frontend && pnpm run dev -- --port ${FRONTEND_PORT:-3000} --host",

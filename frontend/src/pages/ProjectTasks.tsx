@@ -31,7 +31,9 @@ import { useTaskAttempts } from '@/hooks/useTaskAttempts';
 import { useTaskAttempt } from '@/hooks/useTaskAttempt';
 import { useBranchStatus, useAttemptExecution } from '@/hooks';
 import { paths } from '@/lib/paths';
+import { isNotFoundError } from '@/lib/apiErrors';
 import { isUnderlyingRepoNotDetectedError } from '@/lib/repositoryErrors';
+import { isUuid } from '@/lib/uuid';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
 import { DiffStreamProvider } from '@/contexts/DiffStreamContext';
 import { ClickedElementsProvider } from '@/contexts/ClickedElementsProvider';
@@ -70,6 +72,7 @@ import { AttemptHeaderActions } from '@/components/panels/AttemptHeaderActions';
 import { useTaskNotifications } from '@/contexts/TaskNotificationsContext';
 import { ProjectTasksSnapshotProvider } from '@/contexts/ProjectTasksSnapshotContext';
 import type { GitOperationsInputs } from '@/components/tasks/Toolbar/GitOperations';
+import { NotFound } from '@/pages/NotFound';
 
 import type {
   TaskAttempt,
@@ -161,7 +164,7 @@ function AttemptHeaderActionsWithGitOps({
 }
 
 export function ProjectTasks() {
-  const { taskId, attemptId } = useParams<{
+  const { projectId: routeProjectId, taskId, attemptId } = useParams<{
     projectId: string;
     taskId?: string;
     attemptId?: string;
@@ -419,7 +422,7 @@ export function ProjectTasks() {
 
   const { data: branchStatus } = useBranchStatus(attempt?.id);
   const { data: branches = [], error: projectBranchesError } =
-    useProjectBranches(projectId);
+    useProjectBranches(routeProjectId);
 
   const rawMode = searchParams.get('view') as LayoutMode;
   const mode: LayoutMode =
@@ -1272,6 +1275,18 @@ export function ProjectTasks() {
     return (
       <Navigate to={paths.projectRepositoryNotDetected(projectId)} replace />
     );
+  }
+
+  if (!routeProjectId || !isUuid(routeProjectId)) {
+    return <NotFound />;
+  }
+
+  if (isNotFoundError(projectBranchesError)) {
+    return <NotFound />;
+  }
+
+  if (isNotFoundError(projectError)) {
+    return <NotFound />;
   }
 
   if (projectError) {

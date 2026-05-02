@@ -45,3 +45,12 @@ test('project list supports clicking into task page when projects exist', async 
 
   await expect(page).toHaveURL(/\/projects\/[^/]+\/tasks/);
 });
+
+test('invalid project id route renders 404 page', async ({ page }) => {
+  await page.goto('/projects/NONEXISTENT_UUID/tasks');
+  await acceptDisclaimerIfVisible(page);
+
+  await expect(
+    page.getByRole('heading', { name: '404 - Page Not Found' })
+  ).toBeVisible();
+});

@@ -28,6 +28,7 @@
   },
   "done_task_cleanup_days": 0,
   "automatic_done_task_cleanup_days_by_project": {},
+  "automatic_done_task_cleanup_tickets_by_project": {},
   "task_title_prompt": null,
   "task_description_prompt": null,
   "openclaw": {

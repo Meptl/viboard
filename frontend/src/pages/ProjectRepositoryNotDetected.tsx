@@ -10,11 +10,14 @@ import { Label } from '@/components/ui/label';
 import { projectsApi } from '@/lib/api';
 import { useProjectMutations } from '@/hooks/useProjectMutations';
 import { isUnderlyingRepoNotDetectedError } from '@/lib/repositoryErrors';
+import { isNotFoundError } from '@/lib/apiErrors';
+import { NotFound } from '@/pages/NotFound';
+import { isUuid } from '@/lib/uuid';
 
 export function ProjectRepositoryNotDetected() {
   const navigate = useNavigate();
-  const { projectId } = useParams<{ projectId: string }>();
-  const { project } = useProject();
+  const { projectId: routeProjectId } = useParams<{ projectId: string }>();
+  const { project, error: projectError } = useProject();
   const [repoPathDraft, setRepoPathDraft] = useState('');
   const [error, setError] = useState<string | null>(null);
   const { updateProject } = useProjectMutations();
@@ -24,9 +27,19 @@ export function ProjectRepositoryNotDetected() {
     setRepoPathDraft(project.git_repo_path);
   }, [project?.git_repo_path]);
 
-  if (!projectId) {
+  if (!routeProjectId) {
     return <Navigate to={paths.projects()} replace />;
   }
+
+  if (!isUuid(routeProjectId)) {
+    return <NotFound />;
+  }
+
+  if (isNotFoundError(projectError)) {
+    return <NotFound />;
+  }
+
+  const projectId = routeProjectId;
 
   const handleTryAgain = async () => {
     const nextPath = repoPathDraft.trim();

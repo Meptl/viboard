@@ -24,3 +24,18 @@ When referencing items the user may use these terms:
 ## Testing
 You can use the playwright tests which can start you a frontend and backend instance for testing purposes.
 Openclaw gateway should be running.
+
+### Local Test Fixture Startup
+Use the sparse fixture stack for quick manual/e2e checks:
+
+`pnpm run dev:test-fixture`
+
+This command:
+- allocates/reuses frontend/backend ports
+- writes them to `.dev-ports.json`
+- starts backend with `VIBOARD_ASSET_DIR=tests/fixtures/sparse_config`
+- starts frontend with matching `FRONTEND_PORT`/`BACKEND_PORT`
+
+Useful helpers:
+- `node scripts/setup-dev-environment.js get` prints the currently assigned ports and JSON
+- read `.dev-ports.json` for the active frontend/backend port pair

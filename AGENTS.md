@@ -15,6 +15,6 @@ When referencing items the user may use these terms:
     An Agents list and a tabbed window of Memory, Crons, and Chat for management
     of openclaw.
 - Openclaw sidebar: Same as agent sidebar
-- Agents list: Part of the agent sidebar. (component: frontend/src/components/layout/TasksLayout.tsx)
+- Agents list: Part of the agent sidebar. (component: frontend/src/components/layout/AgentsList.tsx)
 - Agent chat: Part of the agent sidebar. (component: frontend/src/components/layout/TasksLayout.tsx, Chat tab in AgentsSidebar)
 - Openclaw chat: Same as Agent chat.

@@ -1,22 +1,20 @@
-# Repository Guidelines
+# Overview
+This is a kanban board system that interacts with AI agents and git.
 
-## Project Structure & Module Organization
-- `crates/`: Rust workspace crates — `server` (API + bins), `db` (SQLx models/migrations), `executors`, `services`, `utils`, `deployment`, `local-deployment`, `remote`.
-- `frontend/`: React + TypeScript app (Vite, Tailwind). Source in `frontend/src`.
-- `frontend/src/components/dialogs`: Dialog components for the frontend.
-- `remote-frontend/`: Remote deployment frontend.
-- `shared/`: Generated TypeScript types (`shared/types.ts`). Do not edit directly.
-- `assets/`, `dev_assets_seed/`, `dev_assets/`: Packaged and local dev assets.
-- `npx-cli/`: Files published to the npm CLI package.
-- `scripts/`: Dev helpers (ports, DB preparation).
-
-## Coding Style & Naming Conventions
-- Rust: `rustfmt` enforced (`rustfmt.toml`); group imports by crate; snake_case modules, PascalCase types.
-- TypeScript/React: ESLint + Prettier (2 spaces, single quotes, 80 cols). PascalCase components, camelCase vars/functions, kebab-case file names where practical.
-- Keep functions small, add `Debug`/`Serialize`/`Deserialize` where useful.
-
-## Testing Guidelines
-- Frontend: ensure `pnpm run check` and `pnpm run lint` pass.
-
-## Security & Config Tips
-- Dev ports and assets are managed by `scripts/setup-dev-environment.js`.
+## User naming
+When referencing items the user may use these terms:
+- Project page: The task view of a project at /projects/ID/tasks (route: frontend/src/App.tsx, page: frontend/src/pages/ProjectTasks.tsx)
+- Project list: The projects page and home page at / or /projects (routes: frontend/src/App.tsx, page: frontend/src/pages/Projects.tsx, component: frontend/src/components/projects/ProjectList.tsx)
+- Task page: When clicking a task, we enter a page with a split view of a chat window and diff/preview of the task attempt (route: frontend/src/App.tsx, page: frontend/src/pages/ProjectTasks.tsx, layout: frontend/src/components/layout/TasksLayout.tsx)
+- Attempt page: Same as task page
+- Chat window: Part of the task page (component: frontend/src/components/panels/TaskAttemptPanel.tsx)
+- Diff view: Part of the task page (component: frontend/src/components/panels/DiffsPanel.tsx)
+- Preview view: Part of the task page (component: frontend/src/components/panels/PreviewPanel.tsx)
+- Settings page: General or project settings management page at /settings (route: frontend/src/App.tsx, layout: frontend/src/pages/settings/SettingsLayout.tsx, pages: frontend/src/pages/settings/GeneralSettings.tsx and frontend/src/pages/settings/ProjectSettings.tsx)
+- Agent sidebar: A sidebar on the project page for openclaw with two sections. (component: frontend/src/components/layout/TasksLayout.tsx, AgentsSidebar in same file)
+    An Agents list and a tabbed window of Memory, Crons, and Chat for management
+    of openclaw.
+- Openclaw sidebar: Same as agent sidebar
+- Agents list: Part of the agent sidebar. (component: frontend/src/components/layout/TasksLayout.tsx)
+- Agent chat: Part of the agent sidebar. (component: frontend/src/components/layout/TasksLayout.tsx, Chat tab in AgentsSidebar)
+- Openclaw chat: Same as Agent chat.

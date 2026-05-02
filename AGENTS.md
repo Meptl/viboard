@@ -35,7 +35,13 @@ This command:
 - writes them to `.dev-ports.json`
 - starts backend with `VIBOARD_ASSET_DIR=tests/fixtures/sparse_config`
 - starts frontend with matching `FRONTEND_PORT`/`BACKEND_PORT`
+- runs in detached/background mode (non-blocking)
+- prints compact JSON with ports, PIDs, and log file paths
+- does not run `prepare-db` by default
 
 Useful helpers:
 - `node scripts/setup-dev-environment.js get` prints the currently assigned ports and JSON
 - read `.dev-ports.json` for the active frontend/backend port pair
+- `pnpm run dev:test-fixture:status` shows fixture process state
+- `pnpm run dev:test-fixture:stop` stops the detached fixture processes
+- `pnpm run dev:test-fixture:prepare` starts fixtures and runs `prepare-db` first

@@ -7,6 +7,8 @@ const { spawn, execSync } = require("child_process");
 const ROOT = path.join(__dirname, "..");
 const PID_FILE = path.join(ROOT, ".dev-test-fixture.json");
 const LOG_DIR = path.join(ROOT, ".dev-test-fixture-logs");
+const RUNTIME_DIR = path.join(ROOT, ".dev-test-fixture-runtime");
+const SOURCE_FIXTURE_DIR = path.join("tests", "fixtures", "sparse_config");
 
 function isPidRunning(pid) {
   if (!pid || typeof pid !== "number") return false;
@@ -59,6 +61,19 @@ function spawnLogged(name, cmd, args, env, logFile) {
   return child.pid;
 }
 
+function resetDir(dirPath) {
+  fs.rmSync(dirPath, { recursive: true, force: true });
+  fs.mkdirSync(dirPath, { recursive: true });
+}
+
+function prepareRuntimeFixture() {
+  const sourceDir = path.join(ROOT, SOURCE_FIXTURE_DIR);
+  const runtimeFixtureDir = path.join(RUNTIME_DIR, "sparse_config");
+  resetDir(runtimeFixtureDir);
+  fs.cpSync(sourceDir, runtimeFixtureDir, { recursive: true });
+  return path.relative(ROOT, runtimeFixtureDir);
+}
+
 function start() {
   const existing = readState();
   if (
@@ -74,7 +89,7 @@ function start() {
 
   const frontendPort = getPort("frontend");
   const backendPort = getPort("backend");
-  const viboardAssetDir = "tests/fixtures/sparse_config";
+  const viboardAssetDir = prepareRuntimeFixture();
 
   if (shouldPrepareDb) {
     execSync("pnpm run prepare-db", {
@@ -115,6 +130,7 @@ function start() {
   const state = {
     frontendPort,
     backendPort,
+    sourceFixtureDir: SOURCE_FIXTURE_DIR,
     viboardAssetDir,
     frontendPid,
     backendPid,
@@ -156,6 +172,8 @@ function stop() {
   } catch {
     // ignore
   }
+  // Clean up runtime fixture copy to avoid stale local state.
+  fs.rmSync(RUNTIME_DIR, { recursive: true, force: true });
 
   console.log(JSON.stringify({ status: "stopped", killed, failed }, null, 2));
 }

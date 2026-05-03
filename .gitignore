@@ -98,3 +98,7 @@ out
 # Playwright artifacts
 test-results/
 playwright-report/
+# Local dev fixture logs
+.dev-test-fixture-logs/
+.dev-test-fixture-runtime/
+.dev-test-fixture.json

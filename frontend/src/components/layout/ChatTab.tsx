@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useRef } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { PlainTextTagTextarea } from '@/components/ui/plain-text-tag-textarea';
 import { cn } from '@/lib/utils';
 
@@ -6,6 +6,8 @@ type ChatMessage = {
   role: string;
   content: string;
   timestamp?: number;
+  pending?: boolean;
+  localId?: string;
 };
 
 interface ChatTabProps {
@@ -13,10 +15,13 @@ interface ChatTabProps {
   selectedSessionKey: string | null;
   sessionDisplayName: string;
   messages?: ChatMessage[];
+  displayMessages: ChatMessage[];
   isLoading: boolean;
   isError: boolean;
   draftMessage: string;
   isSending: boolean;
+  isGenerating: boolean;
+  generatingStartedAt?: number;
   onDraftChange: (value: string) => void;
   onSend: (e: FormEvent<HTMLFormElement>) => Promise<void>;
   onCmdEnter: () => void;
@@ -27,21 +32,36 @@ export function ChatTab({
   selectedSessionKey,
   sessionDisplayName,
   messages,
+  displayMessages,
   isLoading,
   isError,
   draftMessage,
   isSending,
+  isGenerating,
+  generatingStartedAt,
   onDraftChange,
   onSend,
   onCmdEnter,
 }: ChatTabProps) {
   const chatMessagesRef = useRef<HTMLDivElement | null>(null);
+  const [now, setNow] = useState<number>(() => Date.now());
+
+  useEffect(() => {
+    if (!isGenerating) return;
+    const interval = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(interval);
+  }, [isGenerating]);
+
+  const elapsedSeconds = useMemo(() => {
+    if (!isGenerating || !generatingStartedAt) return 0;
+    return Math.max(0, Math.floor((now - generatingStartedAt) / 1000));
+  }, [generatingStartedAt, isGenerating, now]);
 
   useEffect(() => {
     const chatMessagesEl = chatMessagesRef.current;
     if (!chatMessagesEl) return;
     chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
-  }, [selectedSessionKey, messages]);
+  }, [selectedSessionKey, messages, displayMessages, isGenerating]);
 
   return (
     <section className="h-full min-h-0 flex flex-col gap-2 p-3">
@@ -55,26 +75,33 @@ export function ChatTab({
           <div className="text-xs text-muted-foreground">Loading chat history...</div>
         ) : isError ? (
           <div className="text-xs text-muted-foreground">Failed to load chat history.</div>
-        ) : (messages?.length ?? 0) === 0 ? (
+        ) : displayMessages.length === 0 ? (
           <div className="text-xs text-muted-foreground">No chat messages yet.</div>
         ) : (
-          messages?.map((msg, idx) => (
+          displayMessages.map((msg, idx) => (
             <div
-              key={`${msg.timestamp ?? 0}-${idx}`}
+              key={msg.localId ?? `${msg.timestamp ?? 0}-${idx}`}
               className={cn(
                 'px-2 py-1.5 text-xs whitespace-pre-wrap border-l-2',
                 msg.role === 'user'
                   ? 'bg-primary/5 border-primary/30'
-                  : 'bg-background border-border'
+                  : 'bg-background border-border',
+                msg.pending ? 'opacity-70' : undefined
               )}
             >
               <p className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">
                 {msg.role}
+                {msg.pending ? ' (sending...)' : ''}
               </p>
               <p>{msg.content}</p>
             </div>
           ))
         )}
+        {isGenerating ? (
+          <div className="px-2 py-1.5 text-xs border-l-2 bg-muted/40 border-border text-muted-foreground tracking-wide">
+            Thinking... {elapsedSeconds}s
+          </div>
+        ) : null}
       </div>
       <form onSubmit={onSend} className="space-y-2">
         <PlainTextTagTextarea

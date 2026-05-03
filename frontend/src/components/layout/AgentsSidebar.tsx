@@ -35,6 +35,22 @@ type OpenClawAgentSession = {
   parent_session_key?: string;
 };
 
+type ChatMessage = {
+  role: string;
+  content: string;
+  timestamp?: number;
+};
+
+type ChatUiMessage = ChatMessage & {
+  pending?: boolean;
+  localId?: string;
+};
+
+type LocalGeneratingState = {
+  startedAt: number;
+  pendingUserTimestamp: number;
+};
+
 type AgentNode = {
   session: OpenClawAgentSession;
   depth: number;
@@ -105,6 +121,11 @@ export function AgentsSidebar() {
     label: string;
   } | null>(null);
   const [draftMessage, setDraftMessage] = useState('');
+  const [optimisticMessagesBySession, setOptimisticMessagesBySession] =
+    useState<Record<string, ChatUiMessage[]>>({});
+  const [localGeneratingBySession, setLocalGeneratingBySession] = useState<
+    Record<string, LocalGeneratingState>
+  >({});
   const { projectId } = useProject();
 
   const agentsQuery = useQuery({
@@ -157,15 +178,27 @@ export function AgentsSidebar() {
   });
 
   const sendMutation = useMutation({
-    mutationFn: (text: string) =>
-      projectsApi.sendOpenclawSessionMessage(
-        projectId!,
-        selectedSessionKey!,
-        text
-      ),
+    mutationFn: ({ sessionKey, text }: { sessionKey: string; text: string }) =>
+      projectsApi.sendOpenclawSessionMessage(projectId!, sessionKey, text),
     onSuccess: () => {
       setDraftMessage('');
       void chatHistoryQuery.refetch();
+    },
+    onError: (_error, variables) => {
+      setOptimisticMessagesBySession((prev) => {
+        const existing = prev[variables.sessionKey] ?? [];
+        return {
+          ...prev,
+          [variables.sessionKey]: existing.filter(
+            (m) => !(m.pending && m.role === 'user' && m.content === variables.text)
+          ),
+        };
+      });
+      setLocalGeneratingBySession((prev) => {
+        const next = { ...prev };
+        delete next[variables.sessionKey];
+        return next;
+      });
     },
   });
 
@@ -190,8 +223,103 @@ export function AgentsSidebar() {
     const text = draftMessage.trim();
     if (!text || !projectId || !selectedSessionKey || sendMutation.isPending)
       return;
-    await sendMutation.mutateAsync(text);
+
+    const now = Date.now();
+    const localId = `local-${selectedSessionKey}-${now}`;
+
+    setOptimisticMessagesBySession((prev) => {
+      const existing = prev[selectedSessionKey] ?? [];
+      return {
+        ...prev,
+        [selectedSessionKey]: [
+          ...existing,
+          {
+            localId,
+            role: 'user',
+            content: text,
+            timestamp: now,
+            pending: true,
+          },
+        ],
+      };
+    });
+    setLocalGeneratingBySession((prev) => ({
+      ...prev,
+      [selectedSessionKey]: {
+        startedAt: now,
+        pendingUserTimestamp: now,
+      },
+    }));
+
+    await sendMutation.mutateAsync({ sessionKey: selectedSessionKey, text });
   };
+
+  useEffect(() => {
+    const sessionKey = selectedSessionKey;
+    const serverMessages = chatHistoryQuery.data?.messages;
+    if (!sessionKey || !serverMessages) return;
+
+    setOptimisticMessagesBySession((prev) => {
+      const optimistic = prev[sessionKey] ?? [];
+      if (optimistic.length === 0) return prev;
+
+      const matchedServerIndexes = new Set<number>();
+      const remaining = optimistic.filter((candidate) => {
+        const matchIndex = serverMessages.findIndex((serverMsg, idx) => {
+          if (matchedServerIndexes.has(idx)) return false;
+          if (serverMsg.role !== 'user' || candidate.role !== 'user') {
+            return false;
+          }
+          if (serverMsg.content !== candidate.content) return false;
+          if (!candidate.timestamp || !serverMsg.timestamp) return true;
+          return serverMsg.timestamp >= candidate.timestamp - 60_000;
+        });
+        if (matchIndex >= 0) {
+          matchedServerIndexes.add(matchIndex);
+          return false;
+        }
+        return true;
+      });
+
+      if (remaining.length === optimistic.length) return prev;
+      return {
+        ...prev,
+        [sessionKey]: remaining,
+      };
+    });
+
+    setLocalGeneratingBySession((prev) => {
+      const generating = prev[sessionKey];
+      if (!generating) return prev;
+      const hasAgentResponse = serverMessages.some(
+        (msg) =>
+          msg.role !== 'user' &&
+          typeof msg.timestamp === 'number' &&
+          msg.timestamp >= generating.pendingUserTimestamp
+      );
+      if (!hasAgentResponse) return prev;
+      const next = { ...prev };
+      delete next[sessionKey];
+      return next;
+    });
+  }, [chatHistoryQuery.data?.messages, selectedSessionKey]);
+
+  const chatMessages = useMemo(() => {
+    if (!selectedSessionKey) return [] as ChatUiMessage[];
+    const serverMessages = (chatHistoryQuery.data?.messages ?? []) as ChatUiMessage[];
+    const optimistic = optimisticMessagesBySession[selectedSessionKey] ?? [];
+    return [...serverMessages, ...optimistic].sort(
+      (a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0)
+    );
+  }, [
+    chatHistoryQuery.data?.messages,
+    optimisticMessagesBySession,
+    selectedSessionKey,
+  ]);
+
+  const localGeneratingState = selectedSessionKey
+    ? localGeneratingBySession[selectedSessionKey]
+    : undefined;
 
   const openWorkspaceInIde = useMutation({
     mutationFn: () =>
@@ -291,10 +419,13 @@ export function AgentsSidebar() {
                   'No session selected'
                 }
                 messages={chatHistoryQuery.data?.messages}
+                displayMessages={chatMessages}
                 isLoading={chatHistoryQuery.isLoading}
                 isError={chatHistoryQuery.isError}
                 draftMessage={draftMessage}
                 isSending={sendMutation.isPending}
+                isGenerating={!!localGeneratingState}
+                generatingStartedAt={localGeneratingState?.startedAt}
                 onDraftChange={setDraftMessage}
                 onSend={onSend}
                 onCmdEnter={() => {

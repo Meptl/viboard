@@ -1344,6 +1344,54 @@ fn sparse_checkout_respected_in_worktree_diffs_and_commit() {
 }
 
 #[test]
+fn worktree_diff_handles_tracked_file_removed_then_ignored() {
+    let td = TempDir::new().unwrap();
+    let repo_path = td.path().join("repo_ignored_removed");
+    let s = GitService::new();
+    s.initialize_repo_with_main_branch(&repo_path).unwrap();
+    let repo = Repository::open(&repo_path).unwrap();
+    configure_user(&repo);
+    checkout_branch(&repo, "main");
+
+    write_file(
+        &repo_path,
+        ".dev-test-fixture-logs/backend.log",
+        "baseline-log\n",
+    );
+    let _ = s.commit(&repo_path, "add log file").unwrap();
+
+    create_branch_from_head(&repo, "feature");
+    let wt = td.path().join("wt_ignored_removed");
+    s.add_worktree(&repo_path, &wt, "feature", false).unwrap();
+
+    write_file(&wt, ".gitignore", ".dev-test-fixture-logs/\n");
+    let cli = GitCli::new();
+    cli.git(
+        &wt,
+        ["rm", "--cached", ".dev-test-fixture-logs/backend.log"],
+    )
+    .unwrap();
+
+    let base_commit = s.get_base_commit(&repo_path, "feature", "main").unwrap();
+    let diffs = s
+        .get_diffs(
+            DiffTarget::Worktree {
+                worktree_path: Path::new(&wt),
+                base_commit: &base_commit,
+            },
+            None,
+            DiffDetailLevel::FullContent,
+        )
+        .unwrap();
+
+    assert!(
+        diffs
+            .iter()
+            .any(|d| d.new_path.as_deref() == Some(".gitignore"))
+    );
+}
+
+#[test]
 fn worktree_diff_ignores_commits_where_base_branch_is_ahead() {
     let td = TempDir::new().unwrap();
     let repo_path = td.path().join("repo_base_ahead");

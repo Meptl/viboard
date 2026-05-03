@@ -171,41 +171,82 @@ impl GitCli {
         // Use a temp index from HEAD to accurately track renames in untracked files
         let _ = self.git_with_env(worktree_path, ["read-tree", "HEAD"], &envs)?;
 
-        // Stage only requested paths when path_filter is provided, otherwise stage
-        // all changed/untracked paths from status output.
-        let mut paths_to_add: Vec<Vec<u8>> = Vec::new();
-        if let Some(filters) = opts.path_filter.as_ref() {
-            paths_to_add.extend(filters.iter().map(|p| p.as_bytes().to_vec()));
-        } else {
-            // Use raw status paths to preserve non-UTF8 filenames.
-            let status = self.get_worktree_status(worktree_path)?;
-            for entry in status.entries {
-                paths_to_add.push(entry.path);
-                if let Some(orig) = entry.orig_path {
-                    paths_to_add.push(orig);
+        // Stage paths from status using two passes:
+        // 1) tracked entries with `-u` (safe when a tracked path is now ignored)
+        // 2) untracked entries with `-A` (to include new files in worktree diffs)
+        let status = self.get_worktree_status(worktree_path)?;
+        let mut tracked_paths: Vec<Vec<u8>> = Vec::new();
+        let mut untracked_paths: Vec<Vec<u8>> = Vec::new();
+        let filter_matches = |path: &[u8]| -> bool {
+            match opts.path_filter.as_ref() {
+                None => true,
+                Some(filters) => {
+                    let p = String::from_utf8_lossy(path);
+                    filters.iter().any(|f| {
+                        if f.trim().is_empty() {
+                            return false;
+                        }
+                        p == *f || p.starts_with(&format!("{f}/"))
+                    })
                 }
+            }
+        };
+        for entry in status.entries {
+            if filter_matches(&entry.path) {
+                if entry.is_untracked {
+                    untracked_paths.push(entry.path.clone());
+                } else {
+                    tracked_paths.push(entry.path.clone());
+                }
+            }
+            if let Some(orig) = entry.orig_path
+                && filter_matches(&orig)
+            {
+                tracked_paths.push(orig);
             }
         }
 
-        if !paths_to_add.is_empty() {
+        if !tracked_paths.is_empty() || !untracked_paths.is_empty() {
             let stage_started_at = Instant::now();
-            paths_to_add.extend(
-                Self::get_default_pathspec_excludes()
-                    .iter()
-                    .map(|s| s.as_encoded_bytes().to_vec()),
-            );
-            let mut input = Vec::new();
-            for p in paths_to_add {
-                input.extend_from_slice(&p);
-                input.push(0);
+            let mut tracked_input = Vec::new();
+            for p in tracked_paths {
+                tracked_input.extend_from_slice(&p);
+                tracked_input.push(0);
             }
-            let args = vec![
-                OsString::from("add"),
-                OsString::from("-A"),
-                OsString::from("--pathspec-from-file=-"),
-                OsString::from("--pathspec-file-nul"),
-            ];
-            self.git_with_stdin(worktree_path, args, Some(&envs), &input)?;
+            tracked_input.extend(Self::get_default_pathspec_excludes().iter().flat_map(|s| {
+                let mut bytes = s.as_encoded_bytes().to_vec();
+                bytes.push(0);
+                bytes
+            }));
+            if !tracked_input.is_empty() {
+                let tracked_args = vec![
+                    OsString::from("add"),
+                    OsString::from("-u"),
+                    OsString::from("--pathspec-from-file=-"),
+                    OsString::from("--pathspec-file-nul"),
+                ];
+                self.git_with_stdin(worktree_path, tracked_args, Some(&envs), &tracked_input)?;
+            }
+
+            let mut untracked_input = Vec::new();
+            for p in untracked_paths {
+                untracked_input.extend_from_slice(&p);
+                untracked_input.push(0);
+            }
+            untracked_input.extend(Self::get_default_pathspec_excludes().iter().flat_map(|s| {
+                let mut bytes = s.as_encoded_bytes().to_vec();
+                bytes.push(0);
+                bytes
+            }));
+            if !untracked_input.is_empty() {
+                let untracked_args = vec![
+                    OsString::from("add"),
+                    OsString::from("-A"),
+                    OsString::from("--pathspec-from-file=-"),
+                    OsString::from("--pathspec-file-nul"),
+                ];
+                self.git_with_stdin(worktree_path, untracked_args, Some(&envs), &untracked_input)?;
+            }
             tracing::debug!(
                 stage_ms = stage_started_at.elapsed().as_millis(),
                 path_filter_count = opts.path_filter.as_ref().map(|p| p.len()).unwrap_or(0),
@@ -355,6 +396,7 @@ impl GitCli {
         let args = vec![
             OsString::from("add"),
             OsString::from("-A"),
+            OsString::from("--ignore-errors"),
             OsString::from("--pathspec-from-file=-"),
             OsString::from("--pathspec-file-nul"),
         ];
